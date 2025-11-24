@@ -1,46 +1,80 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
-import { StaticDB } from '@/data/staticDatabase';
-import { DebtOptimizer, OptimizedDebt, UserBalance } from '@/utils/debtOptimizer';
+import { Debt, StaticDB } from '@/data/staticDatabase';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
-export default function GroupDebtScreen() {
+interface GroupSummary {
+  groupId: string;
+  groupName: string;
+  myHutang: number;
+  myPiutang: number;
+  myBalance: number;
+  memberCount: number;
+}
+
+export default function MultiGroupOverviewScreen() {
   const { user } = useAuth();
-  const { debts, isLoading, refreshDebts } = useDebt();
-  const [optimizedDebts, setOptimizedDebts] = useState<OptimizedDebt[]>([]);
-  const [userBalances, setUserBalances] = useState<UserBalance[]>([]);
+  const { refreshDebts } = useDebt();
+  const router = useRouter();
+  const [groupSummaries, setGroupSummaries] = useState<GroupSummary[]>([]);
+  const [personalDebts, setPersonalDebts] = useState<Debt[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
-      calculateOptimizedDebts();
+      calculateSummaries();
     }
-  }, [debts, user]);
+  }, [user]);
 
-  const calculateOptimizedDebts = () => {
-    const allUsers = StaticDB.getUsers();
-    const allDebts = StaticDB.getUsers().flatMap(u => 
-      StaticDB.getDebtsByUserId(u.id)
-    );
+  const calculateSummaries = () => {
+    if (!user) return;
 
-    const result = DebtOptimizer.getOptimizedDebtGraph(allDebts, allUsers);
-    setOptimizedDebts(result.optimizedDebts);
-    setUserBalances(result.balances);
+    // Calculate group summaries
+    const userGroups = StaticDB.getUserGroups(user.id);
+    const summaries: GroupSummary[] = userGroups.map(group => {
+      const transactions = StaticDB.getGroupTransactions(group.id);
+      let myHutang = 0;
+      let myPiutang = 0;
+
+      transactions.forEach(t => {
+        if (t.fromUserId === user.id) {
+          myHutang += t.amount;
+        }
+        if (t.toUserId === user.id) {
+          myPiutang += t.amount;
+        }
+      });
+
+      return {
+        groupId: group.id,
+        groupName: group.name,
+        myHutang,
+        myPiutang,
+        myBalance: myPiutang - myHutang,
+        memberCount: group.memberIds.length,
+      };
+    });
+
+    setGroupSummaries(summaries);
+
+    // Get personal debts (outside groups)
+    const allDebts = StaticDB.getDebtsByUserId(user.id);
+    setPersonalDebts(allDebts);
   };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     refreshDebts();
-    calculateOptimizedDebts();
+    calculateSummaries();
     setIsRefreshing(false);
   };
 
@@ -60,16 +94,12 @@ export default function GroupDebtScreen() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
-  }
-
-  const myOptimizedDebts = DebtOptimizer.getUserSuggestions(user.id, optimizedDebts);
-  const myBalance = userBalances.find(b => b.userId === user.id);
+  // Calculate totals
+  const totalGroupHutang = groupSummaries.reduce((sum, g) => sum + g.myHutang, 0);
+  const totalGroupPiutang = groupSummaries.reduce((sum, g) => sum + g.myPiutang, 0);
+  const totalPersonalHutang = personalDebts.filter(d => d.type === 'hutang' && !d.isPaid).reduce((sum, d) => sum + d.amount, 0);
+  const totalPersonalPiutang = personalDebts.filter(d => d.type === 'piutang' && !d.isPaid).reduce((sum, d) => sum + d.amount, 0);
+  const grandTotalBalance = (totalGroupPiutang + totalPersonalPiutang) - (totalGroupHutang + totalPersonalHutang);
 
   return (
     <ScrollView
@@ -79,160 +109,142 @@ export default function GroupDebtScreen() {
       }
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Optimasi Hutang Grup</Text>
+        <Text style={styles.headerTitle}>Multi-Group Overview</Text>
         <Text style={styles.headerSubtitle}>
-          Sistem otomatis menyederhanakan hutang antar member
+          Ringkasan hutang piutang dari semua grup & personal
         </Text>
       </View>
 
-      {/* My Balance Card */}
-      <View style={styles.myBalanceCard}>
-        <Text style={styles.cardTitle}>Saldo Anda</Text>
+      {/* Total Balance Card */}
+      <View style={styles.totalBalanceCard}>
+        <Text style={styles.cardTitle}>Total Keseluruhan</Text>
         <Text
           style={[
             styles.balanceAmount,
-            (myBalance?.balance || 0) >= 0
+            grandTotalBalance >= 0
               ? styles.positiveBalance
               : styles.negativeBalance,
           ]}
         >
-          {formatCurrency(myBalance?.balance || 0)}
+          {formatCurrency(grandTotalBalance)}
         </Text>
-        <Text style={styles.balanceNote}>
-          {(myBalance?.balance || 0) >= 0
-            ? `${Math.abs(myBalance?.balance || 0) > 0 ? 'Orang berhutang ke Anda' : 'Anda tidak punya hutang/piutang'}`
-            : 'Anda berhutang ke orang lain'}
-        </Text>
+        <View style={styles.balanceBreakdown}>
+          <View style={styles.breakdownItem}>
+            <Text style={styles.breakdownLabel}>Piutang</Text>
+            <Text style={styles.breakdownValue}>
+              {formatCurrency(totalGroupPiutang + totalPersonalPiutang)}
+            </Text>
+          </View>
+          <View style={styles.breakdownDivider} />
+          <View style={styles.breakdownItem}>
+            <Text style={styles.breakdownLabel}>Hutang</Text>
+            <Text style={styles.breakdownValue}>
+              {formatCurrency(totalGroupHutang + totalPersonalHutang)}
+            </Text>
+          </View>
+        </View>
       </View>
 
-      {/* My Actions */}
-      {(myOptimizedDebts.shouldPay.length > 0 || myOptimizedDebts.willReceive.length > 0) && (
+      {/* Group Summaries */}
+      {groupSummaries.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Aksi Anda</Text>
-
-          {myOptimizedDebts.shouldPay.length > 0 && (
-            <View style={styles.actionSection}>
-              <Text style={styles.actionLabel}>💸 Anda Harus Bayar:</Text>
-              {myOptimizedDebts.shouldPay.map((debt, index) => (
-                <View key={index} style={[styles.debtCard, styles.payCard]}>
-                  <View style={styles.debtHeader}>
-                    <Text style={styles.debtName}>{debt.toName}</Text>
-                    <Text style={styles.debtAmount}>{formatCurrency(debt.amount)}</Text>
-                  </View>
-                  <Text style={styles.debtNote}>
-                    Bayar ke {debt.toName} untuk menyelesaikan semua hutang Anda
+          <Text style={styles.sectionTitle}>📊 Ringkasan Per Grup</Text>
+          {groupSummaries.map((group) => (
+            <TouchableOpacity
+              key={group.groupId}
+              style={styles.groupCard}
+              onPress={() => router.push(`/group/${group.groupId}`)}
+            >
+              <View style={styles.groupHeader}>
+                <View>
+                  <Text style={styles.groupName}>{group.groupName}</Text>
+                  <Text style={styles.groupMeta}>{group.memberCount} anggota</Text>
+                </View>
+                <Text style={styles.groupArrow}>›</Text>
+              </View>
+              <View style={styles.groupStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Piutang</Text>
+                  <Text style={[styles.statValue, styles.positiveText]}>
+                    {formatCurrency(group.myPiutang)}
                   </Text>
                 </View>
-              ))}
-            </View>
-          )}
-
-          {myOptimizedDebts.willReceive.length > 0 && (
-            <View style={styles.actionSection}>
-              <Text style={styles.actionLabel}>💰 Anda Akan Terima:</Text>
-              {myOptimizedDebts.willReceive.map((debt, index) => (
-                <View key={index} style={[styles.debtCard, styles.receiveCard]}>
-                  <View style={styles.debtHeader}>
-                    <Text style={styles.debtName}>{debt.fromName}</Text>
-                    <Text style={styles.debtAmount}>{formatCurrency(debt.amount)}</Text>
-                  </View>
-                  <Text style={styles.debtNote}>
-                    {debt.fromName} akan membayar ke Anda
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Hutang</Text>
+                  <Text style={[styles.statValue, styles.negativeText]}>
+                    {formatCurrency(group.myHutang)}
                   </Text>
                 </View>
-              ))}
-            </View>
-          )}
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Saldo</Text>
+                  <Text
+                    style={[
+                      styles.statValue,
+                      styles.statValueBold,
+                      group.myBalance >= 0 ? styles.positiveText : styles.negativeText,
+                    ]}
+                  >
+                    {formatCurrency(group.myBalance)}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
-      {/* All Optimized Debts */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Semua Transaksi Optimal</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{optimizedDebts.length} transaksi</Text>
-          </View>
-        </View>
-
-        {optimizedDebts.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>✅</Text>
-            <Text style={styles.emptyText}>Tidak ada hutang dalam grup!</Text>
-            <Text style={styles.emptySubtext}>Semua sudah lunas</Text>
-          </View>
-        ) : (
-          <View style={styles.graphContainer}>
-            <Text style={styles.graphNote}>
-              💡 Dengan {optimizedDebts.length} transaksi, semua hutang bisa diselesaikan
-            </Text>
-            {optimizedDebts.map((debt, index) => (
-              <View key={index} style={styles.graphCard}>
-                <View style={styles.graphRow}>
-                  <View style={styles.userBadge}>
-                    <Text style={styles.userBadgeText}>{debt.fromName}</Text>
-                  </View>
-                  <View style={styles.arrowContainer}>
-                    <Text style={styles.arrow}>→</Text>
-                    <Text style={styles.arrowAmount}>{formatCurrency(debt.amount)}</Text>
-                  </View>
-                  <View style={styles.userBadge}>
-                    <Text style={styles.userBadgeText}>{debt.toName}</Text>
-                  </View>
+      {/* Personal Debts */}
+      {personalDebts.filter(d => !d.isPaid).length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>💼 Hutang Personal</Text>
+          <Text style={styles.sectionSubtitle}>
+            Hutang di luar grup (belum dimasukkan ke grup manapun)
+          </Text>
+          {personalDebts
+            .filter(d => !d.isPaid)
+            .map((debt) => (
+              <View key={debt.id} style={styles.personalDebtCard}>
+                <View style={styles.debtHeader}>
+                  <Text style={styles.debtName}>{debt.name}</Text>
+                  <Text
+                    style={[
+                      styles.debtAmount,
+                      debt.type === 'piutang' ? styles.positiveText : styles.negativeText,
+                    ]}
+                  >
+                    {formatCurrency(debt.amount)}
+                  </Text>
                 </View>
-                {(debt.from === user.id || debt.to === user.id) && (
-                  <View style={styles.highlightBadge}>
-                    <Text style={styles.highlightText}>
-                      {debt.from === user.id ? '← Anda bayar' : 'Anda terima →'}
-                    </Text>
-                  </View>
-                )}
+                <Text style={styles.debtDescription}>{debt.description}</Text>
+                <View style={styles.debtMeta}>
+                  <Text style={styles.debtType}>
+                    {debt.type === 'hutang' ? '💸 Anda berhutang' : '💰 Orang berhutang'}
+                  </Text>
+                  <Text style={styles.debtDate}>
+                    {new Date(debt.date).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </Text>
+                </View>
               </View>
             ))}
-          </View>
-        )}
-      </View>
+        </View>
+      )}
 
-      {/* All Users Balance */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Saldo Semua Member</Text>
-        {userBalances
-          .filter(b => Math.abs(b.balance) > 0)
-          .sort((a, b) => b.balance - a.balance)
-          .map((balance, index) => (
-            <View
-              key={index}
-              style={[
-                styles.userBalanceCard,
-                balance.userId === user.id && styles.currentUserCard,
-              ]}
-            >
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>
-                  {balance.userName}
-                  {balance.userId === user.id && ' (Anda)'}
-                </Text>
-                <Text
-                  style={[
-                    styles.userBalance,
-                    balance.balance >= 0 ? styles.positiveText : styles.negativeText,
-                  ]}
-                >
-                  {formatCurrency(balance.balance)}
-                </Text>
-              </View>
-              <Text style={styles.userStatus}>
-                {balance.balance > 0
-                  ? `Akan menerima ${formatCurrency(balance.balance)}`
-                  : `Harus bayar ${formatCurrency(Math.abs(balance.balance))}`}
-              </Text>
-            </View>
-          ))}
-      </View>
+      {/* Empty State */}
+      {groupSummaries.length === 0 && personalDebts.filter(d => !d.isPaid).length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>✅</Text>
+          <Text style={styles.emptyText}>Tidak ada hutang piutang</Text>
+          <Text style={styles.emptySubtext}>Mulai buat grup atau tambah hutang personal</Text>
+        </View>
+      )}
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          🔄 Sistem otomatis menghitung jalur pembayaran paling efisien
+          💡 Klik grup untuk melihat detail & optimasi hutang
         </Text>
       </View>
     </ScrollView>
@@ -244,14 +256,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
   header: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#344170',
     padding: 20,
     paddingTop: 60,
     paddingBottom: 30,
@@ -266,7 +272,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#e0e7ff',
   },
-  myBalanceCard: {
+  totalBalanceCard: {
     backgroundColor: '#fff',
     margin: 16,
     padding: 24,
@@ -282,11 +288,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 12,
+    textTransform: 'uppercase',
+    fontWeight: '600',
   },
   balanceAmount: {
     fontSize: 36,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   positiveBalance: {
     color: '#059669',
@@ -294,47 +302,44 @@ const styles = StyleSheet.create({
   negativeBalance: {
     color: '#dc2626',
   },
-  balanceNote: {
-    fontSize: 13,
+  balanceBreakdown: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 16,
+  },
+  breakdownItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  breakdownLabel: {
+    fontSize: 12,
     color: '#999',
-    textAlign: 'center',
+    marginBottom: 4,
+  },
+  breakdownValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#344170',
+  },
+  breakdownDivider: {
+    width: 1,
+    backgroundColor: '#e5e7eb',
   },
   section: {
     padding: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 16,
-  },
-  badge: {
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#2563eb',
-  },
-  actionSection: {
-    marginBottom: 20,
-  },
-  actionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
     marginBottom: 12,
   },
-  debtCard: {
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 16,
+  },
+  groupCard: {
     backgroundColor: '#fff',
     padding: 16,
     borderRadius: 12,
@@ -345,13 +350,66 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  payCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#ef4444',
+  groupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  receiveCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
+  groupName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  groupMeta: {
+    fontSize: 13,
+    color: '#999',
+  },
+  groupArrow: {
+    fontSize: 32,
+    color: '#344170',
+    fontWeight: '300',
+  },
+  groupStats: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statItem: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#666',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  statValueBold: {
+    fontWeight: 'bold',
+  },
+  positiveText: {
+    color: '#059669',
+  },
+  negativeText: {
+    color: '#dc2626',
+  },
+  personalDebtCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   debtHeader: {
     flexDirection: 'row',
@@ -367,117 +425,29 @@ const styles = StyleSheet.create({
   debtAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2563eb',
   },
-  debtNote: {
+  debtDescription: {
     fontSize: 13,
     color: '#666',
-  },
-  graphContainer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-  },
-  graphNote: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  graphCard: {
-    backgroundColor: '#f9fafb',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  graphRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  userBadge: {
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    flex: 1,
-  },
-  userBadgeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e40af',
-    textAlign: 'center',
-  },
-  arrowContainer: {
-    alignItems: 'center',
-    marginHorizontal: 12,
-  },
-  arrow: {
-    fontSize: 20,
-    color: '#2563eb',
-  },
-  arrowAmount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#2563eb',
-    marginTop: 4,
-  },
-  highlightBadge: {
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginTop: 12,
-    alignSelf: 'flex-start',
-  },
-  highlightText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#d97706',
-  },
-  userBalanceCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  currentUserCard: {
-    borderWidth: 2,
-    borderColor: '#2563eb',
-  },
-  userInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 8,
   },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+  debtMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  userBalance: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  positiveText: {
-    color: '#059669',
-  },
-  negativeText: {
-    color: '#dc2626',
-  },
-  userStatus: {
-    fontSize: 13,
+  debtType: {
+    fontSize: 12,
     color: '#666',
+  },
+  debtDate: {
+    fontSize: 12,
+    color: '#999',
   },
   emptyState: {
     alignItems: 'center',
     padding: 40,
+    margin: 16,
     backgroundColor: '#fff',
     borderRadius: 12,
   },
@@ -494,9 +464,11 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     color: '#666',
+    textAlign: 'center',
   },
   footer: {
     padding: 20,
+    paddingBottom: 40,
     alignItems: 'center',
   },
   footerText: {

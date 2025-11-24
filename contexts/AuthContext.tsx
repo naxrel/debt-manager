@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   register: (username: string, password: string, name: string, email: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,8 +82,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshUser = async (): Promise<void> => {
+    try {
+      if (user) {
+        // Get latest user data from database
+        const updatedUser = StaticDB.getUserById(user.id);
+        if (updatedUser) {
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+        }
+      }
+    } catch (error) {
+      console.error('Refresh user error:', error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

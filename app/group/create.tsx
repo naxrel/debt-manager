@@ -20,24 +20,45 @@ export default function CreateGroup() {
   const [description, setDescription] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchUsername, setSearchUsername] = useState('');
+  const [searchError, setSearchError] = useState('');
 
-  const allUsers = StaticDB.getUsers().filter(u => u.id !== user?.id);
+  const handleSearchUser = () => {
+    if (!searchUsername.trim()) {
+      setSearchError('Masukkan username');
+      return;
+    }
 
-  const toggleMember = (userId: string) => {
-    setSelectedMembers(prev => {
-      if (prev.includes(userId)) {
-        return prev.filter(id => id !== userId);
-      } else {
-        if (prev.length + 1 >= StaticDB.MAX_GROUP_MEMBERS) {
-          Alert.alert(
-            'Batas Maksimum',
-            `Maksimum ${StaticDB.MAX_GROUP_MEMBERS} anggota per grup (termasuk Anda)`
-          );
-          return prev;
-        }
-        return [...prev, userId];
-      }
-    });
+    const foundUser = StaticDB.getUserByUsername(searchUsername.trim());
+    
+    if (!foundUser) {
+      setSearchError(`Username "${searchUsername}" tidak ditemukan`);
+      return;
+    }
+
+    if (foundUser.id === user?.id) {
+      setSearchError('Anda otomatis menjadi anggota grup');
+      return;
+    }
+
+    if (selectedMembers.includes(foundUser.id)) {
+      setSearchError('User sudah ditambahkan');
+      return;
+    }
+
+    if (selectedMembers.length + 1 >= StaticDB.MAX_GROUP_MEMBERS) {
+      setSearchError(`Maksimum ${StaticDB.MAX_GROUP_MEMBERS} anggota per grup (termasuk Anda)`);
+      return;
+    }
+
+    // Add member
+    setSelectedMembers(prev => [...prev, foundUser.id]);
+    setSearchUsername('');
+    setSearchError('');
+  };
+
+  const removeMember = (userId: string) => {
+    setSelectedMembers(prev => prev.filter(id => id !== userId));
   };
 
   const handleCreateGroup = () => {
@@ -111,11 +132,37 @@ export default function CreateGroup() {
 
         <View style={styles.section}>
           <Text style={styles.label}>
-            Pilih Anggota * ({selectedMembers.length + 1}/{StaticDB.MAX_GROUP_MEMBERS})
+            Tambah Anggota * ({selectedMembers.length + 1}/{StaticDB.MAX_GROUP_MEMBERS})
           </Text>
           <Text style={styles.hint}>
-            Anda otomatis menjadi anggota grup ini
+            Anda otomatis menjadi anggota grup ini. Cari user berdasarkan username.
           </Text>
+
+          {/* Search Input */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Cari username (contoh: john)"
+              placeholderTextColor="#999"
+              value={searchUsername}
+              onChangeText={(text) => {
+                setSearchUsername(text);
+                setSearchError('');
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.searchButton}
+              onPress={handleSearchUser}
+            >
+              <Text style={styles.searchButtonText}>Cari</Text>
+            </TouchableOpacity>
+          </View>
+
+          {searchError ? (
+            <Text style={styles.errorText}>{searchError}</Text>
+          ) : null}
 
           {/* Current user */}
           <View style={[styles.memberItem, styles.memberItemDisabled]}>
@@ -135,23 +182,18 @@ export default function CreateGroup() {
             </View>
           </View>
 
-          {/* Other users */}
-          {allUsers.map(member => {
-            const isSelected = selectedMembers.includes(member.id);
+          {/* Selected members */}
+          {selectedMembers.map(memberId => {
+            const member = StaticDB.getUserById(memberId);
+            if (!member) return null;
             return (
-              <TouchableOpacity
+              <View
                 key={member.id}
-                style={[styles.memberItem, isSelected && styles.memberItemSelected]}
-                onPress={() => toggleMember(member.id)}
+                style={[styles.memberItem, styles.memberItemSelected]}
               >
                 <View style={styles.memberInfo}>
-                  <View style={[styles.avatar, isSelected && styles.avatarSelected]}>
-                    <Text
-                      style={[
-                        styles.avatarText,
-                        isSelected && styles.avatarTextSelected,
-                      ]}
-                    >
+                  <View style={[styles.avatar, styles.avatarSelected]}>
+                    <Text style={[styles.avatarText, styles.avatarTextSelected]}>
                       {member.name.charAt(0).toUpperCase()}
                     </Text>
                   </View>
@@ -160,15 +202,13 @@ export default function CreateGroup() {
                     <Text style={styles.memberUsername}>@{member.username}</Text>
                   </View>
                 </View>
-                <View
-                  style={[
-                    styles.checkbox,
-                    isSelected && styles.checkboxSelected,
-                  ]}
+                <TouchableOpacity
+                  onPress={() => removeMember(member.id)}
+                  style={styles.removeButton}
                 >
-                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-              </TouchableOpacity>
+                  <Text style={styles.removeButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
             );
           })}
         </View>
@@ -331,6 +371,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    backgroundColor: '#fff',
+  },
+  searchButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  searchButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  removeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#fee2e2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeButtonText: {
+    color: '#dc2626',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   footer: {
     padding: 20,

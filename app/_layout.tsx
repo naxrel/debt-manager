@@ -25,7 +25,12 @@ export default function RootLayout() {
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
             <Stack.Screen name="debt/add" options={{ presentation: 'modal', title: 'Tambah Utang Piutang' }} />
             <Stack.Screen name="debt/detail" options={{ presentation: 'modal', title: 'Detail' }} />
+            <Stack.Screen name="debt/pending" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="group/create" options={{ headerShown: false }} />
+            <Stack.Screen name="group/[id]/add-transaction" options={{ headerShown: false }} />
+            <Stack.Screen name="all" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

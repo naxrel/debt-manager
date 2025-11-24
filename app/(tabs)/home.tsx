@@ -1,8 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
-import { Debt } from '@/data/staticDatabase';
-import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import { Debt, StaticDB } from '@/data/staticDatabase';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -17,6 +17,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
   const { debts, isLoading: debtLoading, getStatistics, refreshDebts } = useDebt();
+  const [groupStats, setGroupStats] = useState({ totalHutang: 0, totalPiutang: 0 });
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -27,8 +29,50 @@ export default function HomeScreen() {
   useEffect(() => {
     if (user) {
       refreshDebts();
+      calculateGroupStats();
+      calculatePendingCount();
     }
   }, [user]);
+
+  // Refresh pending count when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        calculatePendingCount();
+      }
+    }, [user])
+  );
+
+  const calculatePendingCount = () => {
+    if (!user) return;
+    const pending = StaticDB.getPendingDebtsForUser(user.id);
+    setPendingCount(pending.length);
+  };
+
+  const calculateGroupStats = () => {
+    if (!user) return;
+
+    const userGroups = StaticDB.getUserGroups(user.id);
+    let totalHutang = 0;
+    let totalPiutang = 0;
+
+    userGroups.forEach(group => {
+      const transactions = StaticDB.getGroupTransactions(group.id);
+      
+      transactions.forEach(t => {
+        if (t.fromUserId === user.id) {
+          // User berhutang (negative)
+          totalHutang += t.amount;
+        }
+        if (t.toUserId === user.id) {
+          // User dibayar (positive)
+          totalPiutang += t.amount;
+        }
+      });
+    });
+
+    setGroupStats({ totalHutang, totalPiutang });
+  };
 
   if (authLoading || debtLoading) {
     return (
@@ -42,10 +86,32 @@ export default function HomeScreen() {
     return null;
   }
 
-  const stats = getStatistics();
-  const recentDebts = debts
-    .filter(d => !d.isPaid)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const personalStats = getStatistics();
+  
+  // Combine personal + group stats
+  const stats = {
+    totalHutang: personalStats.totalHutang + groupStats.totalHutang,
+    totalPiutang: personalStats.totalPiutang + groupStats.totalPiutang,
+    countHutang: personalStats.countHutang,
+    countPiutang: personalStats.countPiutang,
+    balance: (personalStats.totalPiutang + groupStats.totalPiutang) - (personalStats.totalHutang + groupStats.totalHutang),
+  };
+  // Get pending debts for current user
+  const pendingDebts = StaticDB.getPendingDebtsForUser(user.id);
+  
+  // Combine pending debts with regular debts
+  const allRecentDebts = [
+    ...pendingDebts, // Pending debts first
+    ...debts.filter(d => !d.isPaid && d.status === 'confirmed'), // Then confirmed debts
+  ];
+  
+  const recentDebts = allRecentDebts
+    .sort((a, b) => {
+      // Prioritize pending status, then sort by date
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    })
     .slice(0, 5);
 
   const formatCurrency = (amount: number) => {
@@ -70,31 +136,58 @@ export default function HomeScreen() {
     router.replace('/auth/login');
   };
 
-  const renderDebtItem = ({ item }: { item: Debt }) => (
-    <TouchableOpacity
-      style={styles.debtCard}
-      onPress={() => router.push(`/debt/detail?id=${item.id}`)}
-    >
-      <View style={styles.debtHeader}>
-        <Text style={styles.debtName}>{item.name}</Text>
-        <Text
-          style={[
-            styles.debtType,
-            item.type === 'hutang' ? styles.hutangBadge : styles.piutangBadge,
-          ]}
-        >
-          {item.type === 'hutang' ? 'Hutang' : 'Piutang'}
-        </Text>
-      </View>
-      <Text style={styles.debtAmount}>{formatCurrency(item.amount)}</Text>
-      <Text style={styles.debtDate}>{formatDate(item.date)}</Text>
-      {item.description && (
-        <Text style={styles.debtDescription} numberOfLines={1}>
-          {item.description}
-        </Text>
-      )}
-    </TouchableOpacity>
-  );
+  const renderDebtItem = ({ item }: { item: Debt }) => {
+    const isPending = item.status === 'pending';
+    const initiator = isPending ? StaticDB.getUserById(item.initiatedBy) : null;
+
+    return (
+      <TouchableOpacity
+        style={[styles.debtCard, isPending && styles.pendingDebtCard]}
+        onPress={() => {
+          if (isPending) {
+            router.push('/debt/pending');
+          } else {
+            router.push(`/debt/detail?id=${item.id}`);
+          }
+        }}
+      >
+        <View style={styles.debtHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.debtName}>{item.name}</Text>
+            {isPending && initiator && (
+              <Text style={styles.pendingLabel}>
+                ⏳ Menunggu persetujuan (@{initiator.username})
+              </Text>
+            )}
+          </View>
+          <Text
+            style={[
+              styles.debtType,
+              isPending
+                ? styles.pendingBadge
+                : item.type === 'hutang'
+                ? styles.hutangBadge
+                : styles.piutangBadge,
+            ]}
+          >
+            {isPending ? 'Pending' : item.type === 'hutang' ? 'Hutang' : 'Piutang'}
+          </Text>
+        </View>
+        <Text style={styles.debtAmount}>{formatCurrency(item.amount)}</Text>
+        <Text style={styles.debtDate}>{formatDate(item.date)}</Text>
+        {item.description && (
+          <Text style={styles.debtDescription} numberOfLines={1}>
+            {item.description}
+          </Text>
+        )}
+        {isPending && (
+          <View style={styles.pendingActionHint}>
+            <Text style={styles.pendingActionText}>Tap untuk approve/reject →</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -107,6 +200,29 @@ export default function HomeScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Pending Approvals Notification */}
+      {pendingCount > 0 && (
+        <TouchableOpacity
+          style={styles.pendingNotification}
+          onPress={() => router.push('/debt/pending')}
+        >
+          <View style={styles.pendingIcon}>
+            <Text style={styles.pendingIconText}>⏳</Text>
+          </View>
+          <View style={styles.pendingContent}>
+            <Text style={styles.pendingTitle}>
+              {pendingCount} Transaksi Menunggu Persetujuan
+            </Text>
+            <Text style={styles.pendingSubtitle}>
+              Tap untuk melihat dan approve/reject
+            </Text>
+          </View>
+          <View style={styles.pendingNotificationBadge}>
+            <Text style={styles.pendingNotificationBadgeText}>{pendingCount}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.statsContainer}>
         <View style={[styles.statCard, styles.hutangCard]}>
@@ -145,10 +261,19 @@ export default function HomeScreen() {
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={styles.actionCard}
+            onPress={() => router.push('/all')}
+          >
+            <Text style={styles.actionIcon}>📊</Text>
+            <Text style={styles.actionTitle}>Multi-Group</Text>
+            <Text style={styles.actionSubtitle}>Ringkasan semua grup</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
             onPress={() => router.push('/group')}
           >
             <Text style={styles.actionIcon}>🤝</Text>
-            <Text style={styles.actionTitle}>Lihat Grup Hutang</Text>
+            <Text style={styles.actionTitle}>Lihat Grup</Text>
             <Text style={styles.actionSubtitle}>Optimasi pembayaran</Text>
           </TouchableOpacity>
 
@@ -157,8 +282,8 @@ export default function HomeScreen() {
             onPress={() => router.push('/debt/add')}
           >
             <Text style={styles.actionIcon}>➕</Text>
-            <Text style={styles.actionTitle}>Tambah Transaksi</Text>
-            <Text style={styles.actionSubtitle}>Hutang atau piutang</Text>
+            <Text style={styles.actionTitle}>Tambah</Text>
+            <Text style={styles.actionSubtitle}>Hutang/piutang</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -166,7 +291,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/history')}
           >
             <Text style={styles.actionIcon}>📋</Text>
-            <Text style={styles.actionTitle}>Lihat History</Text>
+            <Text style={styles.actionTitle}>History</Text>
             <Text style={styles.actionSubtitle}>Semua transaksi</Text>
           </TouchableOpacity>
         </View>
@@ -219,6 +344,60 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     backgroundColor: '#2563eb',
+  },
+  pendingNotification: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    margin: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pendingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  pendingIconText: {
+    fontSize: 20,
+  },
+  pendingContent: {
+    flex: 1,
+  },
+  pendingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#92400e',
+    marginBottom: 4,
+  },
+  pendingSubtitle: {
+    fontSize: 13,
+    color: '#b45309',
+  },
+  pendingNotificationBadge: {
+    backgroundColor: '#f59e0b',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingNotificationBadgeText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   greeting: {
     fontSize: 16,
@@ -356,6 +535,31 @@ const styles = StyleSheet.create({
   piutangBadge: {
     backgroundColor: '#d1fae5',
     color: '#059669',
+  },
+  pendingBadge: {
+    backgroundColor: '#fef3c7',
+    color: '#f59e0b',
+  },
+  pendingDebtCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+    backgroundColor: '#fffbeb',
+  },
+  pendingLabel: {
+    fontSize: 12,
+    color: '#b45309',
+    marginTop: 4,
+  },
+  pendingActionHint: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#fde68a',
+  },
+  pendingActionText: {
+    fontSize: 12,
+    color: '#f59e0b',
+    fontWeight: '600',
   },
   debtAmount: {
     fontSize: 20,

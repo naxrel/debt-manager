@@ -1,4 +1,6 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
+import { StaticDB } from '@/data/staticDatabase';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -15,17 +17,23 @@ import {
 
 export default function AddDebtScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { addDebt } = useDebt();
 
   const [type, setType] = useState<'hutang' | 'piutang'>('piutang');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   const handleSubmit = () => {
-    if (!name || !amount) {
-      Alert.alert('Error', 'Nama dan jumlah harus diisi');
+    if (!user) {
+      Alert.alert('Error', 'User tidak ditemukan');
+      return;
+    }
+
+    if (!username || !amount) {
+      Alert.alert('Error', 'Username dan jumlah harus diisi');
       return;
     }
 
@@ -35,19 +43,40 @@ export default function AddDebtScreen() {
       return;
     }
 
+    // Remove @ if present
+    const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+    
+    // Check if username exists
+    const otherUser = StaticDB.getUserByUsername(cleanUsername);
+    
+    if (!otherUser) {
+      Alert.alert('Error', `Username @${cleanUsername} belum terdaftar. Pastikan username sudah register terlebih dahulu.`);
+      return;
+    }
+
+    if (otherUser.id === user.id) {
+      Alert.alert('Error', 'Tidak bisa membuat transaksi dengan diri sendiri');
+      return;
+    }
+
     try {
       addDebt({
         type,
-        name,
+        name: otherUser.name,
+        otherUserId: otherUser.id,
         amount: amountNumber,
         description,
         date,
         isPaid: false,
+        status: 'pending',
+        initiatedBy: user.id,
       });
 
-      Alert.alert('Sukses', 'Transaksi berhasil ditambahkan', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      Alert.alert(
+        'Menunggu Persetujuan', 
+        `Transaksi berhasil dibuat dan menunggu persetujuan dari @${cleanUsername}`,
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
     } catch (error) {
       Alert.alert('Error', 'Gagal menambahkan transaksi');
     }
@@ -105,13 +134,17 @@ export default function AddDebtScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nama</Text>
+            <Text style={styles.label}>Username Lawan</Text>
             <TextInput
               style={styles.input}
-              placeholder="Nama orang yang terlibat"
-              value={name}
-              onChangeText={setName}
+              placeholder="@username (harus sudah terdaftar)"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
             />
+            <Text style={styles.hint}>
+              💡 Masukkan username lawan transaksi. Mereka harus approve terlebih dahulu.
+            </Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -220,6 +253,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  hint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 6,
   },
   textArea: {
     height: 100,

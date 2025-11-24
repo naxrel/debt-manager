@@ -7,6 +7,7 @@ export interface User {
   password: string;
   name: string;
   email: string;
+  profileImage?: string; // URI/URL gambar profile
 }
 
 export interface Debt {
@@ -14,11 +15,17 @@ export interface Debt {
   userId: string; // ID user yang memiliki data ini
   type: 'hutang' | 'piutang'; // hutang = kita yang berhutang, piutang = orang yang berhutang ke kita
   name: string; // Nama orang yang terlibat
+  otherUserId?: string; // ID user lawan (jika menggunakan @username)
   amount: number;
   description: string;
   date: string;
   isPaid: boolean;
   groupId?: string; // Optional: ID grup jika debt ini bagian dari grup
+  status: 'pending' | 'confirmed' | 'rejected'; // Status approval
+  initiatedBy: string; // User yang create transaksi
+  approvedBy?: string; // User yang approve
+  approvedAt?: string; // Timestamp approval
+  rejectionReason?: string; // Alasan reject
 }
 
 export interface DebtGroup {
@@ -66,6 +73,13 @@ export const STATIC_USERS: User[] = [
     name: 'Jane Smith',
     email: 'jane@example.com',
   },
+  {
+    id: '4',
+    username: 'dong',
+    password: 'dong123',
+    name: 'Dongs',
+    email: 'Dongs@example.com',
+  }
 ];
 
 // Database Debts (Static)
@@ -80,6 +94,8 @@ export const STATIC_DEBTS: Debt[] = [
     description: 'Pinjaman untuk modal usaha',
     date: '2025-11-01',
     isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '1',
   },
   {
     id: 'd2',
@@ -90,6 +106,8 @@ export const STATIC_DEBTS: Debt[] = [
     description: 'Hutang untuk kebutuhan darurat',
     date: '2025-11-05',
     isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '1',
   },
   {
     id: 'd3',
@@ -100,6 +118,8 @@ export const STATIC_DEBTS: Debt[] = [
     description: 'Pinjaman untuk renovasi rumah',
     date: '2025-10-20',
     isPaid: true,
+    status: 'confirmed',
+    initiatedBy: '1',
   },
   // Debts untuk user 'john'
   {
@@ -111,6 +131,8 @@ export const STATIC_DEBTS: Debt[] = [
     description: 'Pinjaman untuk beli motor',
     date: '2025-11-10',
     isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '2',
   },
   {
     id: 'd5',
@@ -121,6 +143,8 @@ export const STATIC_DEBTS: Debt[] = [
     description: 'Pinjaman untuk bayar kuliah',
     date: '2025-11-15',
     isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '2',
   },
   // Debts untuk user 'jane'
   {
@@ -132,6 +156,8 @@ export const STATIC_DEBTS: Debt[] = [
     description: 'Pinjaman untuk bisnis online',
     date: '2025-11-08',
     isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '3',
   },
   {
     id: 'd7',
@@ -142,6 +168,8 @@ export const STATIC_DEBTS: Debt[] = [
     description: 'Hutang untuk biaya pengobatan',
     date: '2025-10-25',
     isPaid: true,
+    status: 'confirmed',
+    initiatedBy: '3',
   },
 ];
 
@@ -298,6 +326,17 @@ export class StaticDB {
     return true;
   }
 
+  // User operations
+  static updateUser(id: string, updates: Partial<User>): User | null {
+    const index = this.users.findIndex(user => user.id === id);
+    if (index === -1) return null;
+
+    // Don't allow username or password changes through this method
+    const { username, password, ...safeUpdates } = updates;
+    this.users[index] = { ...this.users[index], ...safeUpdates };
+    return this.users[index];
+  }
+
   // Statistics
   static getDebtStatistics(userId: string) {
     const userDebts = this.getDebtsByUserId(userId);
@@ -439,7 +478,23 @@ export class StaticDB {
     return true;
   }
 
-  // Group Transaction operations
+  static deleteGroup(groupId: string): { success: boolean; error?: string } {
+    const groupIndex = this.groups.findIndex(g => g.id === groupId);
+    if (groupIndex === -1) {
+      return { success: false, error: 'Grup tidak ditemukan' };
+    }
+
+    // Delete all group transactions
+    this.groupTransactions = this.groupTransactions.filter(
+      t => t.groupId !== groupId
+    );
+
+    // Delete the group
+    this.groups.splice(groupIndex, 1);
+    return { success: true };
+  }
+
+  // Group transactions
   static getGroupTransactions(groupId: string): GroupTransaction[] {
     return this.groupTransactions.filter(t => t.groupId === groupId);
   }
@@ -516,6 +571,78 @@ export class StaticDB {
       totalAmount,
       memberCount: this.getGroupById(groupId)?.memberIds.length || 0,
     };
+  }
+
+  // Approval operations for personal debts
+  static getPendingDebtsForUser(userId: string): Debt[] {
+    return this.debts.filter(
+      d => d.status === 'pending' && d.otherUserId === userId
+    );
+  }
+
+  static approveDebt(debtId: string, userId: string): { success: boolean; error?: string } {
+    const debt = this.getDebtById(debtId);
+    if (!debt) {
+      return { success: false, error: 'Debt tidak ditemukan' };
+    }
+
+    if (debt.otherUserId !== userId) {
+      return { success: false, error: 'Anda tidak berhak approve transaksi ini' };
+    }
+
+    if (debt.status !== 'pending') {
+      return { success: false, error: 'Transaksi sudah di-approve atau reject' };
+    }
+
+    // Create counterpart debt for the other user
+    const counterpartDebt: Debt = {
+      id: `d${Date.now()}_counter`,
+      userId: debt.otherUserId!,
+      type: debt.type === 'hutang' ? 'piutang' : 'hutang',
+      name: debt.name,
+      otherUserId: debt.userId,
+      amount: debt.amount,
+      description: debt.description,
+      date: debt.date,
+      isPaid: false,
+      status: 'confirmed',
+      initiatedBy: debt.initiatedBy,
+      approvedBy: userId,
+      approvedAt: new Date().toISOString(),
+    };
+
+    this.debts.push(counterpartDebt);
+
+    // Update original debt to confirmed
+    this.updateDebt(debtId, {
+      status: 'confirmed',
+      approvedBy: userId,
+      approvedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  }
+
+  static rejectDebt(debtId: string, userId: string, reason: string): { success: boolean; error?: string } {
+    const debt = this.getDebtById(debtId);
+    if (!debt) {
+      return { success: false, error: 'Debt tidak ditemukan' };
+    }
+
+    if (debt.otherUserId !== userId) {
+      return { success: false, error: 'Anda tidak berhak reject transaksi ini' };
+    }
+
+    if (debt.status !== 'pending') {
+      return { success: false, error: 'Transaksi sudah di-approve atau reject' };
+    }
+
+    this.updateDebt(debtId, {
+      status: 'rejected',
+      rejectionReason: reason,
+    });
+
+    return { success: true };
   }
 
   // Reset database to initial state

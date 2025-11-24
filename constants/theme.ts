@@ -5,25 +5,43 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Custom color palette: Dark blue theme
+const primary = '#344170';      // Dark blue - primary actions
+const secondary = '#54638d';    // Medium blue - secondary elements
+const darkBg = '#272f55';       // Darkest blue - backgrounds
+const lightBg = '#f8f9fc';      // Light background for light mode
+
+const tintColorLight = primary;
+const tintColorDark = secondary;
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#1a1f3a',
+    background: lightBg,
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    icon: '#54638d',
+    tabIconDefault: '#54638d',
+    tabIconSelected: primary,
+    primary: primary,
+    secondary: secondary,
+    dark: darkBg,
+    card: '#ffffff',
+    border: '#e2e5ed',
+    accent: '#5a6fa8',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#e8eaf0',
+    background: darkBg,
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    icon: '#9aa5c7',
+    tabIconDefault: '#9aa5c7',
+    tabIconSelected: '#ffffff',
+    primary: secondary,
+    secondary: primary,
+    dark: '#1a2038',
+    card: '#344170',
+    border: '#3d4a73',
+    accent: '#7589c1',
   },
 };
 
