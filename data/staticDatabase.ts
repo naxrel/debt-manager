@@ -36,6 +36,7 @@ export interface DebtGroup {
   memberIds: string[]; // Array of user IDs yang jadi member
   createdAt: string;
   isActive: boolean;
+  groupImage?: string; // URI/URL gambar profil grup (opsional, default emoji 👥)
 }
 
 export interface GroupTransaction {
@@ -205,7 +206,7 @@ export const STATIC_GROUP_TRANSACTIONS: GroupTransaction[] = [
     toUserId: '2',
     amount: 200000,
     description: 'Bayar hosting server',
-    date: '2025-11-05',
+    date: '2025-12-06T14:30:00',
     isPaid: false,
     createdBy: '1',
   },
@@ -216,7 +217,7 @@ export const STATIC_GROUP_TRANSACTIONS: GroupTransaction[] = [
     toUserId: '3',
     amount: 300000,
     description: 'Bayar design UI/UX',
-    date: '2025-11-08',
+    date: '2025-12-05T10:15:00',
     isPaid: false,
     createdBy: '2',
   },
@@ -227,7 +228,7 @@ export const STATIC_GROUP_TRANSACTIONS: GroupTransaction[] = [
     toUserId: '1',
     amount: 150000,
     description: 'Bayar domain',
-    date: '2025-11-10',
+    date: '2025-12-06T09:20:00',
     isPaid: true,
     createdBy: '3',
   },
@@ -377,7 +378,8 @@ export class StaticDB {
     name: string,
     description: string,
     creatorId: string,
-    memberIds: string[]
+    memberIds: string[],
+    groupImage?: string
   ): { success: boolean; group?: DebtGroup; error?: string } {
     // Validate member count
     if (memberIds.length > this.MAX_GROUP_MEMBERS) {
@@ -414,10 +416,34 @@ export class StaticDB {
       memberIds: allMemberIds,
       createdAt: new Date().toISOString().split('T')[0],
       isActive: true,
+      groupImage: groupImage || undefined, // Opsional, default undefined (emoji 👥 di UI)
     };
 
     this.groups.push(newGroup);
     return { success: true, group: newGroup };
+  }
+
+  static updateGroup(
+    groupId: string,
+    updates: { name?: string; description?: string; groupImage?: string }
+  ): { success: boolean; error?: string } {
+    const group = this.getGroupById(groupId);
+    
+    if (!group) {
+      return { success: false, error: 'Grup tidak ditemukan' };
+    }
+
+    if (updates.name !== undefined) {
+      group.name = updates.name;
+    }
+    if (updates.description !== undefined) {
+      group.description = updates.description;
+    }
+    if (updates.groupImage !== undefined) {
+      group.groupImage = updates.groupImage;
+    }
+
+    return { success: true };
   }
 
   static addMemberToGroup(

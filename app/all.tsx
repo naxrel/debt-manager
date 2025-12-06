@@ -4,12 +4,12 @@ import { Debt, StaticDB } from '@/data/staticDatabase';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 interface GroupSummary {
@@ -154,6 +154,7 @@ export default function MultiGroupOverviewScreen() {
               key={group.groupId}
               style={styles.groupCard}
               onPress={() => router.push(`/group/${group.groupId}`)}
+              activeOpacity={0.7}
             >
               <View style={styles.groupHeader}>
                 <View>
@@ -349,6 +350,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    cursor: 'pointer' as any,
   },
   groupHeader: {
     flexDirection: 'row',

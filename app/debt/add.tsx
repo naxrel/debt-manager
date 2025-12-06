@@ -4,15 +4,15 @@ import { StaticDB } from '@/data/staticDatabase';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function AddDebtScreen() {
@@ -28,18 +28,30 @@ export default function AddDebtScreen() {
 
   const handleSubmit = () => {
     if (!user) {
-      Alert.alert('Error', 'User tidak ditemukan');
+      if (Platform.OS === 'web') {
+        alert('User tidak ditemukan');
+      } else {
+        Alert.alert('Error', 'User tidak ditemukan');
+      }
       return;
     }
 
     if (!username || !amount) {
-      Alert.alert('Error', 'Username dan jumlah harus diisi');
+      if (Platform.OS === 'web') {
+        alert('Username dan jumlah harus diisi');
+      } else {
+        Alert.alert('Error', 'Username dan jumlah harus diisi');
+      }
       return;
     }
 
     const amountNumber = parseFloat(amount.replace(/[^0-9]/g, ''));
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      Alert.alert('Error', 'Jumlah harus berupa angka yang valid');
+      if (Platform.OS === 'web') {
+        alert('Jumlah harus berupa angka yang valid');
+      } else {
+        Alert.alert('Error', 'Jumlah harus berupa angka yang valid');
+      }
       return;
     }
 
@@ -50,12 +62,20 @@ export default function AddDebtScreen() {
     const otherUser = StaticDB.getUserByUsername(cleanUsername);
     
     if (!otherUser) {
-      Alert.alert('Error', `Username @${cleanUsername} belum terdaftar. Pastikan username sudah register terlebih dahulu.`);
+      if (Platform.OS === 'web') {
+        alert(`Username @${cleanUsername} belum terdaftar. Pastikan username sudah register terlebih dahulu.`);
+      } else {
+        Alert.alert('Error', `Username @${cleanUsername} belum terdaftar. Pastikan username sudah register terlebih dahulu.`);
+      }
       return;
     }
 
     if (otherUser.id === user.id) {
-      Alert.alert('Error', 'Tidak bisa membuat transaksi dengan diri sendiri');
+      if (Platform.OS === 'web') {
+        alert('Tidak bisa membuat transaksi dengan diri sendiri');
+      } else {
+        Alert.alert('Error', 'Tidak bisa membuat transaksi dengan diri sendiri');
+      }
       return;
     }
 
@@ -72,13 +92,22 @@ export default function AddDebtScreen() {
         initiatedBy: user.id,
       });
 
-      Alert.alert(
-        'Menunggu Persetujuan', 
-        `Transaksi berhasil dibuat dan menunggu persetujuan dari @${cleanUsername}`,
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      if (Platform.OS === 'web') {
+        alert(`Transaksi berhasil dibuat dan menunggu persetujuan dari @${cleanUsername}`);
+        router.back();
+      } else {
+        Alert.alert(
+          'Menunggu Persetujuan', 
+          `Transaksi berhasil dibuat dan menunggu persetujuan dari @${cleanUsername}`,
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
     } catch (error) {
-      Alert.alert('Error', 'Gagal menambahkan transaksi');
+      if (Platform.OS === 'web') {
+        alert('Gagal menambahkan transaksi');
+      } else {
+        Alert.alert('Error', 'Gagal menambahkan transaksi');
+      }
     }
   };
 
@@ -105,6 +134,7 @@ export default function AddDebtScreen() {
             <TouchableOpacity
               style={[styles.typeButton, type === 'piutang' && styles.typeButtonActive]}
               onPress={() => setType('piutang')}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
@@ -120,6 +150,7 @@ export default function AddDebtScreen() {
             <TouchableOpacity
               style={[styles.typeButton, type === 'hutang' && styles.typeButtonActive]}
               onPress={() => setType('hutang')}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
@@ -180,11 +211,19 @@ export default function AddDebtScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <TouchableOpacity 
+            style={styles.submitButton} 
+            onPress={handleSubmit}
+            activeOpacity={0.7}
+          >
             <Text style={styles.submitButtonText}>Simpan</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
             <Text style={styles.cancelButtonText}>Batal</Text>
           </TouchableOpacity>
         </View>
@@ -219,6 +258,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: '#e5e7eb',
+    cursor: 'pointer' as any,
   },
   typeButtonActive: {
     borderColor: '#2563eb',
@@ -269,6 +309,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
+    cursor: 'pointer' as any,
   },
   submitButtonText: {
     color: '#fff',
@@ -283,6 +324,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderWidth: 1,
     borderColor: '#ddd',
+    cursor: 'pointer' as any,
   },
   cancelButtonText: {
     color: '#666',

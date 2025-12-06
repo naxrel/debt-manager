@@ -1,21 +1,24 @@
+import { BottomLeftArrow, RightArrow, TopRightArrow } from '@/components/ArrowIcons';
 import { useAuth } from '@/contexts/AuthContext';
 import { DebtGroup, GroupTransaction, StaticDB } from '@/data/staticDatabase';
 import { DebtOptimizer, OptimizedDebt } from '@/utils/debtOptimizer';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Image,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function GroupDetailScreen() {
@@ -33,6 +36,17 @@ export default function GroupDetailScreen() {
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [newMemberUsername, setNewMemberUsername] = useState('');
   const [addMemberError, setAddMemberError] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupDescription, setEditGroupDescription] = useState('');
+  const [editGroupImage, setEditGroupImage] = useState<string | null>(null);
+
+  // Auto refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadGroupData();
+    }, [id])
+  );
 
   useEffect(() => {
     loadGroupData();
@@ -192,6 +206,59 @@ export default function GroupDetailScreen() {
     }
   };
 
+  const handlePickGroupImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Akses ke galeri diperlukan untuk mengganti foto grup');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setEditGroupImage(result.assets[0].uri);
+    }
+  };
+
+  const handleSaveGroupEdit = () => {
+    if (!group || !editGroupName.trim()) {
+      if (Platform.OS === 'web') {
+        alert('Nama grup tidak boleh kosong');
+      } else {
+        Alert.alert('Error', 'Nama grup tidak boleh kosong');
+      }
+      return;
+    }
+
+    const result = StaticDB.updateGroup(group.id, {
+      name: editGroupName.trim(),
+      description: editGroupDescription.trim(),
+      groupImage: editGroupImage || undefined,
+    });
+
+    if (result.success) {
+      setShowEditModal(false);
+      loadGroupData();
+      if (Platform.OS === 'web') {
+        alert('Grup berhasil diperbarui');
+      } else {
+        Alert.alert('Berhasil', 'Grup berhasil diperbarui');
+      }
+    } else {
+      if (Platform.OS === 'web') {
+        alert(result.error || 'Gagal memperbarui grup');
+      } else {
+        Alert.alert('Error', result.error || 'Gagal memperbarui grup');
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -224,20 +291,54 @@ export default function GroupDetailScreen() {
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.back()}
+              activeOpacity={0.7}
             >
               <Text style={styles.backButtonText}>← Kembali</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.membersButton}
-              onPress={openMembersDrawer}
-            >
-              <Text style={styles.membersButtonText}>Anggota</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              {user && group.creatorId === user.id ? (
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => {
+                    setEditGroupName(group.name);
+                    setEditGroupDescription(group.description);
+                    setEditGroupImage(group.groupImage || null);
+                    setShowEditModal(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.editButtonText}>⚙️</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity
+                style={styles.membersButton}
+                onPress={openMembersDrawer}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.membersButtonText}>👤</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text style={styles.headerTitle}>{group.name}</Text>
-          {group.description && (
-            <Text style={styles.headerSubtitle}>{group.description}</Text>
-          )}
+          <View style={styles.headerContent}>
+            <View style={styles.groupImageContainer}>
+              {group.groupImage ? (
+                <Image 
+                  source={{ uri: group.groupImage }} 
+                  style={styles.groupImageLarge} 
+                />
+              ) : (
+                <View style={styles.groupImagePlaceholder}>
+                  <Text style={styles.groupEmojiLarge}>👥</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.headerTextContent}>
+              <Text style={styles.headerTitle}>{group.name}</Text>
+              {group.description ? (
+                <Text style={styles.headerSubtitle}>{group.description}</Text>
+              ) : null}
+            </View>
+          </View>
         </View>
 
         {/* Group Stats */}
@@ -260,11 +361,11 @@ export default function GroupDetailScreen() {
 
         {/* My Actions in this Group */}
         {(myOptimizedDebts.shouldPay.length > 0 ||
-          myOptimizedDebts.willReceive.length > 0) && (
+          myOptimizedDebts.willReceive.length > 0) ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}></Text>
 
-            {myOptimizedDebts.shouldPay.length > 0 && (
+            {myOptimizedDebts.shouldPay.length > 0 ? (
               <View style={styles.actionSection}>
                 <Text style={styles.actionLabel}>Nominal yang harus dibayar:</Text>
                 {myOptimizedDebts.shouldPay.map((debt, index) => (
@@ -278,9 +379,9 @@ export default function GroupDetailScreen() {
                   </View>
                 ))}
               </View>
-            )}
+            ) : null}
 
-            {myOptimizedDebts.willReceive.length > 0 && (
+            {myOptimizedDebts.willReceive.length > 0 ? (
               <View style={styles.actionSection}>
                 <Text style={styles.actionLabel}>Nominal yang diterima:</Text>
                 {myOptimizedDebts.willReceive.map((debt, index) => (
@@ -297,9 +398,9 @@ export default function GroupDetailScreen() {
                   </View>
                 ))}
               </View>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
 
         {/* Simplified Transactions */}
         <View style={styles.section}>
@@ -343,9 +444,9 @@ export default function GroupDetailScreen() {
         {/* All Transactions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Data Transaksi Raw</Text>
+            <Text style={styles.sectionTitle}>Transaction History</Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{transactions.length} transaksi</Text>
+              <Text style={styles.badgeText}>{transactions.length} transcation</Text>
             </View>
           </View>
 
@@ -355,44 +456,98 @@ export default function GroupDetailScreen() {
               <Text style={styles.emptyText}>Belum ada transaksi</Text>
             </View>
           ) : (
-            transactions.map(transaction => {
-              const fromUser = StaticDB.getUserById(transaction.fromUserId);
-              const toUser = StaticDB.getUserById(transaction.toUserId);
-              const creator = StaticDB.getUserById(transaction.createdBy);
-              return (
-                <View
-                  key={transaction.id}
-                  style={styles.transactionCard}
-                >
-                  <View style={styles.transactionHeader}>
-                    <View style={styles.transactionUsers}>
-                      <Text style={styles.transactionFrom}>
-                        {fromUser?.name}
-                      </Text>
-                      <Text style={styles.transactionArrow}>→</Text>
-                      <Text style={styles.transactionTo}>{toUser?.name}</Text>
-                    </View>
-                    <Text style={styles.transactionAmount}>
-                      {formatCurrency(transaction.amount)}
-                    </Text>
+            <View style={styles.transactionList}>
+              {transactions
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .map((transaction, index, sortedTransactions) => {
+                const fromUser = StaticDB.getUserById(transaction.fromUserId);
+                const toUser = StaticDB.getUserById(transaction.toUserId);
+                const creator = StaticDB.getUserById(transaction.createdBy);
+                
+                // Group by date (only date part, not time)
+                const currentDate = transaction.date.split('T')[0];
+                const previousDate = index > 0 ? sortedTransactions[index - 1].date.split('T')[0] : null;
+                const showDateHeader = currentDate !== previousDate;
+
+                // Format date: "Today", "Yesterday", "Aug 8" or "Jun 9, 2025"
+                const formatDateHeader = (dateString: string) => {
+                  const date = new Date(dateString);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const dateOnly = new Date(date);
+                  dateOnly.setHours(0, 0, 0, 0);
+                  
+                  const diffTime = today.getTime() - dateOnly.getTime();
+                  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                  
+                  if (diffDays === 0) return 'Today';
+                  if (diffDays === 1) return 'Yesterday';
+                  
+                  const showYear = date.getFullYear() !== today.getFullYear();
+                  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                  const month = monthNames[date.getMonth()];
+                  const day = date.getDate();
+                  const year = date.getFullYear();
+                  
+                  return showYear ? `${month} ${day}, ${year}` : `${month} ${day}`;
+                };
+
+                // Determine transaction type for current user
+                const isUserOwes = user && transaction.fromUserId === user.id; // User berhutang (merah) - bottom left arrow
+                const isUserReceives = user && transaction.toUserId === user.id; // User menerima (hijau) - top right arrow
+                const isOthersTransaction = user && transaction.fromUserId !== user.id && transaction.toUserId !== user.id; // Hutang orang lain (kuning) - right arrow
+
+                // Set icon style and arrow direction based on transaction type
+                const iconBackgroundColor = isUserOwes ? '#fee2e2' : isUserReceives ? '#d1fae5' : '#fef3c7';
+                const iconColor = isUserOwes ? '#dc2626' : isUserReceives ? '#10b981' : '#f59e0b';
+
+                // Select appropriate arrow component
+                const ArrowComponent = isUserOwes ? BottomLeftArrow : isUserReceives ? TopRightArrow : RightArrow;
+
+                return (
+                  <View key={transaction.id}>
+                    {showDateHeader ? (
+                      <Text style={styles.transactionDateHeader}>{formatDateHeader(currentDate)}</Text>
+                    ) : null}
+                    <TouchableOpacity 
+                      style={styles.transactionListItem}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.transactionIconContainer}>
+                        <View style={[
+                          isOthersTransaction ? styles.transactionIcon : 
+                          isUserOwes ? styles.transactionIconOwes : 
+                          styles.transactionIconReceives,
+                          { backgroundColor: iconBackgroundColor }
+                        ]}>
+                          <ArrowComponent color={iconColor} size={20} />
+                        </View>
+                      </View>
+                      <View style={styles.transactionListContent}>
+                        <View style={styles.transactionListLeft}>
+                          <Text style={styles.transactionListAmount}>
+                            {formatCurrency(transaction.amount)}
+                          </Text>
+                          <Text style={styles.transactionListUsers}>
+                            {fromUser?.name || 'Unknown'} → {toUser?.name || 'Unknown'}
+                          </Text>
+                          {transaction.description ? (
+                            <Text style={styles.transactionListDescription}>
+                              {transaction.description}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={styles.transactionDescription}>
-                    {transaction.description}
-                  </Text>
-                  <View style={styles.transactionFooter}>
-                    <Text style={styles.transactionDate}>{transaction.date}</Text>
-                    <Text style={styles.transactionCreator}>
-                      Dibuat oleh: {creator?.name || 'Unknown'}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })
+                );
+              })}
+            </View>
           )}
         </View>
 
         {/* Danger Zone - Only show to creator */}
-        {user && group.creatorId === user.id && (
+        {user && group.creatorId === user.id ? (
           <View style={styles.dangerZone}>
             <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
             <Text style={styles.dangerZoneDescription}>
@@ -405,7 +560,7 @@ export default function GroupDetailScreen() {
               <Text style={styles.deleteButtonText}>🗑️ Hapus Grup</Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -465,22 +620,22 @@ export default function GroupDetailScreen() {
                           <Text style={styles.memberUsername}>@{member.username}</Text>
                         </View>
                       </View>
-                      {isCreator && (
+                      {isCreator ? (
                         <View style={styles.creatorBadge}>
                           <Text style={styles.creatorText}>Creator</Text>
                         </View>
-                      )}
-                      {memberId === user.id && !isCreator && (
+                      ) : null}
+                      {memberId === user.id && !isCreator ? (
                         <View style={styles.youBadge}>
                           <Text style={styles.youText}>Anda</Text>
                         </View>
-                      )}
+                      ) : null}
                     </View>
                   );
                 })}
 
                 {/* Add Member Button - Only for creator */}
-                {user && group.creatorId === user.id && (
+                {user && group.creatorId === user.id ? (
                   <TouchableOpacity
                     style={styles.addMemberButton}
                     onPress={() => {
@@ -488,9 +643,9 @@ export default function GroupDetailScreen() {
                       setTimeout(() => setShowAddMemberModal(true), 300);
                     }}
                   >
-                    <Text style={styles.addMemberButtonText}>+ Tambah Anggota</Text>
+                    <Text style={styles.addMemberButtonText}>Invite to Group</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </ScrollView>
             </TouchableOpacity>
           </Animated.View>
@@ -546,6 +701,84 @@ export default function GroupDetailScreen() {
                 onPress={handleAddMember}
               >
                 <Text style={styles.deleteModalConfirmText}>Tambah</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Group Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.editModalContainer}>
+            <Text style={styles.deleteModalTitle}>Edit Grup</Text>
+            
+            {/* Group Image */}
+            <TouchableOpacity
+              style={styles.editImageContainer}
+              onPress={handlePickGroupImage}
+              activeOpacity={0.7}
+            >
+              {editGroupImage ? (
+                <Image source={{ uri: editGroupImage }} style={styles.editGroupImage} />
+              ) : (
+                <View style={styles.editImagePlaceholder}>
+                  <Text style={styles.editPlaceholderEmoji}>👥</Text>
+                  <Text style={styles.editPlaceholderText}>Tap untuk ubah foto</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {editGroupImage ? (
+              <TouchableOpacity
+                onPress={() => setEditGroupImage(null)}
+                style={styles.removeEditImageButton}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.removeEditImageText}>Hapus Foto</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <Text style={styles.editModalLabel}>Nama Grup</Text>
+            <TextInput
+              style={styles.deleteModalInput}
+              value={editGroupName}
+              onChangeText={setEditGroupName}
+              placeholder="Nama grup"
+              placeholderTextColor="#999"
+            />
+
+            <Text style={styles.editModalLabel}>Deskripsi</Text>
+            <TextInput
+              style={[styles.deleteModalInput, styles.editModalTextArea]}
+              value={editGroupDescription}
+              onChangeText={setEditGroupDescription}
+              placeholder="Deskripsi grup (opsional)"
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+            />
+
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={styles.deleteModalCancelButton}
+                onPress={() => setShowEditModal(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.deleteModalCancelText}>Batal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.deleteModalConfirmButton, { backgroundColor: '#2563eb' }]}
+                onPress={handleSaveGroupEdit}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.deleteModalConfirmText}>Simpan</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -822,72 +1055,98 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-  transactionCard: {
+  transactionList: {
     backgroundColor: '#fff',
-    padding: 16,
     borderRadius: 12,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
+    overflow: 'hidden',
   },
-  transactionPaid: {
-    opacity: 0.6,
-    borderLeftColor: '#10b981',
+  transactionDateHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#f9fafb',
   },
-  transactionHeader: {
+  transactionListItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
-  transactionUsers: {
-    flexDirection: 'row',
+  transactionIconContainer: {
+    marginRight: 12,
+    justifyContent: 'flex-start',
+    paddingTop: 2,
+  },
+  transactionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#d1fae5',
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 3,
+    paddingLeft: 0,
+  },
+  transactionIconOwes: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 4,
+    paddingLeft: 4,
+  },
+  transactionIconReceives: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 4,
+    paddingRight: 4,
+  },
+  transactionIconText: {
+    fontSize: 18,
+    color: '#10b981',
+    fontWeight: 'bold',
+  },
+  transactionListContent: {
     flex: 1,
   },
-  transactionFrom: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-  },
-  transactionArrow: {
-    fontSize: 16,
-    color: '#999',
-    marginHorizontal: 8,
-  },
-  transactionTo: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#344170',
-  },
-  transactionAmountPaid: {
-    color: '#10b981',
-  },
-  transactionDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  transactionFooter: {
+  transactionListRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'flex-start',
   },
-  transactionDate: {
+  transactionListLeft: {
+    flex: 1,
+  },
+  transactionListAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  transactionListUsers: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 2,
+  },
+  transactionListDescription: {
     fontSize: 12,
     color: '#999',
+    marginTop: 2,
   },
-  transactionCreator: {
-    fontSize: 11,
-    color: '#666',
-    fontStyle: 'italic',
+  transactionListRight: {
+    alignItems: 'flex-end',
+    marginLeft: 12,
+  },
+  transactionListTime: {
+    fontSize: 13,
+    color: '#999',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -1176,5 +1435,111 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontSize: 13,
     marginBottom: 12,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  groupImageContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+  },
+  groupImageLarge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+  },
+  groupImagePlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  groupEmojiLarge: {
+    fontSize: 32,
+  },
+  headerTextContent: {
+    flex: 1,
+  },
+  editModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    maxHeight: '80%',
+  },
+  editImageContainer: {
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  editGroupImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  editImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+  },
+  editPlaceholderEmoji: {
+    fontSize: 40,
+    marginBottom: 4,
+  },
+  editPlaceholderText: {
+    fontSize: 11,
+    color: '#666',
+    textAlign: 'center',
+  },
+  removeEditImageButton: {
+    marginBottom: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#fee2e2',
+    borderRadius: 6,
+    alignSelf: 'center',
+  },
+  removeEditImageText: {
+    color: '#dc2626',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  editModalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  editModalTextArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
 });

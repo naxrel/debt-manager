@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -47,6 +48,18 @@ export default function DebtDetailScreen() {
   const handleMarkAsPaid = () => {
     if (!debt) return;
 
+    // Web-compatible confirmation
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Apakah Anda yakin transaksi ini sudah lunas?');
+      if (confirmed) {
+        markAsPaid(debt.id);
+        refreshDebts();
+        alert('Transaksi ditandai sebagai lunas');
+        router.back();
+      }
+      return;
+    }
+
     Alert.alert(
       'Tandai Sebagai Lunas',
       'Apakah Anda yakin transaksi ini sudah lunas?',
@@ -68,6 +81,18 @@ export default function DebtDetailScreen() {
 
   const handleDelete = () => {
     if (!debt) return;
+
+    // Web-compatible confirmation
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Apakah Anda yakin ingin menghapus transaksi ini?');
+      if (confirmed) {
+        deleteDebt(debt.id);
+        refreshDebts();
+        alert('Transaksi berhasil dihapus');
+        router.back();
+      }
+      return;
+    }
 
     Alert.alert(
       'Hapus Transaksi',
@@ -145,16 +170,28 @@ export default function DebtDetailScreen() {
         </View>
 
         {!debt.isPaid && (
-          <TouchableOpacity style={styles.paidButton} onPress={handleMarkAsPaid}>
+          <TouchableOpacity 
+            style={styles.paidButton} 
+            onPress={handleMarkAsPaid}
+            activeOpacity={0.7}
+          >
             <Text style={styles.paidButtonText}>✓ Tandai Sebagai Lunas</Text>
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+        <TouchableOpacity 
+          style={styles.deleteButton} 
+          onPress={handleDelete}
+          activeOpacity={0.7}
+        >
           <Text style={styles.deleteButtonText}>Hapus Transaksi</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+        <TouchableOpacity 
+          style={styles.cancelButton} 
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
           <Text style={styles.cancelButtonText}>Tutup</Text>
         </TouchableOpacity>
       </View>
@@ -291,6 +328,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
+    cursor: 'pointer' as any,
   },
   paidButtonText: {
     color: '#fff',
@@ -303,6 +341,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
+    cursor: 'pointer' as any,
   },
   deleteButtonText: {
     color: '#fff',
@@ -316,6 +355,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ddd',
+    cursor: 'pointer' as any,
   },
   cancelButtonText: {
     color: '#666',

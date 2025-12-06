@@ -93,6 +93,7 @@ export default function HistoryScreen() {
         <TouchableOpacity
           style={styles.debtCard}
           onPress={() => router.push(`/debt/detail?id=${item.data.id}`)}
+          activeOpacity={0.7}
         >
           <View style={styles.cardHeader}>
             <View style={styles.typeBadge}>
@@ -129,6 +130,7 @@ export default function HistoryScreen() {
         <TouchableOpacity
           style={styles.debtCard}
           onPress={() => router.push(`/group/${item.data.groupId}`)}
+          activeOpacity={0.7}
         >
           <View style={styles.cardHeader}>
             <View style={[styles.typeBadge, styles.groupBadge]}>
@@ -181,6 +183,7 @@ export default function HistoryScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'all' && styles.activeTab]}
           onPress={() => setActiveTab('all')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
             Semua ({debts.length + groupTransactions.length})
@@ -190,6 +193,7 @@ export default function HistoryScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'personal' && styles.activeTab]}
           onPress={() => setActiveTab('personal')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.tabText, activeTab === 'personal' && styles.activeTabText]}>
             Personal ({debts.length})
@@ -199,6 +203,7 @@ export default function HistoryScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'group' && styles.activeTab]}
           onPress={() => setActiveTab('group')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.tabText, activeTab === 'group' && styles.activeTabText]}>
             Grup ({groupTransactions.length})
@@ -212,6 +217,7 @@ export default function HistoryScreen() {
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => router.push('/debt/add')}
+            activeOpacity={0.7}
           >
             <Text style={styles.addButtonText}>+ Tambah Transaksi</Text>
           </TouchableOpacity>
@@ -259,10 +265,11 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 12,
     alignItems: 'center',
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
+    cursor: 'pointer' as any,
   },
   activeTab: {
     borderBottomColor: '#2563eb',
@@ -284,10 +291,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 4,
     elevation: 2,
+    cursor: 'pointer' as any,
   },
   cardHeader: {
     flexDirection: 'row',

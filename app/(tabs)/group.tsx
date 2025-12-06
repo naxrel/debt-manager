@@ -3,17 +3,21 @@ import { DebtGroup, StaticDB } from '@/data/staticDatabase';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function GroupScreen() {
   const { user } = useAuth();
   const [groups, setGroups] = useState<DebtGroup[]>([]);
+  const [filteredGroups, setFilteredGroups] = useState<DebtGroup[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
@@ -24,7 +28,9 @@ export default function GroupScreen() {
 
   const loadGroups = () => {
     if (user) {
-      setGroups(StaticDB.getUserGroups(user.id));
+      const userGroups = StaticDB.getUserGroups(user.id);
+      setGroups(userGroups);
+      setFilteredGroups(userGroups);
     }
   };
 
@@ -32,6 +38,19 @@ export default function GroupScreen() {
     setIsRefreshing(true);
     loadGroups();
     setIsRefreshing(false);
+  };
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    if (text.trim() === '') {
+      setFilteredGroups(groups);
+    } else {
+      const filtered = groups.filter(group =>
+        group.name.toLowerCase().includes(text.toLowerCase()) ||
+        group.description.toLowerCase().includes(text.toLowerCase())
+      );
+      setFilteredGroups(filtered);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -59,16 +78,34 @@ export default function GroupScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Grup Hutang</Text>
+          <Text style={styles.headerTitle}>deBT Group</Text>
           <Text style={styles.headerSubtitle}>
-            Kelola hutang dalam grup dengan mudah
+           Manage your money wisely!
           </Text>
+          
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search group..."
+              placeholderTextColor="#999"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => handleSearch('')} activeOpacity={0.7}>
+                <Text style={styles.clearIcon}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Quick Action to View All Users Optimization */}
         <TouchableOpacity
           style={styles.optimizationCard}
           onPress={() => router.push('/all')}
+          activeOpacity={0.7}
         >
           <View style={styles.optimizationIcon}>
             <Text style={styles.optimizationEmoji}>🌐</Text>
@@ -85,32 +122,46 @@ export default function GroupScreen() {
         {/* Groups List */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Grup Anda</Text>
+            <Text style={styles.sectionTitle}>Your Group</Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{groups.length} grup</Text>
+              <Text style={styles.badgeText}>
+                {searchQuery ? `${filteredGroups.length}/${groups.length}` : `${groups.length} grup`}
+              </Text>
             </View>
           </View>
 
-          {groups.length === 0 ? (
+          {filteredGroups.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>👥</Text>
-              <Text style={styles.emptyText}>Belum ada grup</Text>
+              <Text style={styles.emptyIcon}>
+                {searchQuery ? '🔍' : '👥'}
+              </Text>
+              <Text style={styles.emptyText}>
+                {searchQuery ? 'Grup tidak ditemukan' : 'Belum ada grup'}
+              </Text>
               <Text style={styles.emptySubtext}>
-                Buat grup untuk mengelola hutang bersama
+                {searchQuery ? 'Coba kata kunci lain' : 'Buat grup untuk mengelola hutang bersama'}
               </Text>
             </View>
           ) : (
-            groups.map(group => {
+            filteredGroups.map(group => {
               const stats = StaticDB.getGroupStatistics(group.id);
               return (
                 <TouchableOpacity
                   key={group.id}
                   style={styles.groupCard}
                   onPress={() => router.push(`/group/${group.id}`)}
+                  activeOpacity={0.7}
                 >
                   <View style={styles.groupHeader}>
                     <View style={styles.groupIcon}>
-                      <Text style={styles.groupEmoji}>👥</Text>
+                      {group.groupImage ? (
+                        <Image 
+                          source={{ uri: group.groupImage }} 
+                          style={styles.groupImage} 
+                        />
+                      ) : (
+                        <Text style={styles.groupEmoji}>👥</Text>
+                      )}
                     </View>
                     <View style={styles.groupInfo}>
                       <Text style={styles.groupName}>{group.name}</Text>
@@ -147,7 +198,7 @@ export default function GroupScreen() {
                   {stats.unpaidTransactions > 0 && (
                     <View style={styles.groupFooter}>
                       <Text style={styles.groupFooterText}>
-                        💰 Total: {formatCurrency(stats.totalAmount)}
+                        Total: {formatCurrency(stats.totalAmount)}
                       </Text>
                     </View>
                   )}
@@ -162,6 +213,7 @@ export default function GroupScreen() {
       <TouchableOpacity
         style={styles.fabButton}
         onPress={() => router.push('/group/create')}
+        activeOpacity={0.7}
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
@@ -180,18 +232,42 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#2563eb',
     padding: 20,
-    paddingTop: 60,
-    paddingBottom: 30,
+    paddingTop: 45,
+    paddingBottom: 20,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
+    marginTop: 10,
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#e0e7ff',
+    marginBottom: 16,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 99,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  searchIcon: {
+    fontSize: 12,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+  },
+  clearIcon: {
+    fontSize: 18,
+    color: '#999',
+    paddingHorizontal: 8,
   },
   optimizationCard: {
     flexDirection: 'row',
@@ -205,6 +281,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+    cursor: 'pointer' as any,
   },
   optimizationIcon: {
     width: 50,
@@ -284,43 +361,50 @@ const styles = StyleSheet.create({
   },
   groupCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    cursor: 'pointer' as any,
   },
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   groupIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#eff6ff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
+    overflow: 'hidden',
+  },
+  groupImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   groupEmoji: {
-    fontSize: 24,
+    fontSize: 20,
   },
   groupInfo: {
     flex: 1,
   },
   groupName: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   groupDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#666',
   },
   creatorBadge: {
@@ -338,31 +422,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
     backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    borderRadius: 8,
   },
   statItem: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2563eb',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
   },
   statDivider: {
     width: 1,
-    height: 30,
+    height: 24,
     backgroundColor: '#e5e7eb',
   },
   groupFooter: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#f3f4f6',
   },
@@ -386,6 +470,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+    cursor: 'pointer' as any,
   },
   fabIcon: {
     fontSize: 32,

@@ -143,6 +143,7 @@ export default function HomeScreen() {
     return (
       <TouchableOpacity
         style={[styles.debtCard, isPending && styles.pendingDebtCard]}
+        activeOpacity={0.7}
         onPress={() => {
           if (isPending) {
             router.push('/debt/pending');
@@ -193,7 +194,7 @@ export default function HomeScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Halo,</Text>
+          <Text style={styles.greeting}>Hello,</Text>
           <Text style={styles.userName}>{user.name}</Text>
         </View>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
@@ -257,7 +258,7 @@ export default function HomeScreen() {
 
       {/* Quick Actions */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Aksi Cepat</Text>
+        <Text style={styles.sectionTitle}>Quick Action</Text>
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={styles.actionCard}
@@ -360,6 +361,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    cursor: 'pointer' as any,
   },
   pendingIcon: {
     width: 40,
@@ -502,13 +504,14 @@ const styles = StyleSheet.create({
   debtCard: {
     backgroundColor: '#fff',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 2,
     elevation: 2,
+    cursor: 'pointer' as any,
   },
   debtHeader: {
     flexDirection: 'row',
@@ -611,6 +614,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    cursor: 'pointer' as any,
   },
   actionIcon: {
     fontSize: 32,
@@ -632,6 +636,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 12,
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   viewAllText: {
     fontSize: 14,

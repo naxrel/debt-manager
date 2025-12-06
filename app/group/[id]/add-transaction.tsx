@@ -63,7 +63,7 @@ export default function AddGroupTransaction() {
       toUserId,
       amount: numAmount,
       description: description.trim(),
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString(), // Include timestamp for proper sorting
       isPaid: false,
       createdBy: user.id,
     });
@@ -71,12 +71,8 @@ export default function AddGroupTransaction() {
     setIsLoading(false);
 
     if (result.success) {
-      Alert.alert('Berhasil', 'Transaksi berhasil ditambahkan', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]);
+      // Navigate back immediately to trigger refresh
+      router.back();
     } else {
       Alert.alert('Error', result.error || 'Gagal menambahkan transaksi');
     }

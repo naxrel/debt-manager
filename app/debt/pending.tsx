@@ -41,6 +41,27 @@ export default function PendingApprovalsScreen() {
   const handleApprove = (debtId: string) => {
     if (!user) return;
 
+    // Web-compatible confirmation
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Apakah Anda yakin menyetujui transaksi ini?');
+      if (confirmed) {
+        const result = StaticDB.approveDebt(debtId, user.id);
+        if (result.success) {
+          const remainingPending = StaticDB.getPendingDebtsForUser(user.id);
+          if (remainingPending.length === 0) {
+            alert('Transaksi berhasil di-approve');
+            router.back();
+          } else {
+            alert('Transaksi berhasil di-approve');
+            loadPendingDebts();
+          }
+        } else {
+          alert(result.error || 'Gagal approve transaksi');
+        }
+      }
+      return;
+    }
+
     Alert.alert(
       'Konfirmasi Approve',
       'Apakah Anda yakin menyetujui transaksi ini?',
@@ -51,16 +72,13 @@ export default function PendingApprovalsScreen() {
           onPress: () => {
             const result = StaticDB.approveDebt(debtId, user.id);
             if (result.success) {
-              // Check if this is the last pending debt
               const remainingPending = StaticDB.getPendingDebtsForUser(user.id);
               
               if (remainingPending.length === 0) {
-                // Last one - show success and close
                 Alert.alert('Sukses', 'Transaksi berhasil di-approve', [
                   { text: 'OK', onPress: () => router.back() }
                 ]);
               } else {
-                // Still have more - just reload
                 Alert.alert('Sukses', 'Transaksi berhasil di-approve');
                 loadPendingDebts();
               }
@@ -75,6 +93,27 @@ export default function PendingApprovalsScreen() {
 
   const handleReject = (debtId: string) => {
     setSelectedDebtId(debtId);
+    
+    // Web handling
+    if (Platform.OS === 'web') {
+      const reason = window.prompt('Masukkan alasan penolakan:');
+      if (reason && user) {
+        const result = StaticDB.rejectDebt(debtId, user.id, reason);
+        if (result.success) {
+          const remainingPending = StaticDB.getPendingDebtsForUser(user.id);
+          if (remainingPending.length === 0) {
+            alert('Transaksi berhasil ditolak');
+            router.back();
+          } else {
+            alert('Transaksi berhasil ditolak');
+            loadPendingDebts();
+          }
+        } else {
+          alert(result.error || 'Gagal reject transaksi');
+        }
+      }
+      return;
+    }
     
     if (Platform.OS === 'ios') {
       Alert.prompt(
@@ -222,6 +261,7 @@ export default function PendingApprovalsScreen() {
           <TouchableOpacity
             style={[styles.actionButton, styles.approveButton]}
             onPress={() => handleApprove(item.id)}
+            activeOpacity={0.7}
           >
             <Text style={styles.approveButtonText}>✓ Approve</Text>
           </TouchableOpacity>
@@ -231,6 +271,7 @@ export default function PendingApprovalsScreen() {
               <TouchableOpacity
                 style={[styles.actionButton, styles.rejectButton]}
                 onPress={() => confirmReject(item.id)}
+                activeOpacity={0.7}
               >
                 <Text style={styles.rejectButtonText}>Konfirmasi Reject</Text>
               </TouchableOpacity>
@@ -240,6 +281,7 @@ export default function PendingApprovalsScreen() {
                   setSelectedDebtId(null);
                   setRejectReason('');
                 }}
+                activeOpacity={0.7}
               >
                 <Text style={styles.cancelButtonText}>Batal</Text>
               </TouchableOpacity>
@@ -248,6 +290,7 @@ export default function PendingApprovalsScreen() {
             <TouchableOpacity
               style={[styles.actionButton, styles.rejectButton]}
               onPress={() => handleReject(item.id)}
+              activeOpacity={0.7}
             >
               <Text style={styles.rejectButtonText}>✗ Reject</Text>
             </TouchableOpacity>
@@ -268,7 +311,11 @@ export default function PendingApprovalsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity 
+          onPress={() => router.back()} 
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
           <Text style={styles.backButtonText}>← Kembali</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Persetujuan Pending</Text>
@@ -312,6 +359,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginBottom: 16,
+    cursor: 'pointer' as any,
   },
   backButtonText: {
     color: '#fff',
@@ -420,6 +468,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   approveButton: {
     backgroundColor: '#059669',

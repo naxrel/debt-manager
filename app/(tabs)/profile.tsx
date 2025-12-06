@@ -5,14 +5,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -26,7 +27,11 @@ export default function ProfileScreen() {
     if (!user) return;
 
     if (!name.trim()) {
-      Alert.alert('Error', 'Nama tidak boleh kosong');
+      if (Platform.OS === 'web') {
+        alert('Nama tidak boleh kosong');
+      } else {
+        Alert.alert('Error', 'Nama tidak boleh kosong');
+      }
       return;
     }
 
@@ -40,16 +45,25 @@ export default function ProfileScreen() {
       // Refresh user data in context
       await refreshUser();
       
-      Alert.alert('Berhasil', 'Profile berhasil diperbarui', [
-        {
-          text: 'OK',
-          onPress: () => {
-            setIsEditing(false);
+      if (Platform.OS === 'web') {
+        alert('Profile berhasil diperbarui');
+        setIsEditing(false);
+      } else {
+        Alert.alert('Berhasil', 'Profile berhasil diperbarui', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setIsEditing(false);
+            },
           },
-        },
-      ]);
+        ]);
+      }
     } else {
-      Alert.alert('Error', 'Gagal memperbarui profile');
+      if (Platform.OS === 'web') {
+        alert('Gagal memperbarui profile');
+      } else {
+        Alert.alert('Error', 'Gagal memperbarui profile');
+      }
     }
   };
 
@@ -62,7 +76,7 @@ export default function ProfileScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -74,6 +88,15 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Apakah Anda yakin ingin keluar?');
+      if (confirmed) {
+        logout();
+        router.replace('/auth/login');
+      }
+      return;
+    }
+
     Alert.alert('Logout', 'Apakah Anda yakin ingin keluar?', [
       { text: 'Batal', style: 'cancel' },
       {
@@ -98,7 +121,10 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
           {!isEditing ? (
-            <TouchableOpacity onPress={() => setIsEditing(true)}>
+            <TouchableOpacity 
+              onPress={() => setIsEditing(true)}
+              activeOpacity={0.7}
+            >
               <Text style={styles.editButton}>Edit</Text>
             </TouchableOpacity>
           ) : (
@@ -108,10 +134,14 @@ export default function ProfileScreen() {
                   setIsEditing(false);
                   setName(user.name);
                 }}
+                activeOpacity={0.7}
               >
                 <Text style={styles.cancelButton}>Batal</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSave}>
+              <TouchableOpacity 
+                onPress={handleSave}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.saveButton}>Simpan</Text>
               </TouchableOpacity>
             </View>
@@ -194,7 +224,11 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity 
+          style={styles.logoutButton} 
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
@@ -375,6 +409,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   logoutText: {
     fontSize: 16,

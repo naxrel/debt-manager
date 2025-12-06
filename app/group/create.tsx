@@ -1,19 +1,21 @@
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { StaticDB } from '../../data/staticDatabase';
-
 export default function CreateGroup() {
   const { user } = useAuth();
   const [groupName, setGroupName] = useState('');
@@ -22,6 +24,7 @@ export default function CreateGroup() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchUsername, setSearchUsername] = useState('');
   const [searchError, setSearchError] = useState('');
+  const [groupImage, setGroupImage] = useState<string | null>(null);
 
   const handleSearchUser = () => {
     if (!searchUsername.trim()) {
@@ -61,14 +64,46 @@ export default function CreateGroup() {
     setSelectedMembers(prev => prev.filter(id => id !== userId));
   };
 
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Akses ke galeri diperlukan untuk mengganti foto grup');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7, // Balance antara kualitas & ukuran file
+    });
+
+    if (!result.canceled) {
+      // Check file size (max 2MB)
+      const asset = result.assets[0];
+      // Note: Expo ImagePicker tidak langsung memberikan file size
+      // Dalam production, bisa tambahkan validasi dengan FileSystem
+      setGroupImage(asset.uri);
+    }
+  };
+
   const handleCreateGroup = () => {
     if (!groupName.trim()) {
-      Alert.alert('Error', 'Nama grup tidak boleh kosong');
+      if (Platform.OS === 'web') {
+        alert('Nama grup tidak boleh kosong');
+      } else {
+        Alert.alert('Error', 'Nama grup tidak boleh kosong');
+      }
       return;
     }
 
     if (selectedMembers.length === 0) {
-      Alert.alert('Error', 'Pilih minimal 1 anggota');
+      if (Platform.OS === 'web') {
+        alert('Pilih minimal 1 anggota');
+      } else {
+        Alert.alert('Error', 'Pilih minimal 1 anggota');
+      }
       return;
     }
 
@@ -78,27 +113,40 @@ export default function CreateGroup() {
       groupName.trim(),
       description.trim(),
       user!.id,
-      selectedMembers
+      selectedMembers,
+      groupImage || undefined
     );
 
     setIsLoading(false);
 
     if (result.success) {
-      Alert.alert('Berhasil', 'Grup berhasil dibuat', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]);
+      if (Platform.OS === 'web') {
+        alert('Grup berhasil dibuat');
+        router.back();
+      } else {
+        Alert.alert('Berhasil', 'Grup berhasil dibuat', [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]);
+      }
     } else {
-      Alert.alert('Error', result.error || 'Gagal membuat grup');
+      if (Platform.OS === 'web') {
+        alert(result.error || 'Gagal membuat grup');
+      } else {
+        Alert.alert('Error', result.error || 'Gagal membuat grup');
+      }
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
           <Text style={styles.cancelButton}>Batal</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Buat Grup Baru</Text>
@@ -106,6 +154,37 @@ export default function CreateGroup() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Group Profile Picture */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Foto Profil Grup (Opsional)</Text>
+          <Text style={styles.hint}>
+            Jika tidak diisi, akan menggunakan emoji 👥 sebagai default
+          </Text>
+          <TouchableOpacity
+            style={styles.imagePickerContainer}
+            onPress={handlePickImage}
+            activeOpacity={0.7}
+          >
+            {groupImage ? (
+              <Image source={{ uri: groupImage }} style={styles.groupImagePreview} />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Text style={styles.placeholderEmoji}>👥</Text>
+                <Text style={styles.placeholderText}>Tap untuk pilih foto</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {groupImage && (
+            <TouchableOpacity
+              onPress={() => setGroupImage(null)}
+              style={styles.removeImageButton}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.removeImageText}>Hapus Foto</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.label}>Nama Grup *</Text>
           <TextInput
@@ -155,6 +234,7 @@ export default function CreateGroup() {
             <TouchableOpacity
               style={styles.searchButton}
               onPress={handleSearchUser}
+              activeOpacity={0.7}
             >
               <Text style={styles.searchButtonText}>Cari</Text>
             </TouchableOpacity>
@@ -205,6 +285,7 @@ export default function CreateGroup() {
                 <TouchableOpacity
                   onPress={() => removeMember(member.id)}
                   style={styles.removeButton}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.removeButtonText}>✕</Text>
                 </TouchableOpacity>
@@ -223,6 +304,7 @@ export default function CreateGroup() {
           ]}
           onPress={handleCreateGroup}
           disabled={!groupName.trim() || selectedMembers.length === 0 || isLoading}
+          activeOpacity={0.7}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />
@@ -391,6 +473,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     justifyContent: 'center',
+    cursor: 'pointer' as any,
   },
   searchButtonText: {
     color: '#fff',
@@ -409,6 +492,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fee2e2',
     justifyContent: 'center',
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   removeButtonText: {
     color: '#dc2626',
@@ -426,6 +510,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   createButtonDisabled: {
     backgroundColor: '#ccc',
@@ -433,6 +518,49 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  imagePickerContainer: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  groupImagePreview: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f0f0f0',
+  },
+  imagePlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+  },
+  placeholderEmoji: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  placeholderText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  removeImageButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#fee2e2',
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  removeImageText: {
+    color: '#dc2626',
+    fontSize: 14,
     fontWeight: '600',
   },
 });
