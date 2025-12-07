@@ -364,16 +364,19 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
+    fontFamily: 'Biennale-Bold',
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#e0e7ff',
+    fontFamily: 'Biennale-Regular',
   },
   listContainer: {
     padding: 16,
@@ -400,10 +403,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
+    fontFamily: 'Biennale-SemiBold',
   },
   debtMeta: {
     fontSize: 13,
     color: '#999',
+    fontFamily: 'Biennale-Regular',
   },
   debtBadge: {
     alignItems: 'flex-end',
@@ -415,6 +420,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     overflow: 'hidden',
+    fontFamily: 'Biennale-SemiBold',
   },
   hutangBadge: {
     backgroundColor: '#fee2e2',
@@ -429,11 +435,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#344170',
     marginBottom: 8,
+    fontFamily: 'Biennale-Bold',
   },
   debtDescription: {
     fontSize: 14,
     color: '#666',
     marginBottom: 12,
+    fontFamily: 'Biennale-Regular',
   },
   debtInfo: {
     backgroundColor: '#eff6ff',
@@ -445,6 +453,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1e40af',
     lineHeight: 18,
+    fontFamily: 'Biennale-Regular',
   },
   rejectInputContainer: {
     marginBottom: 12,
@@ -458,6 +467,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 80,
     textAlignVertical: 'top',
+    fontFamily: 'Biennale-Regular',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -477,6 +487,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   rejectButton: {
     backgroundColor: '#dc2626',
@@ -485,6 +496,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   cancelButton: {
     backgroundColor: '#6b7280',
@@ -493,6 +505,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   emptyState: {
     alignItems: 'center',
@@ -502,16 +515,19 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 48,
     marginBottom: 16,
+    fontFamily: 'Biennale-Regular',
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+    fontFamily: 'Biennale-SemiBold',
   },
   emptySubtext: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    fontFamily: 'Biennale-Regular',
   },
 });

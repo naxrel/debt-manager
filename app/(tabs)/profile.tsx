@@ -232,7 +232,7 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -259,6 +259,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
     color: '#333',
   },
   headerButtons: {
@@ -269,16 +270,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.light.primary,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   cancelButton: {
     fontSize: 16,
     color: '#666',
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   saveButton: {
     fontSize: 16,
     color: Colors.light.primary,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   profileSection: {
     alignItems: 'center',
@@ -306,6 +310,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 48,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
     color: '#fff',
   },
   editIconContainer: {
@@ -323,15 +328,18 @@ const styles = StyleSheet.create({
   },
   editIcon: {
     fontSize: 18,
+    fontFamily: 'Biennale-Regular',
   },
   username: {
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#333',
     marginBottom: 4,
   },
   usernameNote: {
     fontSize: 13,
+    fontFamily: 'Biennale-Regular',
     color: '#999',
     fontStyle: 'italic',
   },
@@ -347,6 +355,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#666',
     marginBottom: 8,
   },
@@ -356,15 +365,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
     color: '#333',
   },
   valueText: {
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
     color: '#333',
     paddingVertical: 8,
   },
   noteText: {
     fontSize: 12,
+    fontFamily: 'Biennale-Regular',
     color: '#999',
     marginTop: 4,
     fontStyle: 'italic',
@@ -378,6 +390,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#333',
     marginBottom: 16,
   },
@@ -395,11 +408,13 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
     color: Colors.light.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 13,
+    fontFamily: 'Biennale-Regular',
     color: '#666',
     textAlign: 'center',
   },
@@ -414,6 +429,7 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#fff',
   },
 });

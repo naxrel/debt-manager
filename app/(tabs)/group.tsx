@@ -1,3 +1,4 @@
+import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { DebtGroup, StaticDB } from '@/data/staticDatabase';
 import { router } from 'expo-router';
@@ -73,6 +74,7 @@ export default function GroupScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
         }
@@ -229,6 +231,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 120,
+  },
   header: {
     backgroundColor: '#2563eb',
     padding: 20,
@@ -237,13 +242,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: Font.bold,
     color: '#fff',
     marginTop: 10,
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
+    fontFamily: Font.regular,
     color: '#e0e7ff',
     marginBottom: 16,
   },
@@ -257,15 +263,18 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     fontSize: 12,
+    fontFamily: Font.regular,
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
+    fontFamily: Font.regular,
     color: '#333',
   },
   clearIcon: {
     fontSize: 18,
+    fontFamily: Font.regular,
     color: '#999',
     paddingHorizontal: 8,
   },
@@ -294,6 +303,7 @@ const styles = StyleSheet.create({
   },
   optimizationEmoji: {
     fontSize: 24,
+    fontFamily: Font.regular,
   },
   optimizationContent: {
     flex: 1,
@@ -301,15 +311,18 @@ const styles = StyleSheet.create({
   optimizationTitle: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: Font.semiBold,
     color: '#333',
     marginBottom: 4,
   },
   optimizationSubtitle: {
     fontSize: 13,
+    fontFamily: Font.regular,
     color: '#666',
   },
   arrow: {
     fontSize: 24,
+    fontFamily: Font.regular,
     color: '#2563eb',
     marginLeft: 12,
   },
@@ -325,6 +338,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
     color: '#333',
   },
   badge: {
@@ -336,6 +350,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: Font.semiBold,
     color: '#2563eb',
   },
   emptyState: {
@@ -346,16 +361,19 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     fontSize: 48,
+    fontFamily: Font.regular,
     marginBottom: 16,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: Font.semiBold,
     color: '#333',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
+    fontFamily: Font.regular,
     color: '#666',
     textAlign: 'center',
   },
@@ -393,6 +411,7 @@ const styles = StyleSheet.create({
   },
   groupEmoji: {
     fontSize: 20,
+    fontFamily: Font.regular,
   },
   groupInfo: {
     flex: 1,
@@ -400,11 +419,13 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: Font.semiBold,
     color: '#333',
     marginBottom: 2,
   },
   groupDescription: {
     fontSize: 12,
+    fontFamily: Font.regular,
     color: '#666',
   },
   creatorBadge: {
@@ -416,6 +437,7 @@ const styles = StyleSheet.create({
   creatorText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: Font.semiBold,
     color: '#fff',
   },
   groupStats: {
@@ -432,11 +454,13 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
     color: '#2563eb',
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 11,
+    fontFamily: Font.regular,
     color: '#666',
   },
   statDivider: {
@@ -453,12 +477,13 @@ const styles = StyleSheet.create({
   groupFooterText: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: Font.semiBold,
     color: '#059669',
   },
   fabButton: {
     position: 'absolute',
     right: 20,
-    bottom: 20,
+    bottom: 110,
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -476,5 +501,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: '#fff',
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
   },
 });

@@ -337,10 +337,12 @@ const styles = StyleSheet.create({
   cancelButton: {
     color: '#007AFF',
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   content: {
     flex: 1,
@@ -354,11 +356,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
+    fontFamily: 'Biennale-SemiBold',
   },
   hint: {
     fontSize: 13,
     color: '#666',
     marginBottom: 12,
+    fontFamily: 'Biennale-Regular',
   },
   input: {
     backgroundColor: '#fff',
@@ -367,6 +371,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 15,
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
   },
   textArea: {
     minHeight: 80,
@@ -412,6 +417,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   avatarTextSelected: {
     color: '#fff',
@@ -420,10 +426,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    fontFamily: 'Biennale-SemiBold',
   },
   memberUsername: {
     fontSize: 13,
     color: '#666',
+    fontFamily: 'Biennale-Regular',
   },
   checkbox: {
     width: 24,
@@ -442,6 +450,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
   },
   badgeCreator: {
     backgroundColor: '#4CAF50',
@@ -453,6 +462,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -467,6 +477,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 15,
     backgroundColor: '#fff',
+    fontFamily: 'Biennale-Regular',
   },
   searchButton: {
     backgroundColor: '#007AFF',
@@ -479,11 +490,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   errorText: {
     color: '#dc2626',
     fontSize: 13,
     marginBottom: 12,
+    fontFamily: 'Biennale-Regular',
   },
   removeButton: {
     width: 32,
@@ -498,6 +511,7 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
   },
   footer: {
     padding: 20,
@@ -519,6 +533,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   imagePickerContainer: {
     alignItems: 'center',
@@ -544,11 +559,13 @@ const styles = StyleSheet.create({
   placeholderEmoji: {
     fontSize: 48,
     marginBottom: 8,
+    fontFamily: 'Biennale-Regular',
   },
   placeholderText: {
     fontSize: 12,
     color: '#666',
     textAlign: 'center',
+    fontFamily: 'Biennale-Regular',
   },
   removeImageButton: {
     marginTop: 12,
@@ -562,5 +579,6 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
 });

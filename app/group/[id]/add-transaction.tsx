@@ -265,10 +265,12 @@ const styles = StyleSheet.create({
   cancelButton: {
     color: '#007AFF',
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   content: {
     flex: 1,
@@ -285,10 +287,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e40af',
     marginBottom: 4,
+    fontFamily: 'Biennale-SemiBold',
   },
   groupDescription: {
     fontSize: 14,
     color: '#60a5fa',
+    fontFamily: 'Biennale-Regular',
   },
   section: {
     marginBottom: 24,
@@ -298,6 +302,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
     color: '#333',
+    fontFamily: 'Biennale-SemiBold',
   },
   memberList: {
     gap: 8,
@@ -337,6 +342,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   avatarTextSelected: {
     color: '#fff',
@@ -345,10 +351,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    fontFamily: 'Biennale-SemiBold',
   },
   memberUsername: {
     fontSize: 13,
     color: '#666',
+    fontFamily: 'Biennale-Regular',
   },
   checkmark: {
     width: 24,
@@ -362,6 +370,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
   },
   input: {
     backgroundColor: '#fff',
@@ -370,6 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 15,
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
   },
   textArea: {
     minHeight: 80,
@@ -394,11 +404,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   emptyText: {
     fontSize: 16,
     color: '#999',
     textAlign: 'center',
     marginTop: 40,
+    fontFamily: 'Biennale-Regular',
   },
 });

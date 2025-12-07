@@ -245,6 +245,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 24,
+    fontFamily: 'Biennale-Bold',
   },
   typeContainer: {
     flexDirection: 'row',
@@ -269,6 +270,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666',
     marginBottom: 4,
+    fontFamily: 'Biennale-SemiBold',
   },
   typeButtonTextActive: {
     color: '#2563eb',
@@ -276,6 +278,7 @@ const styles = StyleSheet.create({
   typeButtonSubtext: {
     fontSize: 12,
     color: '#999',
+    fontFamily: 'Biennale-Regular',
   },
   inputGroup: {
     marginBottom: 20,
@@ -285,6 +288,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+    fontFamily: 'Biennale-SemiBold',
   },
   input: {
     backgroundColor: '#fff',
@@ -293,11 +297,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
   },
   hint: {
     fontSize: 12,
     color: '#666',
     marginTop: 6,
+    fontFamily: 'Biennale-Regular',
   },
   textArea: {
     height: 100,
@@ -315,6 +321,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   cancelButton: {
     backgroundColor: '#fff',
@@ -330,5 +337,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
 });

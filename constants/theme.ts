@@ -45,6 +45,13 @@ export const Colors = {
   },
 };
 
+// Biennale Custom Fonts
+export const Font = {
+  regular: 'Inter-Regular',
+  semiBold: 'Inter-SemiBold',
+  bold: 'Inter-Bold',
+};
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

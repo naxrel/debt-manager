@@ -1,24 +1,27 @@
+import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
 import { Debt, StaticDB } from '@/data/staticDatabase';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
   const { debts, isLoading: debtLoading, getStatistics, refreshDebts } = useDebt();
-  const [groupStats, setGroupStats] = useState({ totalHutang: 0, totalPiutang: 0 });
+  const [activeTab, setActiveTab] = useState<'receive' | 'toPay'>('receive');
   const [pendingCount, setPendingCount] = useState(0);
+  const [showBalanceModal, setShowBalanceModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -29,15 +32,15 @@ export default function HomeScreen() {
   useEffect(() => {
     if (user) {
       refreshDebts();
-      calculateGroupStats();
       calculatePendingCount();
     }
   }, [user]);
 
-  // Refresh pending count when screen is focused
+  // Refresh debts when screen is focused
   useFocusEffect(
     useCallback(() => {
       if (user) {
+        refreshDebts();
         calculatePendingCount();
       }
     }, [user])
@@ -47,31 +50,6 @@ export default function HomeScreen() {
     if (!user) return;
     const pending = StaticDB.getPendingDebtsForUser(user.id);
     setPendingCount(pending.length);
-  };
-
-  const calculateGroupStats = () => {
-    if (!user) return;
-
-    const userGroups = StaticDB.getUserGroups(user.id);
-    let totalHutang = 0;
-    let totalPiutang = 0;
-
-    userGroups.forEach(group => {
-      const transactions = StaticDB.getGroupTransactions(group.id);
-      
-      transactions.forEach(t => {
-        if (t.fromUserId === user.id) {
-          // User berhutang (negative)
-          totalHutang += t.amount;
-        }
-        if (t.toUserId === user.id) {
-          // User dibayar (positive)
-          totalPiutang += t.amount;
-        }
-      });
-    });
-
-    setGroupStats({ totalHutang, totalPiutang });
   };
 
   if (authLoading || debtLoading) {
@@ -86,33 +64,29 @@ export default function HomeScreen() {
     return null;
   }
 
-  const personalStats = getStatistics();
+  // Calculate personal balance (debts without groupId)
+  const personalDebts = debts.filter(d => !d.isPaid && !d.groupId);
+  const personalReceive = personalDebts.filter(d => d.type === 'piutang' && d.status === 'confirmed').reduce((sum, d) => sum + d.amount, 0);
+  const personalPay = personalDebts.filter(d => d.type === 'hutang' && d.status === 'confirmed').reduce((sum, d) => sum + d.amount, 0);
+  const personalBalance = personalReceive - personalPay;
   
-  // Combine personal + group stats
-  const stats = {
-    totalHutang: personalStats.totalHutang + groupStats.totalHutang,
-    totalPiutang: personalStats.totalPiutang + groupStats.totalPiutang,
-    countHutang: personalStats.countHutang,
-    countPiutang: personalStats.countPiutang,
-    balance: (personalStats.totalPiutang + groupStats.totalPiutang) - (personalStats.totalHutang + groupStats.totalHutang),
-  };
-  // Get pending debts for current user
-  const pendingDebts = StaticDB.getPendingDebtsForUser(user.id);
+  // Calculate group balance from group transactions (include isPaid for receive side)
+  const allGroupTransactions = StaticDB.getAllGroupTransactions();
+  const groupReceiveTransactions = allGroupTransactions.filter(gt => gt.toUserId === user.id);
+  const groupPayTransactions = allGroupTransactions.filter(gt => !gt.isPaid && gt.fromUserId === user.id);
+  const groupReceive = groupReceiveTransactions.reduce((sum, gt) => sum + gt.amount, 0);
+  const groupPay = groupPayTransactions.reduce((sum, gt) => sum + gt.amount, 0);
+  const groupBalance = groupReceive - groupPay;
   
-  // Combine pending debts with regular debts
-  const allRecentDebts = [
-    ...pendingDebts, // Pending debts first
-    ...debts.filter(d => !d.isPaid && d.status === 'confirmed'), // Then confirmed debts
-  ];
+  // Total balance (personal + group)
+  const balance = personalBalance + groupBalance;
   
-  const recentDebts = allRecentDebts
-    .sort((a, b) => {
-      // Prioritize pending status, then sort by date
-      if (a.status === 'pending' && b.status !== 'pending') return -1;
-      if (a.status !== 'pending' && b.status === 'pending') return 1;
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    })
-    .slice(0, 5);
+  // Filter debts by type for tabs
+  const receiveDebts = debts.filter(d => !d.isPaid && d.type === 'piutang' && d.status === 'confirmed');
+  const toPayDebts = debts.filter(d => !d.isPaid && d.type === 'hutang' && d.status === 'confirmed');
+  
+  // Get debts based on active tab
+  const displayDebts = activeTab === 'receive' ? receiveDebts : toPayDebts;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -137,193 +111,189 @@ export default function HomeScreen() {
   };
 
   const renderDebtItem = ({ item }: { item: Debt }) => {
-    const isPending = item.status === 'pending';
-    const initiator = isPending ? StaticDB.getUserById(item.initiatedBy) : null;
-
     return (
       <TouchableOpacity
-        style={[styles.debtCard, isPending && styles.pendingDebtCard]}
+        style={styles.debtCard}
         activeOpacity={0.7}
-        onPress={() => {
-          if (isPending) {
-            router.push('/debt/pending');
-          } else {
-            router.push(`/debt/detail?id=${item.id}`);
-          }
-        }}
+        onPress={() => router.push(`/debt/detail?id=${item.id}`)}
       >
-        <View style={styles.debtHeader}>
-          <View style={{ flex: 1 }}>
+        <View style={styles.debtRow}>
+          <View style={styles.debtAvatar}>
+            <Text style={styles.debtAvatarText}>
+              {item.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.debtInfo}>
             <Text style={styles.debtName}>{item.name}</Text>
-            {isPending && initiator && (
-              <Text style={styles.pendingLabel}>
-                ⏳ Menunggu persetujuan (@{initiator.username})
-              </Text>
-            )}
+            <Text style={styles.debtDate}>{formatDate(item.date)}</Text>
           </View>
           <Text
             style={[
-              styles.debtType,
-              isPending
-                ? styles.pendingBadge
-                : item.type === 'hutang'
-                ? styles.hutangBadge
-                : styles.piutangBadge,
+              styles.debtAmount,
+              item.type === 'piutang' ? styles.positiveAmount : styles.negativeAmount,
             ]}
           >
-            {isPending ? 'Pending' : item.type === 'hutang' ? 'Hutang' : 'Piutang'}
+            {formatCurrency(item.amount)}
           </Text>
         </View>
-        <Text style={styles.debtAmount}>{formatCurrency(item.amount)}</Text>
-        <Text style={styles.debtDate}>{formatDate(item.date)}</Text>
-        {item.description && (
-          <Text style={styles.debtDescription} numberOfLines={1}>
-            {item.description}
-          </Text>
-        )}
-        {isPending && (
-          <View style={styles.pendingActionHint}>
-            <Text style={styles.pendingActionText}>Tap untuk approve/reject →</Text>
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Hello,</Text>
           <Text style={styles.userName}>{user.name}</Text>
         </View>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
+          <Svg width={24} height={24} viewBox="0 0 23 21" fill="none">
+            <Path d="M9.28062 6.46494V5.72152C9.28062 4.10317 9.28062 3.294 9.75458 2.73451C10.2285 2.17502 11.0267 2.04199 12.623 1.77594L14.2942 1.49741C17.5373 0.956891 19.1589 0.686633 20.2197 1.58533C21.2806 2.48403 21.2806 4.12794 21.2806 7.41577V13.2502C21.2806 16.5381 21.2806 18.182 20.2197 19.0807C19.1589 19.9794 17.5373 19.7091 14.2942 19.1686L12.623 18.8901C11.0267 18.624 10.2285 18.491 9.75458 17.9315C9.28062 17.372 9.28062 16.5628 9.28062 14.9445V14.399" stroke="#000" strokeWidth="2"/>
+            <Path d="M1.28062 10.333L0.499756 9.70831L-4.57838e-07 10.333L0.499756 10.9577L1.28062 10.333ZM10.2806 11.333C10.8329 11.333 11.2806 10.8853 11.2806 10.333C11.2806 9.78072 10.8329 9.33301 10.2806 9.33301V10.333V11.333ZM5.28062 5.33301L4.49976 4.70831L0.499756 9.70831L1.28062 10.333L2.06149 10.9577L6.06149 5.9577L5.28062 5.33301ZM1.28062 10.333L0.499756 10.9577L4.49976 15.9577L5.28062 15.333L6.06149 14.7083L2.06149 9.70831L1.28062 10.333ZM1.28062 10.333V11.333H10.2806V10.333V9.33301H1.28062V10.333Z" fill="#000"/>
+          </Svg>
         </TouchableOpacity>
       </View>
 
-      {/* Pending Approvals Notification */}
-      {pendingCount > 0 && (
-        <TouchableOpacity
-          style={styles.pendingNotification}
-          onPress={() => router.push('/debt/pending')}
-        >
-          <View style={styles.pendingIcon}>
-            <Text style={styles.pendingIconText}>⏳</Text>
-          </View>
-          <View style={styles.pendingContent}>
-            <Text style={styles.pendingTitle}>
-              {pendingCount} Transaksi Menunggu Persetujuan
-            </Text>
-            <Text style={styles.pendingSubtitle}>
-              Tap untuk melihat dan approve/reject
-            </Text>
-          </View>
-          <View style={styles.pendingNotificationBadge}>
-            <Text style={styles.pendingNotificationBadgeText}>{pendingCount}</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      <View style={styles.statsContainer}>
-        <View style={[styles.statCard, styles.hutangCard]}>
-          <Text style={styles.statLabel}>Total Hutang</Text>
-          <Text style={styles.statAmount}>{formatCurrency(stats.totalHutang)}</Text>
-          <Text style={styles.statCount}>{stats.countHutang} transaksi</Text>
-        </View>
-
-        <View style={[styles.statCard, styles.piutangCard]}>
-          <Text style={styles.statLabel}>Total Piutang</Text>
-          <Text style={styles.statAmount}>{formatCurrency(stats.totalPiutang)}</Text>
-          <Text style={styles.statCount}>{stats.countPiutang} transaksi</Text>
-        </View>
-      </View>
-
-      <View style={[styles.statCard, styles.balanceCard]}>
-        <Text style={styles.balanceLabel}>Saldo Bersih</Text>
+      <TouchableOpacity 
+        style={[styles.statCard, styles.balanceCard]}
+        onPress={() => setShowBalanceModal(true)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.balanceLabel}>Your Balance</Text>
         <Text
           style={[
             styles.balanceAmount,
-            stats.balance >= 0 ? styles.positiveBalance : styles.negativeBalance,
+            balance >= 0 ? styles.positiveBalance : styles.negativeBalance,
           ]}
         >
-          {formatCurrency(stats.balance)}
+          {formatCurrency(balance)}
         </Text>
-        <Text style={styles.balanceNote}>
-          {stats.balance >= 0
-            ? 'Anda memiliki surplus'
-            : 'Anda memiliki defisit'}
-        </Text>
-      </View>
+        <Text style={styles.balanceNote}>Tap for more information</Text>
+      </TouchableOpacity>
 
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Action</Text>
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/all')}
-          >
-            <Text style={styles.actionIcon}>📊</Text>
-            <Text style={styles.actionTitle}>Multi-Group</Text>
-            <Text style={styles.actionSubtitle}>Ringkasan semua grup</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/group')}
-          >
-            <Text style={styles.actionIcon}>🤝</Text>
-            <Text style={styles.actionTitle}>Lihat Grup</Text>
-            <Text style={styles.actionSubtitle}>Optimasi pembayaran</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/debt/add')}
-          >
-            <Text style={styles.actionIcon}>➕</Text>
-            <Text style={styles.actionTitle}>Tambah</Text>
-            <Text style={styles.actionSubtitle}>Hutang/piutang</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/history')}
-          >
-            <Text style={styles.actionIcon}>📋</Text>
-            <Text style={styles.actionTitle}>History</Text>
-            <Text style={styles.actionSubtitle}>Semua transaksi</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Recent Activity */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Aktivitas Terbaru</Text>
-
-        {recentDebts.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Belum ada transaksi</Text>
+      {/* Balance Detail Modal */}
+      <Modal
+        visible={showBalanceModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowBalanceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Balance Details</Text>
+              <TouchableOpacity onPress={() => setShowBalanceModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={styles.modalTotalLabel}>Total Balance</Text>
+              <Text style={[
+                styles.modalTotalAmount,
+                balance >= 0 ? styles.positiveBalance : styles.negativeBalance,
+              ]}>
+                {formatCurrency(balance)}
+              </Text>
+              
+              <View style={styles.modalDivider} />
+              
+              <View style={styles.modalRow}>
+                <Text style={styles.modalRowLabel}>Personal:</Text>
+                <Text style={[
+                  styles.modalRowAmount,
+                  personalBalance >= 0 ? styles.positiveBalance : styles.negativeBalance,
+                ]}>
+                  {formatCurrency(personalBalance)}
+                </Text>
+              </View>
+              
+              <View style={styles.modalRow}>
+                <Text style={styles.modalRowLabel}>Group:</Text>
+                <Text style={[
+                  styles.modalRowAmount,
+                  groupBalance >= 0 ? styles.positiveBalance : styles.negativeBalance,
+                ]}>
+                  {formatCurrency(groupBalance)}
+                </Text>
+              </View>
+            </View>
           </View>
-        ) : (
-          <>
-            <FlatList
-              data={recentDebts}
-              renderItem={renderDebtItem}
-              keyExtractor={item => item.id}
-              scrollEnabled={false}
-            />
-            <TouchableOpacity
-              style={styles.viewAllButton}
-              onPress={() => router.push('/history')}
-            >
-              <Text style={styles.viewAllText}>Lihat Semua →</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        </View>
+      </Modal>
+
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/debt/add')}
+        >
+          <Text style={styles.actionButtonIcon}>💳</Text>
+          <Text style={styles.actionButtonText}>Debt</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/all')}
+        >
+          <Text style={styles.actionButtonIcon}>📈</Text>
+          <Text style={styles.actionButtonText}>Summary</Text>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'receive' && styles.activeTab]}
+          onPress={() => setActiveTab('receive')}
+        >
+          <Text style={[styles.tabText, activeTab === 'receive' && styles.activeTabText]}>
+            Receive
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'toPay' && styles.activeTab]}
+          onPress={() => setActiveTab('toPay')}
+        >
+          <Text style={[styles.tabText, activeTab === 'toPay' && styles.activeTabText]}>
+            to Pay
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Debt List */}
+      <FlatList
+        data={displayDebts}
+        renderItem={renderDebtItem}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.debtList}
+        ListHeaderComponent={
+          activeTab === 'receive' && pendingCount > 0 ? (
+            <TouchableOpacity
+              style={styles.pendingNotification}
+              onPress={() => router.push('/debt/pending')}
+            >
+              <View style={styles.pendingIcon}>
+                <Text style={styles.pendingIconText}>⏰</Text>
+              </View>
+              <View style={styles.pendingContent}>
+                <Text style={styles.pendingTitle}>Transaction pending!</Text>
+                <Text style={styles.pendingSubtitle}>Tap to view this transaction</Text>
+              </View>
+            </TouchableOpacity>
+          ) : null
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>
+              {activeTab === 'receive' ? 'No debts to receive' : 'No debts to pay'}
+            </Text>
+          </View>
+        }
+      />
+    </View>
   );
 }
 
@@ -336,38 +306,34 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffffff',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#2563eb',
+    paddingTop: 50,
+    backgroundColor: '#ffffffff',
   },
   pendingNotification: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef3c7',
-    margin: 16,
-    marginBottom: 8,
+    backgroundColor: '#fff',
+    marginBottom: 16,
     padding: 16,
     borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    cursor: 'pointer' as any,
   },
   pendingIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#f3f4f6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -380,55 +346,31 @@ const styles = StyleSheet.create({
   },
   pendingTitle: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#92400e',
+    fontFamily: Font.semiBold,
+    color: '#111827',
     marginBottom: 4,
   },
   pendingSubtitle: {
     fontSize: 13,
-    color: '#b45309',
-  },
-  pendingNotificationBadge: {
-    backgroundColor: '#f59e0b',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pendingNotificationBadgeText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: Font.regular,
+    color: '#9ca3af',
   },
   greeting: {
     fontSize: 16,
-    color: '#e0e7ff',
+    fontFamily: Font.regular,
+    color: '#000000ff',
   },
   userName: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontFamily: Font.bold,
+    color: '#000000ff',
     marginTop: 4,
   },
   logoutButton: {
-    backgroundColor: '#1e40af',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  logoutText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    padding: 8,
   },
   statCard: {
-    flex: 1,
-    padding: 16,
+    backgroundColor: '#fff',
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -436,41 +378,22 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  hutangCard: {
-    backgroundColor: '#fee2e2',
-  },
-  piutangCard: {
-    backgroundColor: '#d1fae5',
-  },
   balanceCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 16,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  statAmount: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  statCount: {
-    fontSize: 12,
-    color: '#999',
+    padding: 15,
   },
   balanceLabel: {
     fontSize: 14,
+    fontFamily: Font.bold,
     color: '#666',
     marginBottom: 8,
   },
   balanceAmount: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 29,
+    fontFamily: Font.bold,
+    marginBottom: 8,
   },
   positiveBalance: {
     color: '#059669',
@@ -479,168 +402,186 @@ const styles = StyleSheet.create({
     color: '#dc2626',
   },
   balanceNote: {
-    fontSize: 12,
+    fontSize: 11,
+    fontFamily: Font.regular,
     color: '#999',
+    textAlign: 'right',
+    marginTop: undefined,
   },
-  section: {
-    padding: 16,
-  },
-  sectionHeader: {
+  actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    gap: 40,
+    marginTop: 5,
+    marginBottom: 30,
+    justifyContent: 'center',
+  },
+  actionButton: {
+    backgroundColor: '#94ddffff',
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButtonIcon: {
+    fontSize: 20,
+  },
+  actionButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontFamily: Font.semiBold,
+  },
+  tabs: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    paddingHorizontal: 16,
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+  tab: {
+    paddingVertical: 8,
+    alignItems: 'center',
   },
-  addButton: {
-    color: '#2563eb',
-    fontSize: 16,
-    fontWeight: '600',
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#000000ff',
+  },
+  tabText: {
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: '#9ca3af',
+  },
+  activeTabText: {
+    color: '#000000ff',
+    fontFamily: Font.semiBold,
+  },
+  debtList: {
+    paddingHorizontal: 16,
+    paddingTop: 1,
+    paddingBottom: 120,
   },
   debtCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffffff',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    cursor: 'pointer' as any,
   },
-  debtHeader: {
+  debtRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 12,
+  },
+  debtAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  debtAvatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: Font.bold,
+  },
+  debtInfo: {
+    flex: 1,
   },
   debtName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  debtType: {
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  hutangBadge: {
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-  },
-  piutangBadge: {
-    backgroundColor: '#d1fae5',
-    color: '#059669',
-  },
-  pendingBadge: {
-    backgroundColor: '#fef3c7',
-    color: '#f59e0b',
-  },
-  pendingDebtCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
-    backgroundColor: '#fffbeb',
-  },
-  pendingLabel: {
-    fontSize: 12,
-    color: '#b45309',
-    marginTop: 4,
-  },
-  pendingActionHint: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#fde68a',
-  },
-  pendingActionText: {
-    fontSize: 12,
-    color: '#f59e0b',
-    fontWeight: '600',
-  },
-  debtAmount: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontFamily: Font.semiBold,
+    color: '#111827',
     marginBottom: 4,
   },
   debtDate: {
     fontSize: 12,
-    color: '#999',
-    marginBottom: 4,
+    fontFamily: Font.regular,
+    color: '#9ca3af',
   },
-  debtDescription: {
-    fontSize: 14,
-    color: '#666',
+  debtAmount: {
+    fontSize: 16,
+    fontFamily: Font.bold,
+  },
+  positiveAmount: {
+    color: '#10b981',
+  },
+  negativeAmount: {
+    color: '#ef4444',
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
+    padding: 60,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#999',
-    marginBottom: 16,
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: '#9ca3af',
   },
-  addFirstButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  addFirstButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionCard: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    cursor: 'pointer' as any,
+    padding: 20,
   },
-  actionIcon: {
-    fontSize: 32,
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: Font.bold,
+    color: '#111827',
+  },
+  modalClose: {
+    fontSize: 24,
+    color: '#9ca3af',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalTotalLabel: {
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: '#666',
     marginBottom: 8,
   },
-  actionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 4,
+  modalTotalAmount: {
+    fontSize: 32,
+    fontFamily: Font.bold,
+    marginBottom: 20,
   },
-  actionSubtitle: {
-    fontSize: 11,
-    color: '#666',
-    textAlign: 'center',
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#f3f4f6',
+    marginBottom: 20,
   },
-  viewAllButton: {
-    marginTop: 12,
-    padding: 12,
+  modalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    cursor: 'pointer' as any,
+    marginBottom: 16,
   },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2563eb',
+  modalRowLabel: {
+    fontSize: 16,
+    fontFamily: Font.regular,
+    color: '#111827',
+  },
+  modalRowAmount: {
+    fontSize: 18,
+    fontFamily: Font.bold,
   },
 });

@@ -255,6 +255,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
     color: '#fff',
   },
   tabContainer: {
@@ -277,6 +278,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#666',
   },
   activeTabText: {
@@ -284,6 +286,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingBottom: 120,
   },
   debtCard: {
     backgroundColor: '#fff',
@@ -315,6 +318,7 @@ const styles = StyleSheet.create({
   typeText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#2563eb',
   },
   groupTransactionInfo: {
@@ -323,6 +327,7 @@ const styles = StyleSheet.create({
   transactionUsers: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#333',
   },
   debtHeader: {
@@ -340,11 +345,13 @@ const styles = StyleSheet.create({
   debtName: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#333',
   },
   debtType: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
@@ -360,6 +367,7 @@ const styles = StyleSheet.create({
   paidBadge: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
     color: '#059669',
     backgroundColor: '#d1fae5',
     paddingHorizontal: 8,
@@ -369,16 +377,19 @@ const styles = StyleSheet.create({
   debtAmount: {
     fontSize: 20,
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
     color: '#333',
     marginBottom: 4,
   },
   debtDate: {
     fontSize: 12,
+    fontFamily: 'Biennale-Regular',
     color: '#999',
     marginBottom: 4,
   },
   debtDescription: {
     fontSize: 14,
+    fontFamily: 'Biennale-Regular',
     color: '#666',
     marginTop: 4,
   },
@@ -390,6 +401,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
     color: '#999',
     marginBottom: 16,
   },
@@ -403,5 +415,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
 });

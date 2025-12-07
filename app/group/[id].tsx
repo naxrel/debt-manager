@@ -883,6 +883,7 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontFamily: 'Biennale-Regular',
   },
   membersButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -894,16 +895,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
+    fontFamily: 'Biennale-Bold',
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#e0e7ff',
+    fontFamily: 'Biennale-Regular',
   },
   statsCard: {
     backgroundColor: '#fff',
@@ -928,10 +932,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#344170',
     marginBottom: 4,
+    fontFamily: 'Biennale-Bold',
   },
   statLabel: {
     fontSize: 12,
     color: '#666',
+    fontFamily: 'Biennale-Regular',
   },
   section: {
     padding: 16,
@@ -946,6 +952,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    fontFamily: 'Biennale-Bold',
   },
   badge: {
     backgroundColor: '#e8ebf5',
@@ -957,6 +964,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#344170',
+    fontFamily: 'Biennale-SemiBold',
   },
   actionSection: {
     marginBottom: 16,
@@ -966,6 +974,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 12,
+    fontFamily: 'Biennale-SemiBold',
   },
   debtCard: {
     backgroundColor: '#fff',
@@ -990,11 +999,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    fontFamily: 'Biennale-SemiBold',
   },
   debtAmount: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#344170',
+    fontFamily: 'Biennale-Bold',
   },
   emptyState: {
     alignItems: 'center',
@@ -1005,11 +1016,13 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 48,
     marginBottom: 16,
+    fontFamily: 'Biennale-Regular',
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+    fontFamily: 'Biennale-SemiBold',
   },
   simplificationList: {
     backgroundColor: '#fff',
@@ -1031,22 +1044,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     minWidth: 80,
+    fontFamily: 'Biennale-SemiBold',
   },
   simplificationArrow: {
     fontSize: 18,
     color: '#54638d',
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
   },
   simplificationToName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     minWidth: 80,
+    fontFamily: 'Biennale-SemiBold',
   },
   simplificationEquals: {
     fontSize: 18,
     color: '#666',
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
   },
   simplificationAmount: {
     fontSize: 18,
@@ -1054,6 +1071,7 @@ const styles = StyleSheet.create({
     color: '#10b981',
     flex: 1,
     textAlign: 'right',
+    fontFamily: 'Biennale-Bold',
   },
   transactionList: {
     backgroundColor: '#fff',
@@ -1067,6 +1085,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: '#f9fafb',
+    fontFamily: 'Biennale-SemiBold',
   },
   transactionListItem: {
     flexDirection: 'row',
@@ -1112,6 +1131,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#10b981',
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
   },
   transactionListContent: {
     flex: 1,
@@ -1129,16 +1149,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 2,
+    fontFamily: 'Biennale-Bold',
   },
   transactionListUsers: {
     fontSize: 13,
     color: '#666',
     marginBottom: 2,
+    fontFamily: 'Biennale-Regular',
   },
   transactionListDescription: {
     fontSize: 12,
     color: '#999',
     marginTop: 2,
+    fontFamily: 'Biennale-Regular',
   },
   transactionListRight: {
     alignItems: 'flex-end',
@@ -1147,6 +1170,7 @@ const styles = StyleSheet.create({
   transactionListTime: {
     fontSize: 13,
     color: '#999',
+    fontFamily: 'Biennale-Regular',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -1162,6 +1186,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   statusTextPaid: {
     color: '#059669',
@@ -1196,15 +1221,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   memberName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    fontFamily: 'Biennale-SemiBold',
   },
   memberUsername: {
     fontSize: 13,
     color: '#666',
+    fontFamily: 'Biennale-Regular',
   },
   creatorBadge: {
     backgroundColor: '#10b981',
@@ -1216,6 +1244,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#fff',
+    fontFamily: 'Biennale-SemiBold',
   },
   youBadge: {
     backgroundColor: '#f59e0b',
@@ -1227,6 +1256,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#fff',
+    fontFamily: 'Biennale-SemiBold',
   },
   simplificationNote: {
     fontSize: 13,
@@ -1234,6 +1264,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
     fontStyle: 'italic',
+    fontFamily: 'Biennale-Regular',
   },
   drawerOverlay: {
     flex: 1,
@@ -1263,11 +1294,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
+    fontFamily: 'Biennale-Bold',
   },
   drawerClose: {
     fontSize: 28,
     color: '#fff',
     fontWeight: '300',
+    fontFamily: 'Biennale-Regular',
   },
   drawerContent: {
     flex: 1,
@@ -1305,6 +1338,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: '#fff',
     fontWeight: 'bold',
+    fontFamily: 'Biennale-Bold',
   },
   dangerZone: {
     backgroundColor: '#fff',
@@ -1320,11 +1354,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#dc2626',
     marginBottom: 8,
+    fontFamily: 'Biennale-Bold',
   },
   dangerZoneDescription: {
     fontSize: 13,
     color: '#666',
     marginBottom: 12,
+    fontFamily: 'Biennale-Regular',
   },
   deleteButton: {
     backgroundColor: '#dc2626',
@@ -1337,6 +1373,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+    fontFamily: 'Biennale-SemiBold',
   },
   deleteModalOverlay: {
     flex: 1,
@@ -1357,6 +1394,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 16,
+    fontFamily: 'Biennale-Bold',
   },
   deleteModalWarning: {
     fontSize: 14,
@@ -1366,12 +1404,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
     lineHeight: 20,
+    fontFamily: 'Biennale-Regular',
   },
   deleteModalInstruction: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
     lineHeight: 20,
+    fontFamily: 'Biennale-Regular',
   },
   deleteModalGroupName: {
     fontWeight: 'bold',
@@ -1385,6 +1425,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
     marginBottom: 20,
+    fontFamily: 'Biennale-Regular',
   },
   deleteModalButtons: {
     flexDirection: 'row',
@@ -1401,6 +1442,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#666',
+    fontFamily: 'Biennale-SemiBold',
   },
   deleteModalConfirmButton: {
     flex: 1,
@@ -1417,6 +1459,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+    fontFamily: 'Biennale-SemiBold',
   },
   addMemberButton: {
     backgroundColor: '#10b981',
@@ -1430,11 +1473,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+    fontFamily: 'Biennale-SemiBold',
   },
   errorText: {
     color: '#dc2626',
     fontSize: 13,
     marginBottom: 12,
+    fontFamily: 'Biennale-Regular',
   },
   headerActions: {
     flexDirection: 'row',
@@ -1450,6 +1495,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   headerContent: {
     flexDirection: 'row',
@@ -1477,6 +1523,7 @@ const styles = StyleSheet.create({
   },
   groupEmojiLarge: {
     fontSize: 32,
+    fontFamily: 'Biennale-Regular',
   },
   headerTextContent: {
     flex: 1,
@@ -1512,11 +1559,13 @@ const styles = StyleSheet.create({
   editPlaceholderEmoji: {
     fontSize: 40,
     marginBottom: 4,
+    fontFamily: 'Biennale-Regular',
   },
   editPlaceholderText: {
     fontSize: 11,
     color: '#666',
     textAlign: 'center',
+    fontFamily: 'Biennale-Regular',
   },
   removeEditImageButton: {
     marginBottom: 16,
@@ -1530,6 +1579,7 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   editModalLabel: {
     fontSize: 14,
@@ -1537,6 +1587,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
     marginTop: 8,
+    fontFamily: 'Biennale-SemiBold',
   },
   editModalTextArea: {
     minHeight: 80,

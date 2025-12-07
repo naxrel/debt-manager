@@ -3,14 +3,14 @@ import { Debt, StaticDB } from '@/data/staticDatabase';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function DebtDetailScreen() {
@@ -126,76 +126,87 @@ export default function DebtDetailScreen() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Transaksi tidak ditemukan</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Kembali</Text>
+        <TouchableOpacity style={styles.errorButton} onPress={() => router.back()}>
+          <Text style={styles.errorButtonText}>Kembali</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <View style={[styles.badge, debt.type === 'hutang' ? styles.hutangBadge : styles.piutangBadge]}>
-          <Text style={styles.badgeText}>
-            {debt.type === 'hutang' ? 'Hutang' : 'Piutang'}
-          </Text>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Confirm Transaction</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        {/* From/To Section */}
+        <View style={styles.section}>
+          <Text style={styles.label}>From</Text>
+          <Text style={styles.value}>{debt.type === 'hutang' ? debt.name : 'Me'}</Text>
         </View>
 
-        <Text style={styles.name}>{debt.name}</Text>
-        <Text style={styles.amount}>{formatCurrency(debt.amount)}</Text>
-
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Tanggal</Text>
-            <Text style={styles.infoValue}>{formatDate(debt.date)}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Status</Text>
-            <Text style={[styles.statusBadge, debt.isPaid ? styles.paidStatus : styles.unpaidStatus]}>
-              {debt.isPaid ? 'Lunas' : 'Belum Lunas'}
-            </Text>
-          </View>
-
-          {debt.description && (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.descriptionSection}>
-                <Text style={styles.infoLabel}>Keterangan</Text>
-                <Text style={styles.description}>{debt.description}</Text>
-              </View>
-            </>
-          )}
+        <View style={styles.section}>
+          <Text style={styles.label}>To</Text>
+          <Text style={styles.value}>{debt.type === 'piutang' ? debt.name : 'Me'}</Text>
         </View>
 
-        {!debt.isPaid && (
-          <TouchableOpacity 
-            style={styles.paidButton} 
-            onPress={handleMarkAsPaid}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.paidButtonText}>✓ Tandai Sebagai Lunas</Text>
-          </TouchableOpacity>
+        {/* Date Section */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Date:</Text>
+          <Text style={styles.value}>{formatDate(debt.date)}, {new Date(debt.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</Text>
+        </View>
+
+        {/* Note Section */}
+        {debt.description && (
+          <View style={styles.noteSection}>
+            <Text style={styles.noteLabel}>Note:</Text>
+            <View style={styles.noteBox}>
+              <Text style={styles.noteText}>{debt.description}</Text>
+            </View>
+          </View>
         )}
 
-        <TouchableOpacity 
-          style={styles.deleteButton} 
-          onPress={handleDelete}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.deleteButtonText}>Hapus Transaksi</Text>
-        </TouchableOpacity>
+        {/* Total Section */}
+        <View style={styles.totalSection}>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalAmount}>{formatCurrency(debt.amount)}</Text>
+        </View>
 
-        <TouchableOpacity 
-          style={styles.cancelButton} 
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.cancelButtonText}>Tutup</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        {/* Status Badge */}
+        {debt.isPaid && (
+          <View style={styles.paidBadge}>
+            <Text style={styles.paidBadgeText}>✓ LUNAS</Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Action Buttons */}
+      {!debt.isPaid && (
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={styles.rejectButton} 
+            onPress={handleDelete}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.rejectButtonText}>Reject</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.confirmButton} 
+            onPress={handleMarkAsPaid}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.confirmButtonText}>Confirm</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -204,162 +215,168 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     padding: 20,
   },
   errorText: {
     fontSize: 18,
     color: '#666',
     marginBottom: 20,
+    fontFamily: 'Biennale-Regular',
   },
-  backButton: {
+  errorButton: {
     backgroundColor: '#2563eb',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
-  backButtonText: {
+  errorButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: {
+    fontSize: 32,
+    color: '#111827',
+    fontFamily: 'Biennale-Regular',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: 'Biennale-SemiBold',
+    color: '#111827',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
   },
   content: {
     padding: 20,
+    paddingBottom: 100,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  hutangBadge: {
-    backgroundColor: '#fee2e2',
-  },
-  piutangBadge: {
-    backgroundColor: '#d1fae5',
-  },
-  badgeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  name: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  amount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#2563eb',
+  section: {
     marginBottom: 24,
   },
-  infoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  label: {
+    fontSize: 14,
+    fontFamily: 'Biennale-Regular',
+    color: '#9ca3af',
+    marginBottom: 8,
   },
-  infoRow: {
+  value: {
+    fontSize: 16,
+    fontFamily: 'Biennale-SemiBold',
+    color: '#111827',
+  },
+  noteSection: {
+    marginBottom: 24,
+  },
+  noteLabel: {
+    fontSize: 14,
+    fontFamily: 'Biennale-Regular',
+    color: '#9ca3af',
+    marginBottom: 8,
+  },
+  noteBox: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 16,
+  },
+  noteText: {
+    fontSize: 14,
+    fontFamily: 'Biennale-Regular',
+    color: '#111827',
+    lineHeight: 22,
+  },
+  totalSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginTop: 32,
+    marginBottom: 24,
   },
-  infoLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+  totalLabel: {
+    fontSize: 16,
+    fontFamily: 'Biennale-SemiBold',
+    color: '#111827',
   },
-  infoValue: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '600',
+  totalAmount: {
+    fontSize: 24,
+    fontFamily: 'Biennale-Bold',
+    color: '#111827',
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  paidBadge: {
+    backgroundColor: '#10b981',
+    padding: 16,
     borderRadius: 12,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  paidStatus: {
-    backgroundColor: '#d1fae5',
-    color: '#059669',
-  },
-  unpaidStatus: {
-    backgroundColor: '#fef3c7',
-    color: '#d97706',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    marginVertical: 12,
-  },
-  descriptionSection: {
-    marginTop: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  paidButton: {
-    backgroundColor: '#059669',
-    borderRadius: 8,
-    padding: 16,
     alignItems: 'center',
-    marginBottom: 12,
-    cursor: 'pointer' as any,
+    marginTop: 16,
   },
-  paidButtonText: {
-    color: '#fff',
+  paidBadgeText: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    backgroundColor: '#dc2626',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-    cursor: 'pointer' as any,
-  },
-  deleteButtonText: {
+    fontFamily: 'Biennale-Bold',
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
-  cancelButton: {
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    cursor: 'pointer' as any,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
   },
-  cancelButtonText: {
-    color: '#666',
+  rejectButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  rejectButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Biennale-SemiBold',
+    color: '#111827',
+  },
+  confirmButton: {
+    flex: 1,
+    backgroundColor: '#fbbf24',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontFamily: 'Biennale-SemiBold',
+    color: '#111827',
   },
 });

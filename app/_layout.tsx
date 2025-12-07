@@ -1,11 +1,17 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/AuthContext';
 import { DebtProvider } from '@/contexts/DebtContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+// Keep splash screen visible while loading fonts
+SplashScreen.preventAutoHideAsync();
 
 // export const unstable_settings = {
 //   anchor: '(tabs)',
@@ -13,6 +19,22 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  const [loaded, error] = useFonts({
+  'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+  'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
+  'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+});
+
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
+
+  if (!loaded && !error) {
+    return null;
+  }
 
   return (
     <AuthProvider>

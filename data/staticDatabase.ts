@@ -521,6 +521,10 @@ export class StaticDB {
   }
 
   // Group transactions
+  static getAllGroupTransactions(): GroupTransaction[] {
+    return this.groupTransactions;
+  }
+
   static getGroupTransactions(groupId: string): GroupTransaction[] {
     return this.groupTransactions.filter(t => t.groupId === groupId);
   }
