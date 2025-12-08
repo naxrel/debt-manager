@@ -1,3 +1,4 @@
+import { Font } from '@/constants/theme';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { StaticDB } from '@/data/staticDatabase';
@@ -136,13 +137,13 @@ export default function ProfileScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.cancelButton}>Batal</Text>
+                <Text style={styles.cancelButton}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 onPress={handleSave}
                 activeOpacity={0.7}
               >
-                <Text style={styles.saveButton}>Simpan</Text>
+                <Text style={styles.saveButton}>Save</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -177,13 +178,13 @@ export default function ProfileScreen() {
         {/* Profile Form */}
         <View style={styles.formSection}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nama Lengkap</Text>
+            <Text style={styles.label}>Fullname</Text>
             {isEditing ? (
               <TextInput
                 style={styles.input}
                 value={name}
                 onChangeText={setName}
-                placeholder="Masukkan nama lengkap"
+                placeholder="Input your name here"
                 placeholderTextColor="#999"
               />
             ) : (
@@ -258,8 +259,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
     color: '#333',
   },
   headerButtons: {
@@ -269,20 +269,17 @@ const styles = StyleSheet.create({
   editButton: {
     fontSize: 16,
     color: Colors.light.primary,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   cancelButton: {
     fontSize: 16,
     color: '#666',
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   saveButton: {
     fontSize: 16,
     color: Colors.light.primary,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   profileSection: {
     alignItems: 'center',
@@ -332,14 +329,13 @@ const styles = StyleSheet.create({
   },
   username: {
     fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
     color: '#333',
     marginBottom: 4,
   },
   usernameNote: {
     fontSize: 13,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
     color: '#999',
     fontStyle: 'italic',
   },
@@ -370,7 +366,7 @@ const styles = StyleSheet.create({
   },
   valueText: {
     fontSize: 16,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
     color: '#333',
     paddingVertical: 8,
   },
@@ -428,8 +424,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
     color: '#fff',
   },
 });

@@ -237,9 +237,8 @@ export default function MultiGroupOverviewScreen() {
       {/* Empty State */}
       {groupSummaries.length === 0 && personalDebts.filter(d => !d.isPaid).length === 0 && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>✅</Text>
-          <Text style={styles.emptyText}>Tidak ada hutang piutang</Text>
-          <Text style={styles.emptySubtext}>Mulai buat grup atau tambah hutang personal</Text>
+          <Text style={styles.emptyText}>No debts, pleaseee</Text>
+          <Text style={styles.emptySubtext}>or start debts with your friends.</Text>
         </View>
       )}
 
@@ -452,10 +451,6 @@ const styles = StyleSheet.create({
     margin: 16,
     backgroundColor: '#fff',
     borderRadius: 12,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   emptyText: {
     fontSize: 18,

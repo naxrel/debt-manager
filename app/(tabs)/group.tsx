@@ -90,7 +90,7 @@ export default function GroupScreen() {
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search group..."
+              placeholder="Find group..."
               placeholderTextColor="#999"
               value={searchQuery}
               onChangeText={handleSearch}
@@ -138,10 +138,10 @@ export default function GroupScreen() {
                 {searchQuery ? '🔍' : '👥'}
               </Text>
               <Text style={styles.emptyText}>
-                {searchQuery ? 'Grup tidak ditemukan' : 'Belum ada grup'}
+                {searchQuery ? 'Grup tidak ditemukan' : 'No debts, pweasee T_T'}
               </Text>
               <Text style={styles.emptySubtext}>
-                {searchQuery ? 'Coba kata kunci lain' : 'Buat grup untuk mengelola hutang bersama'}
+                {searchQuery ? 'Coba kata kunci lain' : 'or create your debts with your friends now!'}
               </Text>
             </View>
           ) : (
@@ -333,12 +333,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 7,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
     color: '#333',
   },
   badge: {

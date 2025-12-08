@@ -1,4 +1,5 @@
 import { BottomLeftArrow, RightArrow, TopRightArrow } from '@/components/ArrowIcons';
+import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { DebtGroup, GroupTransaction, StaticDB } from '@/data/staticDatabase';
 import { DebtOptimizer, OptimizedDebt } from '@/utils/debtOptimizer';
@@ -419,8 +420,7 @@ export default function GroupDetailScreen() {
 
           {optimizedDebts.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>✅</Text>
-              <Text style={styles.emptyText}>Tidak ada hutang</Text>
+              <Text style={styles.emptyText}>No debt yet, start now!</Text>
             </View>
           ) : (
             <View style={styles.simplificationList}>
@@ -452,8 +452,7 @@ export default function GroupDetailScreen() {
 
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📋</Text>
-              <Text style={styles.emptyText}>Belum ada transaksi</Text>
+              <Text style={styles.emptyText}>Start your transaction!</Text>
             </View>
           ) : (
             <View style={styles.transactionList}>
@@ -714,8 +713,18 @@ export default function GroupDetailScreen() {
         animationType="fade"
         onRequestClose={() => setShowEditModal(false)}
       >
-        <View style={styles.deleteModalOverlay}>
-          <View style={styles.editModalContainer}>
+        <TouchableOpacity 
+          style={styles.deleteModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEditModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1}>
+            <ScrollView 
+              contentContainerStyle={styles.editModalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.editModalContainer}>
             <Text style={styles.deleteModalTitle}>Edit Grup</Text>
             
             {/* Group Image */}
@@ -740,7 +749,7 @@ export default function GroupDetailScreen() {
                 style={styles.removeEditImageButton}
                 activeOpacity={0.7}
               >
-                <Text style={styles.removeEditImageText}>Hapus Foto</Text>
+                <Text style={styles.removeEditImageText}>Delete</Text>
               </TouchableOpacity>
             ) : null}
 
@@ -781,8 +790,10 @@ export default function GroupDetailScreen() {
                 <Text style={styles.deleteModalConfirmText}>Simpan</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+              </View>
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Delete Confirmation Modal */}
@@ -950,9 +961,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#333',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   badge: {
     backgroundColor: '#e8ebf5',
@@ -1020,9 +1030,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   simplificationList: {
     backgroundColor: '#fff',
@@ -1394,6 +1403,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 16,
+    justifyContent: 'center',
     fontFamily: 'Biennale-Bold',
   },
   deleteModalWarning: {
@@ -1528,13 +1538,16 @@ const styles = StyleSheet.create({
   headerTextContent: {
     flex: 1,
   },
+  editModalScrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
   editModalContainer: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
-    width: '85%',
+    width: '100%',
     maxWidth: 400,
-    maxHeight: '80%',
   },
   editImageContainer: {
     alignItems: 'center',
