@@ -1,6 +1,7 @@
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 import { Debt, StaticDB } from '@/data/staticDatabase';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -19,6 +20,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
   const { debts, isLoading: debtLoading, getStatistics, refreshDebts } = useDebt();
+  const { isDarkMode, toggleTheme } = useAppTheme();
   const [activeTab, setActiveTab] = useState<'receive' | 'toPay'>('receive');
   const [pendingCount, setPendingCount] = useState(0);
   const [showBalanceModal, setShowBalanceModal] = useState(false);
@@ -141,18 +143,27 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, isDarkMode && styles.containerDark]}>
+      <View style={[styles.header, isDarkMode && styles.headerDark]}>
         <View>
-          <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={[styles.greeting, isDarkMode && styles.textDark]}>Hello,</Text>
+          <Text style={[styles.userName, isDarkMode && styles.textDark]}>{user.name}</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.themeToggle}
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.themeIcon}>{isDarkMode ? '☀️' : '🌙'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Svg width={24} height={24} viewBox="0 0 23 21" fill="none">
             <Path d="M9.28062 6.46494V5.72152C9.28062 4.10317 9.28062 3.294 9.75458 2.73451C10.2285 2.17502 11.0267 2.04199 12.623 1.77594L14.2942 1.49741C17.5373 0.956891 19.1589 0.686633 20.2197 1.58533C21.2806 2.48403 21.2806 4.12794 21.2806 7.41577V13.2502C21.2806 16.5381 21.2806 18.182 20.2197 19.0807C19.1589 19.9794 17.5373 19.7091 14.2942 19.1686L12.623 18.8901C11.0267 18.624 10.2285 18.491 9.75458 17.9315C9.28062 17.372 9.28062 16.5628 9.28062 14.9445V14.399" stroke="#000" strokeWidth="2"/>
             <Path d="M1.28062 10.333L0.499756 9.70831L-4.57838e-07 10.333L0.499756 10.9577L1.28062 10.333ZM10.2806 11.333C10.8329 11.333 11.2806 10.8853 11.2806 10.333C11.2806 9.78072 10.8329 9.33301 10.2806 9.33301V10.333V11.333ZM5.28062 5.33301L4.49976 4.70831L0.499756 9.70831L1.28062 10.333L2.06149 10.9577L6.06149 5.9577L5.28062 5.33301ZM1.28062 10.333L0.499756 10.9577L4.49976 15.9577L5.28062 15.333L6.06149 14.7083L2.06149 9.70831L1.28062 10.333ZM1.28062 10.333V11.333H10.2806V10.333V9.33301H1.28062V10.333Z" fill="#000"/>
           </Svg>
         </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity 
@@ -306,15 +317,40 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#ffffffff',
+    backgroundColor: '#ffffff',
+  },
+  containerDark: {
+    backgroundColor: '#111827',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    paddingTop: 50,
-    backgroundColor: '#ffffffff',
+    paddingTop: 75,
+    backgroundColor: '#ffffff',
+  },
+  headerDark: {
+    backgroundColor: '#1f2937',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  themeToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeIcon: {
+    fontSize: 20,
+  },
+  textDark: {
+    color: '#ffffff',
   },
   pendingNotification: {
     flexDirection: 'row',
@@ -364,7 +400,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: Font.bold,
     color: '#000000ff',
-    marginTop: 4,
+    marginTop: 1,
   },
   logoutButton: {
     padding: 8,

@@ -154,56 +154,35 @@ export default function GroupScreen() {
                   onPress={() => router.push(`/group/${group.id}`)}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.groupHeader}>
-                    <View style={styles.groupIcon}>
-                      {group.groupImage ? (
-                        <Image 
-                          source={{ uri: group.groupImage }} 
-                          style={styles.groupImage} 
-                        />
-                      ) : (
-                        <Text style={styles.groupEmoji}>👥</Text>
-                      )}
-                    </View>
-                    <View style={styles.groupInfo}>
-                      <Text style={styles.groupName}>{group.name}</Text>
-                      {group.description && (
-                        <Text style={styles.groupDescription} numberOfLines={1}>
-                          {group.description}
-                        </Text>
-                      )}
-                    </View>
-                    {group.creatorId === user.id && (
-                      <View style={styles.creatorBadge}>
-                        <Text style={styles.creatorText}>Creator</Text>
-                      </View>
+                  <View style={styles.groupIcon}>
+                    {group.groupImage ? (
+                      <Image 
+                        source={{ uri: group.groupImage }} 
+                        style={styles.groupImage} 
+                      />
+                    ) : (
+                      <Text style={styles.groupEmoji}>👥</Text>
                     )}
                   </View>
-
-                  <View style={styles.groupStats}>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{stats.memberCount}</Text>
-                      <Text style={styles.statLabel}>Anggota</Text>
+                  <View style={styles.groupInfo}>
+                    <View style={styles.groupNameRow}>
+                      <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
+                      {group.creatorId === user.id && (
+                        <View style={styles.creatorBadge}>
+                          <Text style={styles.creatorText}>Creator</Text>
+                        </View>
+                      )}
                     </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{stats.totalTransactions}</Text>
-                      <Text style={styles.statLabel}>Transaksi</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{stats.unpaidTransactions}</Text>
-                      <Text style={styles.statLabel}>Belum Lunas</Text>
-                    </View>
-                  </View>
-
-                  {stats.unpaidTransactions > 0 && (
-                    <View style={styles.groupFooter}>
-                      <Text style={styles.groupFooterText}>
-                        Total: {formatCurrency(stats.totalAmount)}
+                    {group.description && (
+                      <Text style={styles.groupDescription} numberOfLines={1}>
+                        {group.description}
                       </Text>
-                    </View>
-                  )}
+                    )}
+                    <Text style={styles.groupMemberCount}>
+                      {stats.memberCount} member{stats.memberCount > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.arrow}>→</Text>
                 </TouchableOpacity>
               );
             })
@@ -235,7 +214,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#ffffffff',
     padding: 20,
     paddingTop: 45,
     paddingBottom: 20,
@@ -243,14 +222,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontFamily: Font.bold,
-    color: '#fff',
+    color: '#000000ff',
     marginTop: 10,
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
     fontFamily: Font.regular,
-    color: '#e0e7ff',
+    color: '#000000ff',
     marginBottom: 16,
   },
   searchContainer: {
@@ -377,107 +356,77 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   groupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
     cursor: 'pointer' as any,
   },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
   groupIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#eff6ff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 16,
     overflow: 'hidden',
   },
   groupImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   groupEmoji: {
-    fontSize: 20,
+    fontSize: 28,
     fontFamily: Font.regular,
   },
   groupInfo: {
     flex: 1,
+    marginRight: 12,
+  },
+  groupNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 8,
   },
   groupName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     fontFamily: Font.semiBold,
     color: '#333',
-    marginBottom: 2,
+    flex: 1,
   },
   groupDescription: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: Font.regular,
     color: '#666',
+    marginBottom: 4,
+  },
+  groupMemberCount: {
+    fontSize: 12,
+    fontFamily: Font.regular,
+    color: '#999',
   },
   creatorBadge: {
     backgroundColor: '#10b981',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   creatorText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     fontFamily: Font.semiBold,
     color: '#fff',
-  },
-  groupStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 8,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
-    color: '#2563eb',
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontFamily: Font.regular,
-    color: '#666',
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#e5e7eb',
-  },
-  groupFooter: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  groupFooterText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: Font.semiBold,
-    color: '#059669',
   },
   fabButton: {
     position: 'absolute',

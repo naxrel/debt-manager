@@ -1,3 +1,4 @@
+import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
 import { Debt, GroupTransaction, StaticDB } from '@/data/staticDatabase';
@@ -11,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 type TransactionItem = 
   | { type: 'personal'; data: Debt }
@@ -19,7 +21,7 @@ type TransactionItem =
 export default function HistoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { debts, isLoading, refreshDebts, getHutangList, getPiutangList } = useDebt();
+  const { debts, isLoading, refreshDebts } = useDebt();
   const [activeTab, setActiveTab] = useState<'all' | 'personal' | 'group'>('all');
   const [groupTransactions, setGroupTransactions] = useState<GroupTransaction[]>([]);
 
@@ -97,35 +99,46 @@ export default function HistoryScreen() {
         >
           <View style={styles.cardHeader}>
             <View style={styles.typeBadge}>
-              <Text style={styles.typeText}>Personal</Text>
-            </View>
-            {item.data.isPaid && <Text style={styles.paidBadge}>✓ Lunas</Text>}
-          </View>
-          <View style={styles.debtHeader}>
-            <View style={styles.debtNameContainer}>
-              <Text style={styles.debtName}>{item.data.name}</Text>
-              <Text
-                style={[
-                  styles.debtType,
-                  item.data.type === 'hutang' ? styles.hutangBadge : styles.piutangBadge,
-                ]}
-              >
+              <Text style={styles.typeBadgeText}>
                 {item.data.type === 'hutang' ? 'Hutang' : 'Piutang'}
               </Text>
             </View>
+            <Text style={styles.dateText}>{formatDate(item.data.date)}</Text>
           </View>
-          <Text style={styles.debtAmount}>{formatCurrency(item.data.amount)}</Text>
-          <Text style={styles.debtDate}>{formatDate(item.data.date)}</Text>
-          {item.data.description && (
-            <Text style={styles.debtDescription} numberOfLines={2}>
-              {item.data.description}
+          <View style={styles.cardContent}>
+            <View style={styles.cardLeft}>
+              <Text style={styles.debtName}>{item.data.name}</Text>
+              {item.data.description ? (
+                <Text style={styles.debtDescription}>{item.data.description}</Text>
+              ) : null}
+            </View>
+            <Text
+              style={[
+                styles.debtAmount,
+                item.data.type === 'hutang' ? styles.negativeAmount : styles.positiveAmount,
+              ]}
+            >
+              {item.data.type === 'hutang' ? '-' : '+'}
+              {formatCurrency(item.data.amount)}
             </Text>
-          )}
+          </View>
+          <View style={styles.statusContainer}>
+            <Text
+              style={[
+                styles.statusText,
+                item.data.status === 'confirmed' ? styles.confirmedStatus : styles.pendingStatus,
+              ]}
+            >
+              {item.data.status === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}
+            </Text>
+          </View>
         </TouchableOpacity>
       );
     } else {
       const fromUser = StaticDB.getUserById(item.data.fromUserId);
       const toUser = StaticDB.getUserById(item.data.toUserId);
+      const isUserPaying = user && item.data.fromUserId === user.id;
+
       return (
         <TouchableOpacity
           style={styles.debtCard}
@@ -134,34 +147,34 @@ export default function HistoryScreen() {
         >
           <View style={styles.cardHeader}>
             <View style={[styles.typeBadge, styles.groupBadge]}>
-              <Text style={styles.typeText}>Grup: {item.groupName}</Text>
+              <Text style={styles.typeBadgeText}>Group</Text>
             </View>
-            {item.data.isPaid && <Text style={styles.paidBadge}>✓ Lunas</Text>}
+            <Text style={styles.dateText}>{formatDate(item.data.date)}</Text>
           </View>
-          <View style={styles.groupTransactionInfo}>
-            <Text style={styles.transactionUsers}>
-              {fromUser?.name} → {toUser?.name}
+          <View style={styles.cardContent}>
+            <View style={styles.cardLeft}>
+              <Text style={styles.debtName}>{item.groupName}</Text>
+              <Text style={styles.debtDescription}>
+                {fromUser?.name} → {toUser?.name}
+              </Text>
+              {item.data.description ? (
+                <Text style={styles.debtDescription}>{item.data.description}</Text>
+              ) : null}
+            </View>
+            <Text
+              style={[
+                styles.debtAmount,
+                isUserPaying ? styles.negativeAmount : styles.positiveAmount,
+              ]}
+            >
+              {isUserPaying ? '-' : '+'}
+              {formatCurrency(item.data.amount)}
             </Text>
           </View>
-          <Text style={styles.debtAmount}>{formatCurrency(item.data.amount)}</Text>
-          <Text style={styles.debtDate}>{formatDate(item.data.date)}</Text>
-          {item.data.description && (
-            <Text style={styles.debtDescription} numberOfLines={2}>
-              {item.data.description}
-            </Text>
-          )}
         </TouchableOpacity>
       );
     }
   };
-
-  if (!user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.emptyText}>Silakan login terlebih dahulu</Text>
-      </View>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -176,7 +189,13 @@ export default function HistoryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+          </Svg>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>History Transaksi</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.tabContainer}>
@@ -248,15 +267,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#2563eb',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
     padding: 20,
     paddingTop: 60,
   },
+  backButton: {
+    width: 40,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
-    color: '#fff',
+    fontSize: 18,
+    fontFamily: Font.bold,
+    color: '#000000',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -277,8 +304,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
     color: '#666',
   },
   activeTabText: {
@@ -295,10 +321,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
-    cursor: 'pointer' as any,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -307,91 +332,70 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   typeBadge: {
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
+    backgroundColor: '#eff6ff',
   },
   groupBadge: {
-    backgroundColor: '#f3e8ff',
+    backgroundColor: '#f0fdf4',
   },
-  typeText: {
+  typeBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
     color: '#2563eb',
   },
-  groupTransactionInfo: {
-    marginBottom: 8,
+  dateText: {
+    fontSize: 12,
+    fontFamily: Font.regular,
+    color: '#9ca3af',
   },
-  transactionUsers: {
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
-    color: '#333',
-  },
-  debtHeader: {
+  cardContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 8,
   },
-  debtNameContainer: {
+  cardLeft: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginRight: 12,
   },
   debtName: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
-    color: '#333',
-  },
-  debtType: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  hutangBadge: {
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-  },
-  piutangBadge: {
-    backgroundColor: '#d1fae5',
-    color: '#059669',
-  },
-  paidBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
-    color: '#059669',
-    backgroundColor: '#d1fae5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  debtAmount: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  debtDate: {
-    fontSize: 12,
-    fontFamily: 'Biennale-Regular',
-    color: '#999',
+    fontFamily: Font.semiBold,
+    color: '#1f2937',
     marginBottom: 4,
   },
   debtDescription: {
-    fontSize: 14,
-    fontFamily: 'Biennale-Regular',
-    color: '#666',
-    marginTop: 4,
+    fontSize: 13,
+    fontFamily: Font.regular,
+    color: '#6b7280',
+  },
+  debtAmount: {
+    fontSize: 18,
+    fontFamily: Font.bold,
+  },
+  positiveAmount: {
+    color: '#10b981',
+  },
+  negativeAmount: {
+    color: '#ef4444',
+  },
+  statusContainer: {
+    alignItems: 'flex-start',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: Font.semiBold,
+  },
+  confirmedStatus: {
+    color: '#10b981',
+  },
+  pendingStatus: {
+    color: '#f59e0b',
   },
   emptyState: {
     flex: 1,
@@ -401,8 +405,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    fontFamily: 'Biennale-Regular',
-    color: '#999',
+    fontFamily: Font.regular,
+    color: '#9ca3af',
     marginBottom: 16,
   },
   addButton: {
@@ -412,9 +416,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+    color: '#ffffff',
   },
 });

@@ -7,20 +7,21 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Image,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Image,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -294,7 +295,9 @@ export default function GroupDetailScreen() {
               onPress={() => router.back()}
               activeOpacity={0.7}
             >
-              <Text style={styles.backButtonText}>← Kembali</Text>
+              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+              </Svg>
             </TouchableOpacity>
             <View style={styles.headerActions}>
               {user && group.creatorId === user.id ? (
@@ -347,7 +350,7 @@ export default function GroupDetailScreen() {
           <View style={styles.statRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.memberCount}</Text>
-              <Text style={styles.statLabel}>Anggota</Text>
+              <Text style={styles.statLabel}>Member</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.totalTransactions}</Text>
@@ -545,22 +548,6 @@ export default function GroupDetailScreen() {
           )}
         </View>
 
-        {/* Danger Zone - Only show to creator */}
-        {user && group.creatorId === user.id ? (
-          <View style={styles.dangerZone}>
-            <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
-            <Text style={styles.dangerZoneDescription}>
-              Menghapus grup akan menghapus semua transaksi di dalamnya
-            </Text>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={handleDeleteGroup}
-            >
-              <Text style={styles.deleteButtonText}>🗑️ Hapus Grup</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
         <View style={{ height: 80 }} />
       </ScrollView>
 
@@ -584,7 +571,7 @@ export default function GroupDetailScreen() {
           >
             <TouchableOpacity activeOpacity={1} style={{ flex: 1 }}>
               <View style={styles.drawerHeader}>
-                <Text style={styles.drawerTitle}>Anggota Grup</Text>
+                <Text style={styles.drawerTitle}>Member List</Text>
                 <TouchableOpacity onPress={closeMembersDrawer}>
                   <Text style={styles.drawerClose}>✕</Text>
                 </TouchableOpacity>
@@ -595,43 +582,95 @@ export default function GroupDetailScreen() {
                 contentContainerStyle={styles.drawerContentContainer}
                 showsVerticalScrollIndicator={false}
               >
-                {group?.memberIds.map(memberId => {
-                  const member = StaticDB.getUserById(memberId);
-                  if (!member) return null;
-                  const isCreator = group.creatorId === memberId;
+                {/* Creator Section */}
+                {(() => {
+                  const creator = StaticDB.getUserById(group.creatorId);
+                  if (!creator) return null;
                   return (
-                    <View key={memberId} style={styles.drawerMemberCard}>
-                      <View style={styles.memberInfo}>
-                        {member.profileImage ? (
-                          <Image 
-                            source={{ uri: member.profileImage }} 
-                            style={styles.memberAvatar} 
-                          />
-                        ) : (
-                          <View style={styles.memberAvatar}>
-                            <Text style={styles.memberAvatarText}>
-                              {member.name.charAt(0).toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                        <View>
-                          <Text style={styles.memberName}>{member.name}</Text>
-                          <Text style={styles.memberUsername}>@{member.username}</Text>
-                        </View>
+                    <View>
+                      <View style={styles.roleHeader}>
+                        <Text style={styles.roleTitle}>CREATOR — 1</Text>
                       </View>
-                      {isCreator ? (
-                        <View style={styles.creatorBadge}>
-                          <Text style={styles.creatorText}>Creator</Text>
+                      <TouchableOpacity 
+                        style={styles.memberItem}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.memberAvatarContainer}>
+                          {creator.profileImage ? (
+                            <Image 
+                              source={{ uri: creator.profileImage }} 
+                              style={styles.memberAvatar} 
+                            />
+                          ) : (
+                            <View style={styles.memberAvatar}>
+                              <Text style={styles.memberAvatarText}>
+                                {creator.name.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
                         </View>
-                      ) : null}
-                      {memberId === user.id && !isCreator ? (
-                        <View style={styles.youBadge}>
-                          <Text style={styles.youText}>Anda</Text>
+                        <View style={styles.memberTextContainer}>
+                          <Text style={styles.memberName}>
+                            {creator.name}
+                            {creator.id === user.id && (
+                              <Text style={styles.youIndicator}> (You)</Text>
+                            )}
+                          </Text>
+                          <Text style={styles.memberUsername}>@{creator.username}</Text>
                         </View>
-                      ) : null}
+                      </TouchableOpacity>
                     </View>
                   );
-                })}
+                })()}
+
+                {/* Members Section */}
+                {(() => {
+                  const members = group?.memberIds
+                    .filter(id => id !== group.creatorId)
+                    .map(id => StaticDB.getUserById(id))
+                    .filter(m => m !== undefined);
+                  
+                  if (!members || members.length === 0) return null;
+                  
+                  return (
+                    <View style={styles.roleSection}>
+                      <View style={styles.roleHeader}>
+                        <Text style={styles.roleTitle}>MEMBERS — {members.length}</Text>
+                      </View>
+                      {members.map(member => (
+                        <TouchableOpacity 
+                          key={member.id}
+                          style={styles.memberItem}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.memberAvatarContainer}>
+                            {member.profileImage ? (
+                              <Image 
+                                source={{ uri: member.profileImage }} 
+                                style={styles.memberAvatar} 
+                              />
+                            ) : (
+                              <View style={styles.memberAvatar}>
+                                <Text style={styles.memberAvatarText}>
+                                  {member.name.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <View style={styles.memberTextContainer}>
+                            <Text style={styles.memberName}>
+                              {member.name}
+                              {member.id === user.id && (
+                                <Text style={styles.youIndicator}> (You)</Text>
+                              )}
+                            </Text>
+                            <Text style={styles.memberUsername}>@{member.username}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  );
+                })()}
 
                 {/* Add Member Button - Only for creator */}
                 {user && group.creatorId === user.id ? (
@@ -642,7 +681,7 @@ export default function GroupDetailScreen() {
                       setTimeout(() => setShowAddMemberModal(true), 300);
                     }}
                   >
-                    <Text style={styles.addMemberButtonText}>Invite to Group</Text>
+                    <Text style={styles.addMemberButtonText}>+ Invite to Group</Text>
                   </TouchableOpacity>
                 ) : null}
               </ScrollView>
@@ -790,6 +829,24 @@ export default function GroupDetailScreen() {
                 <Text style={styles.deleteModalConfirmText}>Simpan</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Danger Zone - Delete Group */}
+            <View style={styles.editDangerZone}>
+              <Text style={styles.editDangerZoneTitle}>Danger Zone</Text>
+              <Text style={styles.editDangerZoneDescription}>
+                Menghapus grup akan menghapus semua transaksi di dalamnya
+              </Text>
+              <TouchableOpacity
+                style={styles.editDeleteButton}
+                onPress={() => {
+                  setShowEditModal(false);
+                  setTimeout(() => handleDeleteGroup(), 300);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.editDeleteButtonText}>🗑️ Hapus Grup</Text>
+              </TouchableOpacity>
+            </View>
               </View>
             </ScrollView>
           </TouchableOpacity>
@@ -879,7 +936,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#344170',
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 35,
     paddingBottom: 30,
   },
   headerTop: {
@@ -891,11 +948,7 @@ const styles = StyleSheet.create({
   backButton: {
     paddingVertical: 8,
   },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'Biennale-Regular',
-  },
+  
   membersButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 12,
@@ -905,15 +958,15 @@ const styles = StyleSheet.create({
   membersButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+     
     fontFamily: 'Biennale-SemiBold',
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+     
     color: '#fff',
     marginBottom: 8,
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   headerSubtitle: {
     fontSize: 14,
@@ -940,15 +993,14 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
     color: '#344170',
     marginBottom: 4,
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   statLabel: {
     fontSize: 12,
     color: '#666',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   section: {
     padding: 16,
@@ -972,19 +1024,17 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#344170',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   actionSection: {
     marginBottom: 16,
   },
   actionLabel: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 12,
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   debtCard: {
     backgroundColor: '#fff',
@@ -1007,15 +1057,15 @@ const styles = StyleSheet.create({
   },
   debtName: {
     fontSize: 16,
-    fontWeight: '600',
+     
     color: '#333',
     fontFamily: 'Biennale-SemiBold',
   },
   debtAmount: {
     fontSize: 18,
-    fontWeight: 'bold',
+     
     color: '#344170',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   emptyState: {
     alignItems: 'center',
@@ -1026,7 +1076,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 48,
     marginBottom: 16,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   emptyText: {
     fontSize: 18,
@@ -1050,37 +1100,32 @@ const styles = StyleSheet.create({
   },
   simplificationFromName: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     minWidth: 80,
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   simplificationArrow: {
     fontSize: 18,
     color: '#54638d',
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   simplificationToName: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     minWidth: 80,
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   simplificationEquals: {
     fontSize: 18,
     color: '#666',
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   simplificationAmount: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#10b981',
     flex: 1,
     textAlign: 'right',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   transactionList: {
     backgroundColor: '#fff',
@@ -1089,7 +1134,7 @@ const styles = StyleSheet.create({
   },
   transactionDateHeader: {
     fontSize: 13,
-    fontWeight: '600',
+     
     color: '#666',
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -1139,8 +1184,8 @@ const styles = StyleSheet.create({
   transactionIconText: {
     fontSize: 18,
     color: '#10b981',
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
+     
+    fontFamily: Font.bold,
   },
   transactionListContent: {
     flex: 1,
@@ -1155,10 +1200,10 @@ const styles = StyleSheet.create({
   },
   transactionListAmount: {
     fontSize: 16,
-    fontWeight: 'bold',
+     
     color: '#333',
     marginBottom: 2,
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   transactionListUsers: {
     fontSize: 13,
@@ -1194,7 +1239,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '600',
+     
     fontFamily: 'Biennale-SemiBold',
   },
   statusTextPaid: {
@@ -1218,30 +1263,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memberAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#344170',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   memberAvatarText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   memberName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
-    fontFamily: 'Biennale-SemiBold',
+    color: '#1f2937',
+    fontFamily: Font.semiBold,
+    marginBottom: 2,
   },
   memberUsername: {
+    fontSize: 12,
+    color: '#9ca3af',
+    fontFamily: Font.regular,
+  },
+  youIndicator: {
     fontSize: 13,
-    color: '#666',
-    fontFamily: 'Biennale-Regular',
+    fontWeight: '400',
+    color: '#6b7280',
+    fontFamily: Font.regular,
   },
   creatorBadge: {
     backgroundColor: '#10b981',
@@ -1253,7 +1304,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#fff',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   youBadge: {
     backgroundColor: '#f59e0b',
@@ -1265,7 +1316,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#fff',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   simplificationNote: {
     fontSize: 13,
@@ -1297,35 +1348,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingTop: 50,
-    backgroundColor: '#344170',
+    backgroundColor: '#000000ff',
   },
   drawerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    fontFamily: 'Biennale-Bold',
+    color: '#C3D1E6',
+    fontFamily: Font.bold,
   },
   drawerClose: {
     fontSize: 28,
     color: '#fff',
     fontWeight: '300',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   drawerContent: {
     flex: 1,
+    backgroundColor: '#f9fafb',
   },
   drawerContentContainer: {
-    padding: 16,
+    paddingVertical: 16,
     paddingBottom: 80,
   },
-  drawerMemberCard: {
+  roleSection: {
+    marginTop: 20,
+  },
+  roleHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  roleTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: Font.semiBold,
+    color: '#6b7280',
+    letterSpacing: 0.5,
+  },
+  memberItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'transparent',
+  },
+  memberAvatarContainer: {
+    marginRight: 12,
+  },
+  memberTextContainer: {
+    flex: 1,
   },
   fabButton: {
     position: 'absolute',
@@ -1347,7 +1416,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: '#fff',
     fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   dangerZone: {
     backgroundColor: '#fff',
@@ -1360,10 +1429,10 @@ const styles = StyleSheet.create({
   },
   dangerZoneTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+     
     color: '#dc2626',
     marginBottom: 8,
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   dangerZoneDescription: {
     fontSize: 13,
@@ -1380,7 +1449,7 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     fontSize: 15,
-    fontWeight: '600',
+     
     color: '#fff',
     fontFamily: 'Biennale-SemiBold',
   },
@@ -1400,11 +1469,11 @@ const styles = StyleSheet.create({
   },
   deleteModalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+     
     color: '#333',
     marginBottom: 16,
     justifyContent: 'center',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   deleteModalWarning: {
     fontSize: 14,
@@ -1424,7 +1493,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Biennale-Regular',
   },
   deleteModalGroupName: {
-    fontWeight: 'bold',
+     
     color: '#333',
   },
   deleteModalInput: {
@@ -1450,7 +1519,7 @@ const styles = StyleSheet.create({
   },
   deleteModalCancelText: {
     fontSize: 15,
-    fontWeight: '600',
+     
     color: '#666',
     fontFamily: 'Biennale-SemiBold',
   },
@@ -1467,23 +1536,23 @@ const styles = StyleSheet.create({
   },
   deleteModalConfirmText: {
     fontSize: 15,
-    fontWeight: '600',
+     
     color: '#fff',
     fontFamily: 'Biennale-SemiBold',
   },
   addMemberButton: {
     backgroundColor: '#10b981',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 20,
   },
   addMemberButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   errorText: {
     color: '#dc2626',
@@ -1504,7 +1573,7 @@ const styles = StyleSheet.create({
   editButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+     
     fontFamily: 'Biennale-SemiBold',
   },
   headerContent: {
@@ -1591,12 +1660,12 @@ const styles = StyleSheet.create({
   removeEditImageText: {
     color: '#dc2626',
     fontSize: 13,
-    fontWeight: '600',
+     
     fontFamily: 'Biennale-SemiBold',
   },
   editModalLabel: {
     fontSize: 14,
-    fontWeight: '600',
+     
     color: '#333',
     marginBottom: 8,
     marginTop: 8,
@@ -1605,5 +1674,39 @@ const styles = StyleSheet.create({
   editModalTextArea: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  editDangerZone: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#fee2e2',
+    backgroundColor: '#fef2f2',
+  },
+  editDangerZoneTitle: {
+    fontSize: 16,
+     
+    color: '#dc2626',
+    marginBottom: 8,
+    fontFamily: 'Biennale-Bold',
+  },
+  editDangerZoneDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 12,
+    fontFamily: 'Biennale-Regular',
+  },
+  editDeleteButton: {
+    backgroundColor: '#dc2626',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  editDeleteButtonText: {
+    fontSize: 15,
+     
+    color: '#fff',
+    fontFamily: 'Biennale-SemiBold',
   },
 });

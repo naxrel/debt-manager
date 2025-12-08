@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/AuthContext';
 import { DebtProvider } from '@/contexts/DebtContext';
+import { AppThemeProvider } from '@/contexts/ThemeContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // Keep splash screen visible while loading fonts
@@ -37,12 +38,13 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <DebtProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <AppThemeProvider>
+      <AuthProvider>
+        <DebtProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="auth/login" options={{ headerShown: false }} />
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
             <Stack.Screen name="debt/add" options={{ presentation: 'modal', title: 'Tambah Utang Piutang' }} />
@@ -53,10 +55,14 @@ export default function RootLayout() {
             <Stack.Screen name="group/create" options={{ headerShown: false }} />
             <Stack.Screen name="group/[id]/add-transaction" options={{ headerShown: false }} />
             <Stack.Screen name="all" options={{ headerShown: false }} />
+            <Stack.Screen name="history" options={{ headerShown: false }} />
+            <Stack.Screen name="profile" options={{ headerShown: false }} />
+            <Stack.Screen name="security" options={{ headerShown: false }} />
           </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </DebtProvider>
-    </AuthProvider>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </DebtProvider>
+      </AuthProvider>
+    </AppThemeProvider>
   );
 }

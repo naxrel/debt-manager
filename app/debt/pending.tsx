@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 export default function PendingApprovalsScreen() {
   const router = useRouter();
@@ -316,7 +317,9 @@ export default function PendingApprovalsScreen() {
           style={styles.backButton}
           activeOpacity={0.7}
         >
-          <Text style={styles.backButtonText}>← Kembali</Text>
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+          </Svg>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Persetujuan Pending</Text>
         <Text style={styles.headerSubtitle}>
