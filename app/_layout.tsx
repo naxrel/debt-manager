@@ -54,7 +54,7 @@ export default function RootLayout() {
             <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="group/create" options={{ headerShown: false }} />
             <Stack.Screen name="group/[id]/add-transaction" options={{ headerShown: false }} />
-            <Stack.Screen name="all" options={{ headerShown: false }} />
+            <Stack.Screen name="business-intelligence" options={{ headerShown: false }} />
             <Stack.Screen name="history" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false }} />
             <Stack.Screen name="security" options={{ headerShown: false }} />

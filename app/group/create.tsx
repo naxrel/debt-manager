@@ -1,3 +1,4 @@
+import { Font } from '@/constants/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -149,7 +150,7 @@ export default function CreateGroup() {
         >
           <Text style={styles.cancelButton}>Batal</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Buat Grup Baru</Text>
+        <Text style={styles.title}>Create new group</Text>
         <View style={{ width: 50 }} />
       </View>
 
@@ -157,9 +158,6 @@ export default function CreateGroup() {
         {/* Group Profile Picture */}
         <View style={styles.section}>
           <Text style={styles.label}>Foto Profil Grup (Opsional)</Text>
-          <Text style={styles.hint}>
-            Jika tidak diisi, akan menggunakan emoji 👥 sebagai default
-          </Text>
           <TouchableOpacity
             style={styles.imagePickerContainer}
             onPress={handlePickImage}
@@ -341,8 +339,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   content: {
     flex: 1,
@@ -353,16 +350,15 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
     marginBottom: 8,
     color: '#333',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   hint: {
     fontSize: 13,
     color: '#666',
     marginBottom: 12,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   input: {
     backgroundColor: '#fff',

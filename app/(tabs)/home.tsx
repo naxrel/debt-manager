@@ -246,7 +246,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => router.push('/all')}
+          onPress={() => router.push('/business-intelligence')}
         >
           <Text style={styles.actionButtonIcon}>📈</Text>
           <Text style={styles.actionButtonText}>Summary</Text>

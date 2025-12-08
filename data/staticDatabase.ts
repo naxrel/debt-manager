@@ -51,6 +51,20 @@ export interface GroupTransaction {
   createdBy: string; // User yang menginput transaksi ini
 }
 
+export interface SettlementRequest {
+  id: string;
+  groupId: string;
+  fromUserId: string; // User yang membayar (penghutang)
+  toUserId: string; // User yang menerima (pemberi hutang)
+  amount: number;
+  description: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  rejectionReason?: string;
+}
+
 // Database Users (Static)
 export const STATIC_USERS: User[] = [
   {
@@ -198,23 +212,12 @@ export const STATIC_GROUPS: DebtGroup[] = [
 
 // Database Group Transactions (Static)
 export const STATIC_GROUP_TRANSACTIONS: GroupTransaction[] = [
-  // Group 1 transactions
+  // Group 1 transactions - Tim Project A
   {
     id: 'gt1',
     groupId: 'g1',
-    fromUserId: '1',
-    toUserId: '2',
-    amount: 200000,
-    description: 'Bayar hosting server',
-    date: '2025-12-06T14:30:00',
-    isPaid: false,
-    createdBy: '1',
-  },
-  {
-    id: 'gt2',
-    groupId: 'g1',
-    fromUserId: '2',
-    toUserId: '3',
+    fromUserId: '2', // John
+    toUserId: '3', // Jane
     amount: 300000,
     description: 'Bayar design UI/UX',
     date: '2025-12-05T10:15:00',
@@ -222,15 +225,26 @@ export const STATIC_GROUP_TRANSACTIONS: GroupTransaction[] = [
     createdBy: '2',
   },
   {
+    id: 'gt2',
+    groupId: 'g1',
+    fromUserId: '3', // Jane
+    toUserId: '1', // Admin
+    amount: 150000,
+    description: 'Bayar hosting server',
+    date: '2025-12-06T14:30:00',
+    isPaid: false,
+    createdBy: '3',
+  },
+  {
     id: 'gt3',
     groupId: 'g1',
-    fromUserId: '3',
-    toUserId: '1',
-    amount: 150000,
-    description: 'Bayar domain',
-    date: '2025-12-06T09:20:00',
-    isPaid: true,
-    createdBy: '3',
+    fromUserId: '1', // Admin
+    toUserId: '2', // John
+    amount: 200000,
+    description: 'Bayar lisensi software',
+    date: '2025-12-07T09:00:00',
+    isPaid: false,
+    createdBy: '1',
   },
   // Group 2 transactions
   {
@@ -263,6 +277,7 @@ export class StaticDB {
   private static debts: Debt[] = [...STATIC_DEBTS];
   private static groups: DebtGroup[] = [...STATIC_GROUPS];
   private static groupTransactions: GroupTransaction[] = [...STATIC_GROUP_TRANSACTIONS];
+  private static settlementRequests: SettlementRequest[] = [];
 
   // User operations
   static getUsers(): User[] {
@@ -675,11 +690,155 @@ export class StaticDB {
     return { success: true };
   }
 
+  // Settlement Request operations
+  static createSettlementRequest(
+    groupId: string,
+    fromUserId: string,
+    toUserId: string,
+    amount: number,
+    description: string
+  ): { success: boolean; request?: SettlementRequest; error?: string } {
+    const group = this.getGroupById(groupId);
+    if (!group) {
+      return { success: false, error: 'Grup tidak ditemukan' };
+    }
+
+    if (!group.memberIds.includes(fromUserId) || !group.memberIds.includes(toUserId)) {
+      return { success: false, error: 'User bukan anggota grup' };
+    }
+
+    // Check for duplicate pending request
+    const existingPendingRequest = this.settlementRequests.find(
+      r => r.status === 'pending' &&
+           r.groupId === groupId &&
+           r.fromUserId === fromUserId &&
+           r.toUserId === toUserId &&
+           r.amount === amount
+    );
+
+    if (existingPendingRequest) {
+      return { success: false, error: 'Request pelunasan dengan nominal yang sama sudah ada dan masih pending. Tunggu approval terlebih dahulu.' };
+    }
+
+    const newRequest: SettlementRequest = {
+      id: `sr${Date.now()}`,
+      groupId,
+      fromUserId,
+      toUserId,
+      amount,
+      description,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.settlementRequests.push(newRequest);
+    return { success: true, request: newRequest };
+  }
+
+  static getSettlementRequest(id: string): SettlementRequest | undefined {
+    return this.settlementRequests.find(r => r.id === id);
+  }
+
+  static getPendingSettlementRequests(userId: string, groupId?: string): SettlementRequest[] {
+    return this.settlementRequests.filter(
+      r => r.status === 'pending' && 
+      r.toUserId === userId && 
+      (!groupId || r.groupId === groupId)
+    );
+  }
+
+  static getMySettlementRequests(userId: string, groupId?: string): SettlementRequest[] {
+    return this.settlementRequests.filter(
+      r => r.fromUserId === userId && 
+      (!groupId || r.groupId === groupId)
+    );
+  }
+
+  // Helper function for currency formatting
+  private static formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  }
+
+  static approveSettlementRequest(
+    requestId: string,
+    userId: string
+  ): { success: boolean; transaction?: GroupTransaction; error?: string } {
+    const request = this.getSettlementRequest(requestId);
+    if (!request) {
+      return { success: false, error: 'Request tidak ditemukan' };
+    }
+
+    if (request.toUserId !== userId) {
+      return { success: false, error: 'Anda tidak berhak approve request ini' };
+    }
+
+    if (request.status !== 'pending') {
+      return { success: false, error: 'Request sudah di-review' };
+    }
+
+    // Update request status
+    request.status = 'approved';
+    request.reviewedAt = new Date().toISOString();
+    request.reviewedBy = userId;
+
+    // Create settlement transaction with reversed direction to cancel the debt
+    // Original: fromUser owes toUser (fromUser → toUser)
+    // Settlement: fromUser pays toUser, so we create reverse transaction (toUser → fromUser) with isPaid=true
+    // This will offset the balance: original debt + reverse payment = 0
+    const transactionResult = this.addGroupTransaction({
+      groupId: request.groupId,
+      fromUserId: request.toUserId, // REVERSED: receiver becomes sender
+      toUserId: request.fromUserId,   // REVERSED: sender becomes receiver  
+      amount: request.amount,
+      description: `✓ ${request.description}`,
+      date: new Date().toISOString(),
+      isPaid: false, // Mark as unpaid so it counts in balance calculation to offset the debt
+      createdBy: request.fromUserId,
+    });
+
+    if (!transactionResult.success) {
+      return { success: false, error: transactionResult.error };
+    }
+
+    return { success: true, transaction: transactionResult.transaction };
+  }
+
+  static rejectSettlementRequest(
+    requestId: string,
+    userId: string,
+    reason: string
+  ): { success: boolean; error?: string } {
+    const request = this.getSettlementRequest(requestId);
+    if (!request) {
+      return { success: false, error: 'Request tidak ditemukan' };
+    }
+
+    if (request.toUserId !== userId) {
+      return { success: false, error: 'Anda tidak berhak reject request ini' };
+    }
+
+    if (request.status !== 'pending') {
+      return { success: false, error: 'Request sudah di-review' };
+    }
+
+    request.status = 'rejected';
+    request.reviewedAt = new Date().toISOString();
+    request.reviewedBy = userId;
+    request.rejectionReason = reason;
+
+    return { success: true };
+  }
+
   // Reset database to initial state
   static reset(): void {
     this.users = [...STATIC_USERS];
     this.debts = [...STATIC_DEBTS];
     this.groups = [...STATIC_GROUPS];
     this.groupTransactions = [...STATIC_GROUP_TRANSACTIONS];
+    this.settlementRequests = [];
   }
 }

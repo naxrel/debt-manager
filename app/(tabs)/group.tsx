@@ -103,19 +103,19 @@ export default function GroupScreen() {
           </View>
         </View>
 
-        {/* Quick Action to View All Users Optimization */}
+        {/* Quick Action to Business Intelligence */}
         <TouchableOpacity
           style={styles.optimizationCard}
-          onPress={() => router.push('/all')}
+          onPress={() => router.push('/business-intelligence')}
           activeOpacity={0.7}
         >
           <View style={styles.optimizationIcon}>
-            <Text style={styles.optimizationEmoji}>🌐</Text>
+            <Text style={styles.optimizationEmoji}>📊</Text>
           </View>
           <View style={styles.optimizationContent}>
-            <Text style={styles.optimizationTitle}>Optimasi Semua User</Text>
+            <Text style={styles.optimizationTitle}>Business Intelligence</Text>
             <Text style={styles.optimizationSubtitle}>
-              Lihat optimasi hutang untuk semua user aplikasi
+              Analisis mendalam tentang keuangan dan risiko Anda
             </Text>
           </View>
           <Text style={styles.arrow}>→</Text>

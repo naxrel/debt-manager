@@ -7,19 +7,19 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Image,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -42,6 +42,12 @@ export default function GroupDetailScreen() {
   const [editGroupName, setEditGroupName] = useState('');
   const [editGroupDescription, setEditGroupDescription] = useState('');
   const [editGroupImage, setEditGroupImage] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<OptimizedDebt | null>(null);
+  const [paymentDescription, setPaymentDescription] = useState('');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationAmount, setCelebrationAmount] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
 
   // Auto refresh when screen comes into focus
   useFocusEffect(
@@ -55,7 +61,7 @@ export default function GroupDetailScreen() {
   }, [id]);
 
   const loadGroupData = () => {
-    if (!id) return;
+    if (!id || !user) return;
 
     const groupData = StaticDB.getGroupById(id);
     if (!groupData) {
@@ -66,6 +72,10 @@ export default function GroupDetailScreen() {
     }
 
     setGroup(groupData);
+    
+    // Load pending settlement requests for current user
+    const pending = StaticDB.getPendingSettlementRequests(user.id, id);
+    setPendingRequests(pending);
     const groupTransactions = StaticDB.getGroupTransactions(id);
     setTransactions(groupTransactions);
 
@@ -82,8 +92,18 @@ export default function GroupDetailScreen() {
       balanceMap.set(memberId, 0);
     });
 
-    // Calculate net balance for each member
-    groupTransactions.forEach(t => {
+    // Calculate net balance for each member (only unpaid transactions)
+    const unpaidTransactions = groupTransactions.filter(t => !t.isPaid);
+    console.log('Total Transactions:', groupTransactions.length);
+    console.log('Unpaid Transactions:', unpaidTransactions.length);
+    console.log('Unpaid Details:', unpaidTransactions.map(t => ({
+      from: StaticDB.getUserById(t.fromUserId)?.name,
+      to: StaticDB.getUserById(t.toUserId)?.name,
+      amount: t.amount,
+      isPaid: t.isPaid
+    })));
+    
+    unpaidTransactions.forEach(t => {
       // fromUser owes money (negative balance)
       const fromBalance = balanceMap.get(t.fromUserId) || 0;
       balanceMap.set(t.fromUserId, fromBalance - t.amount);
@@ -261,6 +281,129 @@ export default function GroupDetailScreen() {
     }
   };
 
+  const handlePayDebt = (debt: OptimizedDebt) => {
+    setSelectedDebt(debt);
+    setPaymentDescription(`Settlement: ${debt.fromName} → ${debt.toName}`);
+    setShowPaymentModal(true);
+  };
+
+  const confirmPayment = () => {
+    if (!selectedDebt || !group || !user) return;
+
+    // Create settlement request instead of direct transaction
+    const result = StaticDB.createSettlementRequest(
+      group.id,
+      selectedDebt.from,
+      selectedDebt.to,
+      selectedDebt.amount,
+      paymentDescription.trim() || `Settlement: ${selectedDebt.fromName} → ${selectedDebt.toName}`
+    );
+
+    if (result.success) {
+      setShowPaymentModal(false);
+      setSelectedDebt(null);
+      setPaymentDescription('');
+      loadGroupData();
+      
+      if (Platform.OS === 'web') {
+        alert('Request pelunasan berhasil dikirim! Menunggu approval dari penerima. ⏳');
+      } else {
+        Alert.alert('Berhasil', 'Request pelunasan berhasil dikirim! Menunggu approval dari penerima. ⏳');
+      }
+    } else {
+      if (Platform.OS === 'web') {
+        alert(result.error || 'Gagal mengirim request');
+      } else {
+        Alert.alert('Error', result.error || 'Gagal mengirim request');
+      }
+    }
+  };
+
+  const handleApproveSettlement = (requestId: string, amount: number) => {
+    if (!user) return;
+
+    console.log('Approving settlement request:', requestId);
+    const result = StaticDB.approveSettlementRequest(requestId, user.id);
+    console.log('Approval result:', result);
+
+    if (result.success) {
+      // Show celebration first
+      setCelebrationAmount(amount);
+      setShowCelebration(true);
+      
+      // Reload data immediately to update optimized debts (remove settled amount)
+      setTimeout(() => {
+        console.log('Reloading group data after approval...');
+        loadGroupData();
+      }, 100);
+      
+      // Hide celebration after 3 seconds and reload again to ensure sync
+      setTimeout(() => {
+        setShowCelebration(false);
+        console.log('Final reload after celebration...');
+        loadGroupData();
+      }, 3000);
+    } else {
+      if (Platform.OS === 'web') {
+        alert(result.error || 'Gagal approve request');
+      } else {
+        Alert.alert('Error', result.error || 'Gagal approve request');
+      }
+    }
+  };
+
+  const handleRejectSettlement = (requestId: string) => {
+    if (!user) return;
+
+    // Web compatibility
+    if (Platform.OS === 'web') {
+      const reason = window.prompt('Alasan reject (opsional):');
+      if (reason === null) return; // User clicked cancel
+      
+      const result = StaticDB.rejectSettlementRequest(
+        requestId,
+        user.id,
+        reason || 'Tidak ada alasan'
+      );
+
+      if (result.success) {
+        loadGroupData();
+        alert('Request ditolak');
+      } else {
+        alert(result.error || 'Gagal reject request');
+      }
+      return;
+    }
+
+    // Mobile (iOS/Android)
+    Alert.prompt(
+      'Reject Settlement',
+      'Alasan reject (opsional):',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: (reason?: string) => {
+            const result = StaticDB.rejectSettlementRequest(
+              requestId,
+              user.id,
+              reason || 'Tidak ada alasan'
+            );
+
+            if (result.success) {
+              loadGroupData();
+              Alert.alert('Berhasil', 'Request ditolak');
+            } else {
+              Alert.alert('Error', result.error || 'Gagal reject request');
+            }
+          },
+        },
+      ],
+      'plain-text'
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -280,8 +423,44 @@ export default function GroupDetailScreen() {
   const myOptimizedDebts = DebtOptimizer.getUserSuggestions(user.id, optimizedDebts);
   const stats = StaticDB.getGroupStatistics(group.id);
 
+  // Celebration Modal Component
+  const CelebrationModal = () => (
+    <Modal
+      visible={showCelebration}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowCelebration(false)}
+    >
+      <View style={styles.celebrationOverlay}>
+        <View style={styles.celebrationCard}>
+          <Text style={styles.celebrationTitle}>🎉 Pelunasan Disetujui! 🎉</Text>
+          <Text style={styles.celebrationAmount}>
+            {formatCurrency(celebrationAmount)}
+          </Text>
+          <Text style={styles.celebrationMessage}>
+            Hutang telah dilunasi dan dicatat!
+          </Text>
+          
+          {/* Simple bar graph */}
+          <View style={styles.graphContainer}>
+            <View style={styles.graphBar}>
+              <View 
+                style={[
+                  styles.graphFill,
+                  { width: '100%' }
+                ]}
+              />
+            </View>
+            <Text style={styles.graphLabel}>Nominal Pelunasan</Text>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <View style={styles.container}>
+      <CelebrationModal />
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -363,6 +542,60 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
+        {/* Pending Settlement Requests */}
+        {pendingRequests.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.settlementRequestHeader}>
+              <Text style={styles.sectionTitle}>⏳ Pending Approval</Text>
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingBadgeText}>{pendingRequests.length}</Text>
+              </View>
+            </View>
+            {pendingRequests.map((request) => {
+              const fromUser = StaticDB.getUserById(request.fromUserId);
+              return (
+                <View key={request.id} style={styles.settlementRequestCard}>
+                  <View style={styles.settlementRequestInfo}>
+                    <Text style={styles.settlementRequestTitle}>
+                      💸 {fromUser?.name} ingin melunasi
+                    </Text>
+                    <Text style={styles.settlementRequestAmount}>
+                      {formatCurrency(request.amount)}
+                    </Text>
+                    <Text style={styles.settlementRequestDescription}>
+                      {request.description}
+                    </Text>
+                    <Text style={styles.settlementRequestDate}>
+                      {new Date(request.createdAt).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
+                  <View style={styles.settlementRequestActions}>
+                    <TouchableOpacity
+                      style={styles.approveButton}
+                      onPress={() => handleApproveSettlement(request.id, request.amount)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.approveButtonText}>✓ Terima</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rejectButton}
+                      onPress={() => handleRejectSettlement(request.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rejectButtonText}>✕ Tolak</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         {/* My Actions in this Group */}
         {(myOptimizedDebts.shouldPay.length > 0 ||
           myOptimizedDebts.willReceive.length > 0) ? (
@@ -375,10 +608,19 @@ export default function GroupDetailScreen() {
                 {myOptimizedDebts.shouldPay.map((debt, index) => (
                   <View key={index} style={[styles.debtCard, styles.payCard]}>
                     <View style={styles.debtHeader}>
-                      <Text style={styles.debtName}>{debt.toName}</Text>
-                      <Text style={styles.debtAmount}>
-                        {formatCurrency(debt.amount)}
-                      </Text>
+                      <View style={styles.debtInfo}>
+                        <Text style={styles.debtName}>{debt.toName}</Text>
+                        <Text style={styles.debtAmount}>
+                          {formatCurrency(debt.amount)}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.payButton}
+                        onPress={() => handlePayDebt(debt)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.payButtonText}>💸 Bayar</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 ))}
@@ -427,19 +669,24 @@ export default function GroupDetailScreen() {
             </View>
           ) : (
             <View style={styles.simplificationList}>
-              {optimizedDebts.map((debt, index) => (
-                <View key={index} style={styles.simplificationItem}>
-                  <View style={styles.simplificationRow}>
-                    <Text style={styles.simplificationFromName}>{debt.fromName}</Text>
-                    <Text style={styles.simplificationArrow}>→</Text>
-                    <Text style={styles.simplificationToName}>{debt.toName}</Text>
-                    <Text style={styles.simplificationEquals}>=</Text>
-                    <Text style={styles.simplificationAmount}>
-                      {formatCurrency(debt.amount).replace('Rp', '').trim()}
-                    </Text>
+              {optimizedDebts.map((debt, index) => {
+                const isUserInvolved = user && (debt.from === user.id || debt.to === user.id);
+                const canUserPay = user && debt.from === user.id;
+                
+                return (
+                  <View key={index} style={styles.simplificationItem}>
+                    <View style={styles.simplificationRow}>
+                      <Text style={styles.simplificationFromName}>{debt.fromName}</Text>
+                      <Text style={styles.simplificationArrow}>→</Text>
+                      <Text style={styles.simplificationToName}>{debt.toName}</Text>
+                      <Text style={styles.simplificationEquals}>=</Text>
+                      <Text style={styles.simplificationAmount}>
+                        {formatCurrency(debt.amount).replace('Rp', '').trim()}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -908,6 +1155,75 @@ export default function GroupDetailScreen() {
         </View>
       </Modal>
 
+      {/* Payment Confirmation Modal */}
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContainer}>
+            <Text style={styles.deleteModalTitle}>💸 Konfirmasi Pembayaran</Text>
+            
+            {selectedDebt && (
+              <>
+                <View style={styles.paymentSummary}>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Dari:</Text>
+                    <Text style={styles.paymentValue}>{selectedDebt.fromName}</Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Kepada:</Text>
+                    <Text style={styles.paymentValue}>{selectedDebt.toName}</Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Jumlah:</Text>
+                    <Text style={[styles.paymentValue, styles.paymentAmount]}>
+                      {formatCurrency(selectedDebt.amount)}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.editModalLabel}>Catatan (opsional):</Text>
+                <TextInput
+                  style={styles.deleteModalInput}
+                  value={paymentDescription}
+                  onChangeText={setPaymentDescription}
+                  placeholder="Contoh: Transfer BCA, Tunai, dll"
+                  placeholderTextColor="#999"
+                  multiline
+                />
+
+                <Text style={styles.paymentNote}>
+                  ℹ️ Pembayaran ini akan dicatat sebagai transaksi settlement dan akan menyeimbangkan hutang yang ada.
+                </Text>
+              </>
+            )}
+
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={styles.deleteModalCancelButton}
+                onPress={() => {
+                  setShowPaymentModal(false);
+                  setSelectedDebt(null);
+                  setPaymentDescription('');
+                }}
+              >
+                <Text style={styles.deleteModalCancelText}>Batal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.deleteModalConfirmButton, { backgroundColor: '#10b981' }]}
+                onPress={confirmPayment}
+              >
+                <Text style={styles.deleteModalConfirmText}>✓ Konfirmasi</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Add Transaction Button */}
       <TouchableOpacity
         style={styles.fabButton}
@@ -948,7 +1264,7 @@ const styles = StyleSheet.create({
   backButton: {
     paddingVertical: 8,
   },
-  
+
   membersButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 12,
@@ -1054,18 +1370,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
+  },
+  debtInfo: {
+    flex: 1,
   },
   debtName: {
     fontSize: 16,
      
     color: '#333',
     fontFamily: 'Biennale-SemiBold',
+    marginBottom: 4,
   },
   debtAmount: {
     fontSize: 18,
      
     color: '#344170',
     fontFamily: Font.bold,
+  },
+  payButton: {
+    backgroundColor: '#10b981',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  payButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: Font.semiBold,
   },
   emptyState: {
     alignItems: 'center',
@@ -1097,6 +1429,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 8,
+  },
+  quickPayButton: {
+    backgroundColor: '#ecfdf5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#10b981',
+    alignSelf: 'flex-start',
+  },
+  quickPayButtonText: {
+    color: '#10b981',
+    fontSize: 13,
+    fontFamily: Font.semiBold,
   },
   simplificationFromName: {
     fontSize: 16,
@@ -1708,5 +2055,185 @@ const styles = StyleSheet.create({
      
     color: '#fff',
     fontFamily: 'Biennale-SemiBold',
+  },
+  paymentSummary: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  paymentLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: Font.regular,
+  },
+  paymentValue: {
+    fontSize: 15,
+    color: '#333',
+    fontFamily: Font.semiBold,
+  },
+  paymentAmount: {
+    fontSize: 18,
+    color: '#10b981',
+    fontFamily: Font.bold,
+  },
+  paymentNote: {
+    fontSize: 12,
+    color: '#666',
+    backgroundColor: '#eff6ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    lineHeight: 18,
+    fontFamily: Font.regular,
+  },
+  // Settlement Request Styles
+  settlementRequestHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  pendingBadge: {
+    backgroundColor: '#fbbf24',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  pendingBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: Font.bold,
+  },
+  settlementRequestCard: {
+    backgroundColor: '#fffbeb',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#fbbf24',
+    padding: 16,
+    marginBottom: 12,
+  },
+  settlementRequestInfo: {
+    marginBottom: 12,
+  },
+  settlementRequestTitle: {
+    fontSize: 16,
+    color: '#333',
+    fontFamily: Font.semiBold,
+    marginBottom: 4,
+  },
+  settlementRequestAmount: {
+    fontSize: 24,
+    color: '#10b981',
+    fontFamily: Font.bold,
+    marginBottom: 4,
+  },
+  settlementRequestDescription: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: Font.regular,
+    marginBottom: 4,
+  },
+  settlementRequestDate: {
+    fontSize: 12,
+    color: '#999',
+    fontFamily: Font.regular,
+  },
+  settlementRequestActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  approveButton: {
+    flex: 1,
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  approveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+  },
+  rejectButton: {
+    flex: 1,
+    backgroundColor: '#ef4444',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  rejectButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+  },
+  // Celebration Modal Styles
+  celebrationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  celebrationCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 32,
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  celebrationTitle: {
+    fontSize: 24,
+    color: '#333',
+    fontFamily: Font.bold,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  celebrationAmount: {
+    fontSize: 36,
+    color: '#10b981',
+    fontFamily: Font.bold,
+    marginBottom: 8,
+  },
+  celebrationMessage: {
+    fontSize: 16,
+    color: '#666',
+    fontFamily: Font.regular,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  graphContainer: {
+    width: '100%',
+    marginTop: 16,
+  },
+  graphBar: {
+    height: 40,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  graphFill: {
+    height: '100%',
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+  },
+  graphLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: Font.semiBold,
+    textAlign: 'center',
   },
 });
