@@ -639,12 +639,18 @@ export class StaticDB {
       return { success: false, error: 'Transaksi sudah di-approve atau reject' };
     }
 
+    // Get the name of the user who initiated the transaction
+    const initiator = this.getUserById(debt.userId);
+    if (!initiator) {
+      return { success: false, error: 'User pembuat transaksi tidak ditemukan' };
+    }
+
     // Create counterpart debt for the other user
     const counterpartDebt: Debt = {
       id: `d${Date.now()}_counter`,
       userId: debt.otherUserId!,
       type: debt.type === 'hutang' ? 'piutang' : 'hutang',
-      name: debt.name,
+      name: initiator.name, // Name of the person who created the transaction
       otherUserId: debt.userId,
       amount: debt.amount,
       description: debt.description,
