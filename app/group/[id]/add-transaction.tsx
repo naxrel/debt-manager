@@ -1,15 +1,17 @@
+import { Font } from '@/constants/theme';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../contexts/AuthContext';
 import { StaticDB, User } from '../../../data/staticDatabase';
@@ -89,11 +91,13 @@ export default function AddGroupTransaction() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.cancelButton}>Batal</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+            <Path stroke="#007AFF" strokeWidth="2" d="m15 6-6 6 6 6" />
+          </Svg>
         </TouchableOpacity>
-        <Text style={styles.title}>Tambah Transaksi</Text>
-        <View style={{ width: 50 }} />
+        <Text style={styles.title}>Add Transaction</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -105,7 +109,7 @@ export default function AddGroupTransaction() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Dari (Yang Berhutang) *</Text>
+          <Text style={styles.label}>From</Text>
           <View style={styles.memberList}>
             {members.map(member => (
               <TouchableOpacity
@@ -148,7 +152,7 @@ export default function AddGroupTransaction() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Ke (Yang Memberi Pinjaman) *</Text>
+          <Text style={styles.label}>To</Text>
           <View style={styles.memberList}>
             {members.map(member => (
               <TouchableOpacity
@@ -191,7 +195,7 @@ export default function AddGroupTransaction() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Jumlah (Rp) *</Text>
+          <Text style={styles.label}>Amount</Text>
           <TextInput
             style={styles.input}
             placeholder="0"
@@ -203,10 +207,10 @@ export default function AddGroupTransaction() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Deskripsi *</Text>
+          <Text style={styles.label}>Notes</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Contoh: Bayar makan siang, Tiket pesawat"
+            placeholder="Mr. Din chicken... etc"
             placeholderTextColor="#999"
             value={description}
             onChangeText={setDescription}
@@ -239,7 +243,7 @@ export default function AddGroupTransaction() {
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Tambah Transaksi</Text>
+            <Text style={styles.submitButtonText}>Done</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -262,15 +266,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  cancelButton: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontFamily: 'Biennale-Regular',
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   content: {
     flex: 1,
@@ -284,25 +288,23 @@ const styles = StyleSheet.create({
   },
   groupName: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#1e40af',
     marginBottom: 4,
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   groupDescription: {
     fontSize: 14,
     color: '#60a5fa',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   section: {
     marginBottom: 24,
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
     marginBottom: 12,
     color: '#333',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   memberList: {
     gap: 8,
@@ -341,8 +343,7 @@ const styles = StyleSheet.create({
   avatarText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   avatarTextSelected: {
     color: '#fff',
@@ -351,12 +352,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   memberUsername: {
     fontSize: 13,
     color: '#666',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   checkmark: {
     width: 24,
@@ -369,8 +370,7 @@ const styles = StyleSheet.create({
   checkmarkText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   input: {
     backgroundColor: '#fff',
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 15,
     fontSize: 16,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   textArea: {
     minHeight: 80,
@@ -403,14 +403,13 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   emptyText: {
     fontSize: 16,
     color: '#999',
     textAlign: 'center',
     marginTop: 40,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
 });

@@ -6,13 +6,13 @@ import { Debt, StaticDB } from '@/data/staticDatabase';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    FlatList,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -83,9 +83,9 @@ export default function HomeScreen() {
   // Total balance (personal + group)
   const balance = personalBalance + groupBalance;
   
-  // Filter debts by type for tabs
-  const receiveDebts = debts.filter(d => !d.isPaid && d.type === 'piutang' && d.status === 'confirmed');
-  const toPayDebts = debts.filter(d => !d.isPaid && d.type === 'hutang' && d.status === 'confirmed');
+  // Filter debts by type for tabs (include settlement_requested agar tetap muncul di list)
+  const receiveDebts = debts.filter(d => !d.isPaid && d.type === 'piutang' && (d.status === 'confirmed' || d.status === 'settlement_requested'));
+  const toPayDebts = debts.filter(d => !d.isPaid && d.type === 'hutang' && (d.status === 'confirmed' || d.status === 'settlement_requested'));
   
   // Get debts based on active tab
   const displayDebts = activeTab === 'receive' ? receiveDebts : toPayDebts;

@@ -1,18 +1,29 @@
+import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+
+const COLORS = {
+  primary: '#2563eb',
+  disabled: '#93c5fd',
+  border: '#ddd',
+  background: '#f5f5f5',
+  inputPlaceholder: '#9ca3af',
+  label: '#333',
+  white: '#fff',
+};
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState('');
@@ -67,18 +78,18 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          <Text style={styles.title}>Daftar</Text>
-          <Text style={styles.subtitle}>Buat akun baru</Text>
+          <Text style={styles.title}>Register</Text>
 
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nama Lengkap</Text>
+              <Text style={styles.label}>Full name</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Masukkan nama lengkap"
+                placeholder="Your name"
                 value={name}
                 onChangeText={setName}
                 editable={!isLoading}
+                placeholderTextColor={COLORS.inputPlaceholder}
               />
             </View>
 
@@ -86,12 +97,13 @@ export default function RegisterScreen() {
               <Text style={styles.label}>Email</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Masukkan email"
+                placeholder="name@example.com"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!isLoading}
+                placeholderTextColor={COLORS.inputPlaceholder}
               />
             </View>
 
@@ -99,11 +111,12 @@ export default function RegisterScreen() {
               <Text style={styles.label}>Username</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Masukkan username"
+                placeholder="Your username"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
                 editable={!isLoading}
+                placeholderTextColor={COLORS.inputPlaceholder}
               />
             </View>
 
@@ -111,23 +124,25 @@ export default function RegisterScreen() {
               <Text style={styles.label}>Password</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Masukkan password (min. 6 karakter)"
+                placeholder="Password of 6 characters or more"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
                 editable={!isLoading}
+                placeholderTextColor={COLORS.inputPlaceholder}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Konfirmasi Password</Text>
+              <Text style={styles.label}>Password confirmation</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Masukkan ulang password"
+                placeholder="Re-type your password"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
                 editable={!isLoading}
+                placeholderTextColor={COLORS.inputPlaceholder}
               />
             </View>
 
@@ -139,13 +154,13 @@ export default function RegisterScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Daftar</Text>
+                <Text style={styles.buttonText}>Sign Up</Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={goToLogin} disabled={isLoading}>
               <Text style={styles.linkText}>
-                Sudah punya akun? <Text style={styles.linkBold}>Login</Text>
+                Already have an account? <Text style={styles.linkBold}>Log In</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -158,7 +173,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -170,19 +185,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 36,
-    fontWeight: 'bold',
-    color: '#2563eb',
+    fontFamily: Font.bold,
+    color: COLORS.primary,
     textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 25,
+
   },
   formContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 24,
     shadowColor: '#000',
@@ -196,41 +206,43 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: Font.semiBold,
+    color: COLORS.label,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
+    fontFamily: Font.regular,
   },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: COLORS.primary,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: COLORS.disabled,
   },
   buttonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Font.bold,
   },
   linkText: {
     textAlign: 'center',
     marginTop: 24,
     fontSize: 14,
+    fontFamily: Font.regular,
     color: '#666',
   },
   linkBold: {
-    color: '#2563eb',
-    fontWeight: '600',
+    color: COLORS.primary,
+    fontFamily: Font.bold,
   },
 });

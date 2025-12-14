@@ -3,15 +3,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
 import { Debt, GroupTransaction, StaticDB } from '@/data/staticDatabase';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
 type TransactionItem = 
@@ -25,14 +26,7 @@ export default function HistoryScreen() {
   const [activeTab, setActiveTab] = useState<'all' | 'personal' | 'group'>('all');
   const [groupTransactions, setGroupTransactions] = useState<GroupTransaction[]>([]);
 
-  useEffect(() => {
-    if (user) {
-      refreshDebts();
-      loadGroupTransactions();
-    }
-  }, [user]);
-
-  const loadGroupTransactions = () => {
+  const loadGroupTransactions = useCallback(() => {
     if (!user) return;
     const userGroups = StaticDB.getUserGroups(user.id);
     const allTransactions: GroupTransaction[] = [];
@@ -41,7 +35,14 @@ export default function HistoryScreen() {
       allTransactions.push(...groupTrans);
     });
     setGroupTransactions(allTransactions);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      refreshDebts();
+      loadGroupTransactions();
+    }
+  }, [user, refreshDebts, loadGroupTransactions]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -82,17 +83,18 @@ export default function HistoryScreen() {
         return groupTransactionItems;
       default:
         return [...personalTransactions, ...groupTransactionItems].sort((a, b) => {
-          const dateA = a.type === 'personal' ? a.data.date : a.data.date;
-          const dateB = b.type === 'personal' ? b.data.date : b.data.date;
-          return new Date(dateB).getTime() - new Date(dateA).getTime();
+          return new Date(b.data.date).getTime() - new Date(a.data.date).getTime();
         });
     }
   };
 
-  const renderTransactionItem = ({ item }: { item: TransactionItem }) => {
+  const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+  const renderTransactionItem = ({ item, index }: { item: TransactionItem; index: number }) => {
     if (item.type === 'personal') {
       return (
-        <TouchableOpacity
+        <AnimatedTouchable
+          entering={FadeInDown.delay(index * 50).duration(300).easing(Easing.out(Easing.ease))}
           style={styles.debtCard}
           onPress={() => router.push(`/debt/detail?id=${item.data.id}`)}
           activeOpacity={0.7}
@@ -132,7 +134,7 @@ export default function HistoryScreen() {
               {item.data.status === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}
             </Text>
           </View>
-        </TouchableOpacity>
+        </AnimatedTouchable>
       );
     } else {
       const fromUser = StaticDB.getUserById(item.data.fromUserId);
@@ -140,7 +142,8 @@ export default function HistoryScreen() {
       const isUserPaying = user && item.data.fromUserId === user.id;
 
       return (
-        <TouchableOpacity
+        <AnimatedTouchable
+          entering={FadeInDown.delay(index * 50).duration(300).easing(Easing.out(Easing.ease))}
           style={styles.debtCard}
           onPress={() => router.push(`/group/${item.data.groupId}`)}
           activeOpacity={0.7}
@@ -171,7 +174,7 @@ export default function HistoryScreen() {
               {formatCurrency(item.data.amount)}
             </Text>
           </View>
-        </TouchableOpacity>
+        </AnimatedTouchable>
       );
     }
   };
@@ -186,6 +189,17 @@ export default function HistoryScreen() {
 
   const filteredTransactions = getFilteredTransactions();
 
+  // Animated FAB
+  const Fab = ({ onPress }: { onPress: () => void }) => (
+    <AnimatedTouchable
+      style={styles.fab}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.fabText}>+</Text>
+    </AnimatedTouchable>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -194,7 +208,7 @@ export default function HistoryScreen() {
             <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>History Transaksi</Text>
+        <Text style={styles.headerTitle}>History Transaction</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -205,7 +219,7 @@ export default function HistoryScreen() {
           activeOpacity={0.7}
         >
           <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
-            Semua ({debts.length + groupTransactions.length})
+            All ({debts.length + groupTransactions.length})
           </Text>
         </TouchableOpacity>
 
@@ -232,14 +246,7 @@ export default function HistoryScreen() {
 
       {filteredTransactions.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Tidak ada transaksi</Text>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => router.push('/debt/add')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.addButtonText}>+ Tambah Transaksi</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyText}>No transactions yet</Text>
         </View>
       ) : (
         <FlatList
@@ -251,6 +258,7 @@ export default function HistoryScreen() {
           contentContainerStyle={styles.listContent}
         />
       )}
+      <Fab onPress={() => router.push('/debt/add')} />
     </View>
   );
 }
@@ -324,6 +332,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    // Animation: scale on press/hover (web)
+    transitionProperty: 'transform, box-shadow',
+    transitionDuration: '200ms',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -415,9 +426,28 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
   },
-  addButtonText: {
-    fontSize: 14,
-    fontFamily: Font.semiBold,
-    color: '#ffffff',
+  fab: {
+    position: 'absolute',
+    right: 24,
+    bottom: 32,
+    backgroundColor: '#2563eb',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    // Animation
+    transitionProperty: 'transform, box-shadow',
+    transitionDuration: '200ms',
+  },
+  fabText: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
   },
 });

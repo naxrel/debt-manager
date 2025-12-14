@@ -6,33 +6,33 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
 import { Debt, StaticDB } from '@/data/staticDatabase';
 import {
-  analyzeConcentrationRisk,
-  analyzeDebtAge,
-  calculatePaymentCompliance,
-  calculateRiskScore,
-  calculateTrend,
-  detectOverdueDebts,
-  formatCurrency,
-  formatPercentage,
-  generateMonthlySnapshot,
-  generateRiskAlerts,
-  getFrequentCounterparties,
-  getHighestRiskDebtors,
-  getTopDebtors,
-  getTopLiabilities,
-  OverdueDebt,
-  RankingItem,
-  TrendData
+    analyzeConcentrationRisk,
+    analyzeDebtAge,
+    calculatePaymentCompliance,
+    calculateRiskScore,
+    calculateTrend,
+    detectOverdueDebts,
+    formatCurrency,
+    formatPercentage,
+    generateMonthlySnapshot,
+    generateRiskAlerts,
+    getFrequentCounterparties,
+    getHighestRiskDebtors,
+    getTopDebtors,
+    getTopLiabilities,
+    OverdueDebt,
+    RankingItem,
+    TrendData
 } from '@/utils/analyticsHelpers';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -150,7 +150,7 @@ export default function BusinessIntelligenceScreen() {
     const overdueDebts = detectOverdueDebts(allDebts);
 
     // Aging analysis for all unpaid debts
-    const unpaidDebts = allDebts.filter(d => !d.isPaid && d.status === 'confirmed');
+    const unpaidDebts = allDebts.filter(d => !d.isPaid && (d.status === 'confirmed' || d.status === 'settlement_requested'));
     const agingData = unpaidDebts.map(debt => ({
       debt,
       aging: analyzeDebtAge(debt),
@@ -175,7 +175,7 @@ export default function BusinessIntelligenceScreen() {
     // ============================================
 
     // Calculate risk scores for unpaid debts
-    const unpaidPiutang = allDebts.filter(d => !d.isPaid && d.status === 'confirmed' && d.type === 'piutang');
+    const unpaidPiutang = allDebts.filter(d => !d.isPaid && (d.status === 'confirmed' || d.status === 'settlement_requested') && d.type === 'piutang');
     const debtRiskScores = unpaidPiutang.map(debt => ({
       debt,
       riskScore: calculateRiskScore(debt, allDebts),

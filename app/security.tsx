@@ -3,17 +3,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 export default function SecurityScreen() {
   const router = useRouter();
@@ -91,7 +91,17 @@ export default function SecurityScreen() {
                 onPress={() => setShowCurrentPassword(!showCurrentPassword)}
                 style={styles.eyeButton}
               >
-                <Text style={styles.eyeIcon}>{showCurrentPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                {showCurrentPassword ? (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path stroke="#6b7280" strokeWidth="2" d="M6.887 5.172c.578-.578.867-.868 1.235-1.02S8.898 4 9.716 4h4.61c.826 0 1.239 0 1.61.155.37.155.66.45 1.239 1.037l1.674 1.699c.568.576.852.865 1.002 1.23.149.364.149.768.149 1.578v4.644c0 .818 0 1.226-.152 1.594s-.441.656-1.02 1.235l-1.656 1.656c-.579.579-.867.867-1.235 1.02-.368.152-.776.152-1.594.152H9.7c-.81 0-1.214 0-1.579-.15-.364-.149-.653-.433-1.229-1.001l-1.699-1.674c-.588-.58-.882-.87-1.037-1.24S4 15.152 4 14.326v-4.61c0-.818 0-1.226.152-1.594s.442-.657 1.02-1.235z" />
+                    <Path stroke="#6b7280" strokeLinecap="round" strokeWidth="2" d="m8 11 .422.211a8 8 0 0 0 7.156 0L16 11M12 12.5V14M9 12l-.5 1M15 12l.5 1" />
+                  </Svg>
+                ) : (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path stroke="#6b7280" strokeWidth="2" d="M12 5c-5.444 0-8.469 4.234-9.544 6.116-.221.386-.331.58-.32.868.013.288.143.476.402.852C3.818 14.694 7.294 19 12 19s8.182-4.306 9.462-6.164c.26-.376.39-.564.401-.852s-.098-.482-.319-.868C20.47 9.234 17.444 5 12 5Z" />
+                    <Circle cx="12" cy="12" r="4" fill="#6b7280" />
+                  </Svg>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -113,10 +123,20 @@ export default function SecurityScreen() {
                 onPress={() => setShowNewPassword(!showNewPassword)}
                 style={styles.eyeButton}
               >
-                <Text style={styles.eyeIcon}>{showNewPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                {showNewPassword ? (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path stroke="#6b7280" strokeWidth="2" d="M6.887 5.172c.578-.578.867-.868 1.235-1.02S8.898 4 9.716 4h4.61c.826 0 1.239 0 1.61.155.37.155.66.45 1.239 1.037l1.674 1.699c.568.576.852.865 1.002 1.23.149.364.149.768.149 1.578v4.644c0 .818 0 1.226-.152 1.594s-.441.656-1.02 1.235l-1.656 1.656c-.579.579-.867.867-1.235 1.02-.368.152-.776.152-1.594.152H9.7c-.81 0-1.214 0-1.579-.15-.364-.149-.653-.433-1.229-1.001l-1.699-1.674c-.588-.58-.882-.87-1.037-1.24S4 15.152 4 14.326v-4.61c0-.818 0-1.226.152-1.594s.442-.657 1.02-1.235z" />
+                    <Path stroke="#6b7280" strokeLinecap="round" strokeWidth="2" d="m8 11 .422.211a8 8 0 0 0 7.156 0L16 11M12 12.5V14M9 12l-.5 1M15 12l.5 1" />
+                  </Svg>
+                ) : (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path stroke="#6b7280" strokeWidth="2" d="M12 5c-5.444 0-8.469 4.234-9.544 6.116-.221.386-.331.58-.32.868.013.288.143.476.402.852C3.818 14.694 7.294 19 12 19s8.182-4.306 9.462-6.164c.26-.376.39-.564.401-.852s-.098-.482-.319-.868C20.47 9.234 17.444 5 12 5Z" />
+                    <Circle cx="12" cy="12" r="4" fill="#6b7280" />
+                  </Svg>
+                )}
               </TouchableOpacity>
             </View>
-            <Text style={styles.hint}>Minimal 6 karakter</Text>
+            <Text style={styles.hint}>Must be at least 6 characters.</Text>
           </View>
 
           {/* Confirm New Password */}
@@ -136,7 +156,17 @@ export default function SecurityScreen() {
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 style={styles.eyeButton}
               >
-                <Text style={styles.eyeIcon}>{showConfirmPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                {showConfirmPassword ? (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path stroke="#6b7280" strokeWidth="2" d="M6.887 5.172c.578-.578.867-.868 1.235-1.02S8.898 4 9.716 4h4.61c.826 0 1.239 0 1.61.155.37.155.66.45 1.239 1.037l1.674 1.699c.568.576.852.865 1.002 1.23.149.364.149.768.149 1.578v4.644c0 .818 0 1.226-.152 1.594s-.441.656-1.02 1.235l-1.656 1.656c-.579.579-.867.867-1.235 1.02-.368.152-.776.152-1.594.152H9.7c-.81 0-1.214 0-1.579-.15-.364-.149-.653-.433-1.229-1.001l-1.699-1.674c-.588-.58-.882-.87-1.037-1.24S4 15.152 4 14.326v-4.61c0-.818 0-1.226.152-1.594s.442-.657 1.02-1.235z" />
+                    <Path stroke="#6b7280" strokeLinecap="round" strokeWidth="2" d="m8 11 .422.211a8 8 0 0 0 7.156 0L16 11M12 12.5V14M9 12l-.5 1M15 12l.5 1" />
+                  </Svg>
+                ) : (
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path stroke="#6b7280" strokeWidth="2" d="M12 5c-5.444 0-8.469 4.234-9.544 6.116-.221.386-.331.58-.32.868.013.288.143.476.402.852C3.818 14.694 7.294 19 12 19s8.182-4.306 9.462-6.164c.26-.376.39-.564.401-.852s-.098-.482-.319-.868C20.47 9.234 17.444 5 12 5Z" />
+                    <Circle cx="12" cy="12" r="4" fill="#6b7280" />
+                  </Svg>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -194,7 +224,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
     fontFamily: Font.semiBold,
     color: '#1f2937',
     marginBottom: 8,
@@ -217,9 +246,6 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 16,
   },
-  eyeIcon: {
-    fontSize: 20,
-  },
   hint: {
     fontSize: 12,
     fontFamily: Font.regular,
@@ -235,7 +261,6 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: 16,
-    fontWeight: '600',
     fontFamily: Font.semiBold,
     color: '#ffffff',
   },

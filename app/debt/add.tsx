@@ -268,7 +268,7 @@ export default function AddDebtScreen() {
             <Text style={styles.label}>Username*</Text>
             <TextInput
               style={styles.input}
-              placeholder="Username lawan transaksi"
+              placeholder="@username"
               placeholderTextColor="#9ca3af"
               value={username}
               onChangeText={setUsername}
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
-  backButton: {
+  backButton: { 
     width: 40,
     height: 40,
     justifyContent: 'center',

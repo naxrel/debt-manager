@@ -1,3 +1,4 @@
+import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -58,8 +59,8 @@ export default function LoginScreen() {
       router.replace('/(tabs)/home');
     } else {
       Alert.alert(
-        'Login Gagal', 
-        'Username atau password salah. Silakan coba lagi.',
+        'Failed login', 
+        'Username or password wrong. Please try again.',
         [{ text: 'OK' }]
       );
     }
@@ -92,7 +93,7 @@ export default function LoginScreen() {
               <Ionicons name="wallet-outline" size={48} color="#2563eb" />
             </View>
             <Text style={styles.title}>deBT</Text>
-            <Text style={styles.subtitle}>Kelola Utang Piutang dengan Mudah</Text>
+            <Text style={styles.subtitle}>Easily manage debt with your friends!</Text>
           </View>
 
           {/* Form Section */}
@@ -113,8 +114,6 @@ export default function LoginScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Masukkan username"
-                  placeholderTextColor="#9ca3af"
                   value={username}
                   onChangeText={(text) => {
                     setUsername(text);
@@ -147,8 +146,6 @@ export default function LoginScreen() {
                 />
                 <TextInput
                   style={[styles.input, styles.inputPassword]}
-                  placeholder="Masukkan password"
-                  placeholderTextColor="#9ca3af"
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
@@ -187,8 +184,7 @@ export default function LoginScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.buttonText}>Masuk</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Log In</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -254,7 +250,7 @@ export default function LoginScreen() {
               style={styles.registerLink}
             >
               <Text style={styles.linkText}>
-                Belum punya akun? <Text style={styles.linkBold}>Daftar Sekarang</Text>
+                Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -293,7 +289,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 48,
-    fontWeight: 'bold',
+    fontFamily: Font.bold,
     color: '#2563eb',
     textAlign: 'center',
     marginBottom: 8,
@@ -303,6 +299,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#64748b',
     textAlign: 'center',
+    fontFamily: Font.regular,
   },
   formContainer: {
     backgroundColor: '#fff',
@@ -319,7 +316,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: Font.semiBold,
     color: '#1e293b',
     marginBottom: 8,
   },
@@ -383,7 +380,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Font.bold,
   },
   buttonIcon: {
     marginLeft: 8,
@@ -449,10 +446,11 @@ const styles = StyleSheet.create({
   linkText: {
     textAlign: 'center',
     fontSize: 14,
+    fontFamily: Font.regular,
     color: '#64748b',
   },
   linkBold: {
     color: '#2563eb',
-    fontWeight: '600',
+    fontFamily: Font.bold,
   },
 });

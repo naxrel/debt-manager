@@ -48,7 +48,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/login" options={{ headerShown: false }} />
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
             <Stack.Screen name="debt/add" options={{ headerShown: false }} />
-            <Stack.Screen name="debt/detail" options={{ presentation: 'modal', title: 'Detail' }} />
+            <Stack.Screen name="debt/detail" options={{ headerShown: false }} />
             <Stack.Screen name="debt/pending" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
             <Stack.Screen name="group/[id]" options={{ headerShown: false }} />

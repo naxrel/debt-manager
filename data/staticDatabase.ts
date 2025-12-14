@@ -21,7 +21,7 @@ export interface Debt {
   date: string;
   isPaid: boolean;
   groupId?: string; // Optional: ID grup jika debt ini bagian dari grup
-  status: 'pending' | 'confirmed' | 'rejected'; // Status approval
+  status: 'pending' | 'confirmed' | 'rejected' | 'settlement_requested'; // Status approval & settlement
   initiatedBy: string; // User yang create transaksi
   approvedBy?: string; // User yang approve
   approvedAt?: string; // Timestamp approval
@@ -185,6 +185,38 @@ export const STATIC_DEBTS: Debt[] = [
     isPaid: true,
     status: 'confirmed',
     initiatedBy: '3',
+  },
+  // Test case: Admin berhutang ke Jane 20.000 (status: confirmed, siap untuk settlement)
+  {
+    id: 'd8',
+    userId: '1', // Admin
+    type: 'hutang',
+    name: 'Jane Smith',
+    otherUserId: '3', // Jane's ID
+    amount: 20000,
+    description: 'Pinjaman makan siang',
+    date: '2025-12-10',
+    isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '1',
+    approvedBy: '3',
+    approvedAt: '2025-12-10T10:00:00.000Z',
+  },
+  // Counterpart debt: Jane punya piutang dari Admin 20.000
+  {
+    id: 'd9',
+    userId: '3', // Jane
+    type: 'piutang',
+    name: 'Admin User',
+    otherUserId: '1', // Admin's ID
+    amount: 20000,
+    description: 'Pinjaman makan siang',
+    date: '2025-12-10',
+    isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '1',
+    approvedBy: '3',
+    approvedAt: '2025-12-10T10:00:00.000Z',
   },
 ];
 
@@ -692,6 +724,142 @@ export class StaticDB {
       status: 'rejected',
       rejectionReason: reason,
     });
+
+    return { success: true };
+  }
+
+  // Settlement operations for personal debts
+  static requestSettlement(debtId: string, userId: string): { success: boolean; error?: string } {
+    const debt = this.getDebtById(debtId);
+    if (!debt) {
+      return { success: false, error: 'Debt tidak ditemukan' };
+    }
+
+    // Hanya yang punya hutang yang bisa request settlement
+    if (debt.type !== 'hutang') {
+      return { success: false, error: 'Hanya hutang yang bisa di-request settlement' };
+    }
+
+    if (debt.userId !== userId) {
+      return { success: false, error: 'Anda tidak berhak request settlement untuk transaksi ini' };
+    }
+
+    if (debt.isPaid) {
+      return { success: false, error: 'Transaksi sudah lunas' };
+    }
+
+    if (debt.status === 'settlement_requested') {
+      return { success: false, error: 'Settlement sudah di-request, tunggu approval' };
+    }
+
+    // Update status debt penghutang menjadi settlement_requested
+    this.updateDebt(debtId, {
+      status: 'settlement_requested' as any,
+    });
+
+    // PENTING: Update juga debt counterpart (piutang di sisi pemberi hutang)
+    if (debt.otherUserId) {
+      const counterpartDebt = this.debts.find(
+        d => d.userId === debt.otherUserId && 
+             d.otherUserId === debt.userId &&
+             d.type === 'piutang' &&
+             d.amount === debt.amount &&
+             !d.isPaid &&
+             d.status === 'confirmed'
+      );
+
+      if (counterpartDebt) {
+        this.updateDebt(counterpartDebt.id, {
+          status: 'settlement_requested' as any,
+        });
+      }
+    }
+
+    return { success: true };
+  }
+
+  static approveSettlement(debtId: string, userId: string): { success: boolean; error?: string } {
+    const debt = this.getDebtById(debtId);
+    if (!debt) {
+      return { success: false, error: 'Debt tidak ditemukan' };
+    }
+
+    // Hanya pemberi hutang (piutang) yang bisa approve
+    if (debt.type !== 'piutang') {
+      return { success: false, error: 'Hanya piutang yang bisa di-approve settlement' };
+    }
+
+    if (debt.userId !== userId) {
+      return { success: false, error: 'Anda tidak berhak approve settlement ini' };
+    }
+
+    if (debt.status !== 'settlement_requested') {
+      return { success: false, error: 'Tidak ada request settlement untuk transaksi ini' };
+    }
+
+    // Mark debt sebagai paid
+    this.updateDebt(debtId, {
+      isPaid: true,
+      status: 'confirmed' as any,
+    });
+
+    // Cari dan update counterpart debt juga
+    const counterpartDebt = this.debts.find(
+      d => d.otherUserId === userId && 
+           d.userId === debt.otherUserId && 
+           d.type === 'hutang' &&
+           d.amount === debt.amount &&
+           !d.isPaid
+    );
+
+    if (counterpartDebt) {
+      this.updateDebt(counterpartDebt.id, {
+        isPaid: true,
+        status: 'confirmed' as any,
+      });
+    }
+
+    return { success: true };
+  }
+
+  static rejectSettlement(debtId: string, userId: string): { success: boolean; error?: string } {
+    const debt = this.getDebtById(debtId);
+    if (!debt) {
+      return { success: false, error: 'Debt tidak ditemukan' };
+    }
+
+    // Hanya pemberi hutang (piutang) yang bisa reject
+    if (debt.type !== 'piutang') {
+      return { success: false, error: 'Hanya piutang yang bisa reject settlement' };
+    }
+
+    if (debt.userId !== userId) {
+      return { success: false, error: 'Anda tidak berhak reject settlement ini' };
+    }
+
+    if (debt.status !== 'settlement_requested') {
+      return { success: false, error: 'Tidak ada request settlement untuk transaksi ini' };
+    }
+
+    // Ubah status kembali ke confirmed (debt masih aktif, tidak dihapus)
+    this.updateDebt(debtId, {
+      status: 'confirmed' as any,
+    });
+
+    // Cari dan update counterpart debt juga
+    const counterpartDebt = this.debts.find(
+      d => d.otherUserId === userId && 
+           d.userId === debt.otherUserId && 
+           d.type === 'hutang' &&
+           d.amount === debt.amount &&
+           !d.isPaid
+    );
+
+    if (counterpartDebt) {
+      this.updateDebt(counterpartDebt.id, {
+        status: 'confirmed' as any,
+      });
+    }
 
     return { success: true };
   }

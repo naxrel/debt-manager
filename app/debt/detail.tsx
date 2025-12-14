@@ -1,3 +1,5 @@
+import { Font } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
 import { Debt, StaticDB } from '@/data/staticDatabase';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -12,10 +14,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 export default function DebtDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
   const { markAsPaid, deleteDebt, refreshDebts } = useDebt();
   const [debt, setDebt] = useState<Debt | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,69 +49,127 @@ export default function DebtDetailScreen() {
     });
   };
 
-  const handleMarkAsPaid = () => {
-    if (!debt) return;
+  // Fungsi untuk yang punya hutang request settlement
+  const handleRequestSettlement = () => {
+    if (!debt || !user) return;
 
-    // Web-compatible confirmation
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Apakah Anda yakin transaksi ini sudah lunas?');
+      const confirmed = window.confirm('Kirim permintaan pelunasan ke ' + debt.name + '?');
       if (confirmed) {
-        markAsPaid(debt.id);
-        refreshDebts();
-        alert('Transaksi ditandai sebagai lunas');
-        router.back();
+        const result = StaticDB.requestSettlement(debt.id, user.id);
+        if (result.success) {
+          refreshDebts();
+          alert('Permintaan pelunasan berhasil dikirim');
+          router.back();
+        } else {
+          alert(result.error || 'Gagal mengirim permintaan');
+        }
       }
       return;
     }
 
     Alert.alert(
-      'Tandai Sebagai Lunas',
-      'Apakah Anda yakin transaksi ini sudah lunas?',
+      'Kirim Permintaan Pelunasan',
+      'Kirim permintaan pelunasan ke ' + debt.name + '?',
       [
         { text: 'Batal', style: 'cancel' },
         {
-          text: 'Ya, Lunas',
+          text: 'Kirim',
           onPress: () => {
-            markAsPaid(debt.id);
-            refreshDebts();
-            Alert.alert('Sukses', 'Transaksi ditandai sebagai lunas', [
-              { text: 'OK', onPress: () => router.back() },
-            ]);
+            const result = StaticDB.requestSettlement(debt.id, user.id);
+            if (result.success) {
+              refreshDebts();
+              Alert.alert('Sukses', 'Permintaan pelunasan berhasil dikirim', [
+                { text: 'OK', onPress: () => router.back() },
+              ]);
+            } else {
+              Alert.alert('Error', result.error || 'Gagal mengirim permintaan');
+            }
           },
         },
       ]
     );
   };
 
-  const handleDelete = () => {
-    if (!debt) return;
+  // Fungsi untuk pemberi hutang approve settlement
+  const handleApproveSettlement = () => {
+    if (!debt || !user) return;
 
-    // Web-compatible confirmation
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Apakah Anda yakin ingin menghapus transaksi ini?');
+      const confirmed = window.confirm('Setujui pelunasan dari ' + debt.name + '?');
       if (confirmed) {
-        deleteDebt(debt.id);
-        refreshDebts();
-        alert('Transaksi berhasil dihapus');
-        router.back();
+        const result = StaticDB.approveSettlement(debt.id, user.id);
+        if (result.success) {
+          refreshDebts();
+          alert('Pelunasan berhasil disetujui');
+          router.back();
+        } else {
+          alert(result.error || 'Gagal menyetujui');
+        }
       }
       return;
     }
 
     Alert.alert(
-      'Hapus Transaksi',
-      'Apakah Anda yakin ingin menghapus transaksi ini?',
+      'Setujui Pelunasan',
+      'Setujui pelunasan dari ' + debt.name + '?',
       [
         { text: 'Batal', style: 'cancel' },
         {
-          text: 'Hapus',
+          text: 'Setujui',
+          onPress: () => {
+            const result = StaticDB.approveSettlement(debt.id, user.id);
+            if (result.success) {
+              refreshDebts();
+              Alert.alert('Sukses', 'Pelunasan berhasil disetujui', [
+                { text: 'OK', onPress: () => router.back() },
+              ]);
+            } else {
+              Alert.alert('Error', result.error || 'Gagal menyetujui');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Fungsi untuk reject settlement request (hanya ubah status, tidak delete debt)
+  const handleRejectSettlement = () => {
+    if (!debt || !user) return;
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Tolak permintaan pelunasan dari ' + debt.name + '?');
+      if (confirmed) {
+        const result = StaticDB.rejectSettlement(debt.id, user.id);
+        if (result.success) {
+          refreshDebts();
+          alert('Permintaan pelunasan ditolak');
+          router.back();
+        } else {
+          alert(result.error || 'Gagal menolak');
+        }
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Tolak Pelunasan',
+      'Tolak permintaan pelunasan dari ' + debt.name + '?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Tolak',
           style: 'destructive',
           onPress: () => {
-            deleteDebt(debt.id);
-            refreshDebts();
-            Alert.alert('Sukses', 'Transaksi berhasil dihapus', [
-              { text: 'OK', onPress: () => router.back() },
-            ]);
+            const result = StaticDB.rejectSettlement(debt.id, user.id);
+            if (result.success) {
+              refreshDebts();
+              Alert.alert('Sukses', 'Permintaan pelunasan ditolak', [
+                { text: 'OK', onPress: () => router.back() },
+              ]);
+            } else {
+              Alert.alert('Error', result.error || 'Gagal menolak');
+            }
           },
         },
       ]
@@ -138,44 +200,49 @@ export default function DebtDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+          </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Confirm Transaction</Text>
+        <Text style={styles.headerTitle}>Detail Transaksi</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* From/To Section */}
-        <View style={styles.section}>
-          <Text style={styles.label}>From</Text>
-          <Text style={styles.value}>{debt.type === 'hutang' ? debt.name : 'Me'}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>To</Text>
-          <Text style={styles.value}>{debt.type === 'piutang' ? debt.name : 'Me'}</Text>
-        </View>
-
-        {/* Date Section */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Date:</Text>
-          <Text style={styles.value}>{formatDate(debt.date)}, {new Date(debt.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</Text>
-        </View>
-
-        {/* Note Section */}
-        {debt.description && (
-          <View style={styles.noteSection}>
-            <Text style={styles.noteLabel}>Note:</Text>
-            <View style={styles.noteBox}>
-              <Text style={styles.noteText}>{debt.description}</Text>
-            </View>
+        {/* Transaction Info Card */}
+        <View style={styles.infoCard}>
+          {/* From/To Section */}
+          <View style={styles.infoItem}>
+            <Text style={styles.label}>From</Text>
+            <Text style={styles.value}>{debt.type === 'hutang' ? debt.name : 'Me'}</Text>
           </View>
-        )}
 
-        {/* Total Section */}
-        <View style={styles.totalSection}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalAmount}>{formatCurrency(debt.amount)}</Text>
+          <View style={styles.infoItem}>
+            <Text style={styles.label}>To</Text>
+            <Text style={styles.value}>{debt.type === 'piutang' ? debt.name : 'Me'}</Text>
+          </View>
+
+          {/* Date Section */}
+          <View style={styles.infoItem}>
+            <Text style={styles.label}>Date</Text>
+            <Text style={styles.value}>{formatDate(debt.date)}, {new Date(debt.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</Text>
+          </View>
+
+          {/* Note Section */}
+          {debt.description && (
+            <View style={styles.infoItem}>
+              <Text style={styles.label}>Note</Text>
+              <View style={styles.noteBox}>
+                <Text style={styles.noteText}>{debt.description}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Total Section */}
+          <View style={styles.totalSection}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalAmount}>{formatCurrency(debt.amount)}</Text>
+          </View>
         </View>
 
         {/* Status Badge */}
@@ -187,23 +254,53 @@ export default function DebtDetailScreen() {
       </ScrollView>
 
       {/* Action Buttons */}
-      {!debt.isPaid && (
+      {!debt.isPaid && user && (
         <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.rejectButton} 
-            onPress={handleDelete}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.rejectButtonText}>Reject</Text>
-          </TouchableOpacity>
+          {/* Jika user punya hutang (type='hutang'), hanya tampilkan Request Settlement */}
+          {debt.type === 'hutang' && debt.status !== 'settlement_requested' && (
+            <TouchableOpacity 
+              style={[styles.confirmButton, styles.fullWidthButton]} 
+              onPress={handleRequestSettlement}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.confirmButtonText}>Request Settlement</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity 
-            style={styles.confirmButton} 
-            onPress={handleMarkAsPaid}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.confirmButtonText}>Confirm</Text>
-          </TouchableOpacity>
+          {/* Jika sudah request settlement, tampilkan status pending */}
+          {debt.type === 'hutang' && debt.status === 'settlement_requested' && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>Waiting approval from{debt.name}</Text>
+            </View>
+          )}
+
+          {/* Jika user pemberi hutang (type='piutang') dan ada settlement request, tampilkan tombol Approve */}
+          {debt.type === 'piutang' && debt.status === 'settlement_requested' && (
+            <>
+              <TouchableOpacity 
+                style={styles.rejectButton} 
+                onPress={handleRejectSettlement}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.rejectButtonText}>Reject</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.confirmButton} 
+                onPress={handleApproveSettlement}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.confirmButtonText}>Approve Settlement</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* Jika piutang tapi belum ada settlement request */}
+          {debt.type === 'piutang' && debt.status !== 'settlement_requested' && (
+            <View style={styles.infoBadge}>
+              <Text style={styles.infoBadgeText}>Waiting {debt.name} to request settlement...</Text>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -215,61 +312,59 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafb',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafb',
     padding: 20,
   },
   errorText: {
-    fontSize: 18,
-    color: '#666',
+    fontSize: 16,
+    color: '#6b7280',
     marginBottom: 20,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   errorButton: {
     backgroundColor: '#2563eb',
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 8,
   },
   errorButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafb',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    backgroundColor: '#f9fafb',
+    padding: 8,
     paddingTop: 50,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: Font.semiBold,
+    color: '#1f2937',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
   },
   backButton: {
     width: 40,
     height: 40,
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 32,
-    color: '#111827',
-    fontFamily: 'Biennale-Regular',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'Biennale-SemiBold',
-    color: '#111827',
+    alignItems: 'flex-start',
+    paddingLeft: 10,
   },
   headerSpacer: {
     width: 40,
@@ -281,56 +376,71 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
   },
+  pageTitle: {
+    fontSize: 20,
+    fontFamily: Font.semiBold,
+    color: '#1f2937',
+    marginBottom: 24,
+  },
+  infoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  infoItem: {
+    marginBottom: 20,
+  },
   section: {
     marginBottom: 24,
   },
   label: {
     fontSize: 14,
-    fontFamily: 'Biennale-Regular',
-    color: '#9ca3af',
+    fontFamily: Font.regular,
+    color: '#6b7280',
     marginBottom: 8,
   },
   value: {
     fontSize: 16,
-    fontFamily: 'Biennale-SemiBold',
-    color: '#111827',
+    fontFamily: Font.semiBold,
+    color: '#1f2937',
   },
   noteSection: {
     marginBottom: 24,
   },
   noteLabel: {
     fontSize: 14,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
     color: '#9ca3af',
     marginBottom: 8,
   },
   noteBox: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f3f4f6',
+    padding: 12,
     borderRadius: 8,
-    padding: 16,
   },
   noteText: {
     fontSize: 14,
-    fontFamily: 'Biennale-Regular',
-    color: '#111827',
-    lineHeight: 22,
+    fontFamily: Font.regular,
+    color: '#4b5563',
+    lineHeight: 20,
   },
   totalSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 32,
-    marginBottom: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 20,
+    marginTop: 4,
   },
   totalLabel: {
-    fontSize: 16,
-    fontFamily: 'Biennale-SemiBold',
-    color: '#111827',
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+    color: '#6b7280',
+    marginBottom: 8,
   },
   totalAmount: {
-    fontSize: 24,
-    fontFamily: 'Biennale-Bold',
-    color: '#111827',
+    fontSize: 28,
+    fontFamily: Font.bold,
+    color: '#1f2937',
   },
   paidBadge: {
     backgroundColor: '#10b981',
@@ -341,15 +451,14 @@ const styles = StyleSheet.create({
   },
   paidBadgeText: {
     fontSize: 16,
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
     color: '#fff',
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
+    padding: 16,
+    backgroundColor: '#f9fafb',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
@@ -358,25 +467,56 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 8,
+    padding: 16,
     alignItems: 'center',
   },
   rejectButtonText: {
     fontSize: 16,
-    fontFamily: 'Biennale-SemiBold',
-    color: '#111827',
+    fontFamily: Font.semiBold,
+    color: '#6b7280',
   },
   confirmButton: {
     flex: 1,
-    backgroundColor: '#fbbf24',
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    padding: 16,
     alignItems: 'center',
   },
   confirmButtonText: {
     fontSize: 16,
-    fontFamily: 'Biennale-SemiBold',
-    color: '#111827',
+    fontFamily: Font.semiBold,
+    color: '#fff',
+  },
+  pendingBadge: {
+    flex: 1,
+    backgroundColor: '#fef3c7',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  pendingBadgeText: {
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+    color: '#92400e',
+    textAlign: 'center',
+  },
+  infoBadge: {
+    flex: 1,
+    backgroundColor: '#dbeafe',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  infoBadgeText: {
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+    color: '#1e40af',
+    textAlign: 'center',
+  },
+  fullWidthButton: {
+    flex: 1,
   },
 });

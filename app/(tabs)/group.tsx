@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 export default function GroupScreen() {
   const { user } = useAuth();
@@ -65,7 +66,7 @@ export default function GroupScreen() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>Silakan login terlebih dahulu</Text>
+        <Text style={styles.emptyText}>Make sure to register first</Text>
       </View>
     );
   }
@@ -87,7 +88,15 @@ export default function GroupScreen() {
           
           {/* Search Bar */}
           <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Circle cx="11" cy="11" r="7" stroke="#33363F" strokeWidth="2" />
+                  <Path
+                    stroke="#33363F"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    d="M11 8a3 3 0 0 0-3 3M20 20l-3-3"
+                  />
+                </Svg>
             <TextInput
               style={styles.searchInput}
               placeholder="Find group..."
@@ -115,10 +124,12 @@ export default function GroupScreen() {
           <View style={styles.optimizationContent}>
             <Text style={styles.optimizationTitle}>Business Intelligence</Text>
             <Text style={styles.optimizationSubtitle}>
-              Analisis mendalam tentang keuangan dan risiko Anda
+              Analyze your debts here
             </Text>
           </View>
-          <Text style={styles.arrow}>→</Text>
+          <Svg width={24} height={24} viewBox="0 0 1024 1024" fill="none">
+            <Path fill="#2563eb" d="M338.752 104.704a64 64 0 000 90.496l316.8 316.8-316.8 316.8a64 64 0 0090.496 90.496l362.048-362.048a64 64 0 000-90.496L429.248 104.704a64 64 0 00-90.496 0z" />
+          </Svg>
         </TouchableOpacity>
 
         {/* Groups List */}
@@ -134,14 +145,24 @@ export default function GroupScreen() {
 
           {filteredGroups.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>
-                {searchQuery ? '🔍' : '👥'}
-              </Text>
+              {searchQuery ? (
+                <Svg width={64} height={64} viewBox="0 0 24 24" fill="none">
+                  <Circle cx="11" cy="11" r="7" stroke="#33363F" strokeWidth="2" />
+                  <Path
+                    stroke="#33363F"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    d="M11 8a3 3 0 0 0-3 3M20 20l-3-3"
+                  />
+                </Svg>
+              ) : (
+                <Text style={styles.emptyIcon}>👥</Text>
+              )}
               <Text style={styles.emptyText}>
-                {searchQuery ? 'Grup tidak ditemukan' : 'No debts, pweasee T_T'}
+                {searchQuery ? 'Oops, there are no results' : 'No debts, pweasee T_T'}
               </Text>
               <Text style={styles.emptySubtext}>
-                {searchQuery ? 'Coba kata kunci lain' : 'or create your debts with your friends now!'}
+                {searchQuery ? 'or maybe just create a new one' : 'or create your debts with your friends now!'}
               </Text>
             </View>
           ) : (
@@ -182,7 +203,9 @@ export default function GroupScreen() {
                       {stats.memberCount} member{stats.memberCount > 1 ? 's' : ''}
                     </Text>
                   </View>
-                  <Text style={styles.arrow}>→</Text>
+                  <Svg width={24} height={24} viewBox="0 0 1024 1024" fill="none">
+                    <Path fill="#2563eb" d="M338.752 104.704a64 64 0 000 90.496l316.8 316.8-316.8 316.8a64 64 0 0090.496 90.496l362.048-362.048a64 64 0 000-90.496L429.248 104.704a64 64 0 00-90.496 0z" />
+                  </Svg>
                 </TouchableOpacity>
               );
             })
@@ -298,12 +321,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Font.regular,
     color: '#666',
-  },
-  arrow: {
-    fontSize: 24,
-    fontFamily: Font.regular,
-    color: '#2563eb',
-    marginLeft: 12,
   },
   section: {
     padding: 16,

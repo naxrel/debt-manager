@@ -5,16 +5,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -121,7 +121,21 @@ export default function ProfileScreen() {
               )}
               {isEditing && (
                 <View style={styles.editImageOverlay}>
-                  <Text style={styles.editImageText}>📷</Text>
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                      d="M3 9.854C3 8.83 3.83 8 4.854 8c.702 0 1.344-.397 1.658-1.025l.821-1.642c.11-.22.165-.33.228-.425a2 2 0 0 1 1.447-.895C9.122 4 9.245 4 9.491 4h5.018c.246 0 .37 0 .482.013a2 2 0 0 1 1.448.895c.063.095.118.205.228.425l.82 1.642A1.85 1.85 0 0 0 19.147 8C20.17 8 21 8.83 21 9.854v5.003c0 2.005 0 3.007-.46 3.74a3 3 0 0 1-.944.943c-.732.46-1.734.46-3.739.46H8.143c-2.005 0-3.007 0-3.74-.46a3 3 0 0 1-.943-.944C3 17.864 3 16.862 3 14.857z"
+                    />
+                    <Path
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                      d="M3 9.854C3 8.83 3.83 8 4.854 8c.702 0 1.344-.397 1.658-1.025l.821-1.642c.11-.22.165-.33.228-.425a2 2 0 0 1 1.447-.895C9.122 4 9.245 4 9.491 4h5.018c.246 0 .37 0 .482.013a2 2 0 0 1 1.448.895c.063.095.118.205.228.425l.82 1.642A1.85 1.85 0 0 0 19.147 8C20.17 8 21 8.83 21 9.854v5.003c0 2.005 0 3.007-.46 3.74a3 3 0 0 1-.944.943c-.732.46-1.734.46-3.739.46H8.143c-2.005 0-3.007 0-3.74-.46a3 3 0 0 1-.943-.944C3 17.864 3 16.862 3 14.857z"
+                    />
+                    <Svg>
+                      <circle cx="12" cy="13" r="3" stroke="#ffffff" strokeWidth="2" />
+                    </Svg>
+                  </Svg>
                 </View>
               )}
             </TouchableOpacity>
@@ -243,7 +257,6 @@ const styles = StyleSheet.create({
   },
   imagePlaceholderText: {
     fontSize: 48,
-    fontWeight: 'bold',
     fontFamily: Font.bold,
     color: '#ffffff',
   },
@@ -254,12 +267,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2563eb',
+    backgroundColor: 'rgba(104, 103, 103, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  editImageText: {
-    fontSize: 20,
   },
   infoSection: {
     backgroundColor: '#ffffff',
@@ -271,7 +281,6 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    fontWeight: '600',
     fontFamily: Font.semiBold,
     color: '#6b7280',
     marginBottom: 8,
@@ -305,7 +314,6 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 16,
-    fontWeight: '600',
     fontFamily: Font.semiBold,
     color: '#6b7280',
   },

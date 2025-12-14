@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -222,9 +222,9 @@ export default function GroupDetailScreen() {
       setNewMemberUsername('');
       setAddMemberError('');
       loadGroupData(); // Refresh
-      Alert.alert('Berhasil', `${foundUser.name} berhasil ditambahkan ke grup`);
+      Alert.alert('Berhasil', `${foundUser.name} successfully added to group`);
     } else {
-      setAddMemberError(result.error || 'Gagal menambahkan anggota');
+      setAddMemberError(result.error || 'Failed to invite group');
     }
   };
 
@@ -232,7 +232,7 @@ export default function GroupDetailScreen() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Akses ke galeri diperlukan untuk mengganti foto grup');
+      Alert.alert('Permission Denied', 'Accessing gallery needed your permission');
       return;
     }
 
@@ -251,7 +251,7 @@ export default function GroupDetailScreen() {
   const handleSaveGroupEdit = () => {
     if (!group || !editGroupName.trim()) {
       if (Platform.OS === 'web') {
-        alert('Nama grup tidak boleh kosong');
+        alert('You should fill atleast the name, y\'know');
       } else {
         Alert.alert('Error', 'Nama grup tidak boleh kosong');
       }
@@ -283,7 +283,6 @@ export default function GroupDetailScreen() {
 
   const handlePayDebt = (debt: OptimizedDebt) => {
     setSelectedDebt(debt);
-    setPaymentDescription(`Settlement: ${debt.fromName} → ${debt.toName}`);
     setShowPaymentModal(true);
   };
 
@@ -306,9 +305,9 @@ export default function GroupDetailScreen() {
       loadGroupData();
       
       if (Platform.OS === 'web') {
-        alert('Request pelunasan berhasil dikirim! Menunggu approval dari penerima. ⏳');
+        alert('Settlement successfuly sent. Waiting for approval');
       } else {
-        Alert.alert('Berhasil', 'Request pelunasan berhasil dikirim! Menunggu approval dari penerima. ⏳');
+        Alert.alert('Success', 'Request pelunasan berhasil dikirim! Menunggu approval dari penerima. ⏳');
       }
     } else {
       if (Platform.OS === 'web') {
@@ -415,7 +414,7 @@ export default function GroupDetailScreen() {
   if (!group || !user) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>Data tidak ditemukan</Text>
+        <Text style={styles.emptyText}>No data existed.</Text>
       </View>
     );
   }
@@ -490,7 +489,13 @@ export default function GroupDetailScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.editButtonText}>⚙️</Text>
+                  {/* Settings Button */}
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M12.632 2V1zm.83.07.369-.93zm.521.472.89-.458zm.153.82.995-.1zm.295 1.456-.795.607zm.928.385.134.991zm1.239-.822-.633-.774zm.688-.472-.304-.953zm.701.035.398-.917zm.638.538-.707.708zm.893.893.707-.707zm.538.638.917-.398zm.035.7.952.305zm-.473.688.774.634zm-.821 1.239-.991-.135v.001zm.385.928-.607.795zm1.457.295.1-.995zm.82.154.459-.889zm.47.52.93-.368zm.071.831h1zm0 1.264h1zm-.07.83.93.369zm-.472.521.458.89zm-.82.153.1.995zm-1.455.295-.607-.796zm-.385.928-.991.134zm.821 1.239.774-.634zm.472.686.952-.304zm-.035.702.917.398zm-2.069 2.069.398.917zm-.7.035-.305.953zm-.69-.472.634-.774zm-1.239-.822.133-.991zm-.927.385-.795-.607zm-.295 1.457-.995-.1zm-.153.82.89.458zm-.52.472.368.93zm-2.095.07v1zm-.83-.07-.369.93zm-.521-.471-.889.459zm-.154-.82-.995.1zm-.295-1.457.796-.607zm-.928-.385-.134-.991zm-1.239.821.634.774zm-.687.473.304.953zm-.701-.035-.398.917zm-1.53-1.431-.708.707zm-.539-.638-.917.398zm-.035-.7-.952-.305zm.472-.69-.774-.633zm.822-1.238.991.134zm-.385-.928.607-.795zm-1.457-.295-.099.995zm-.819-.153-.458.89zm-.472-.52-.93.368zM2 12.632H1zm0-1.264H1zm.07-.83-.93-.369zm.471-.521-.459-.89v.001zm.82-.154-.1-.995zm1.457-.295.607.795zm.385-.927.991-.133zM4.381 7.4l-.774.634zm-.472-.687-.952.304zm.035-.701-.917-.398zm2.069-2.069-.398-.917zm.7-.035.305-.952zm.69.472-.634.774zm1.238.821-.134.991zm.927-.385.795.607zm.295-1.456.995.1zm.154-.82-.889-.459zm.52-.47-.368-.93zM12.632 2v1c.23 0 .355 0 .445.007.08.005.065.012.018-.007l.368-.93.368-.93a2 2 0 0 0-.62-.129C13.04 1 12.837 1 12.631 1zm.83.07-.367.93.888-.458.89-.458a2 2 0 0 0-1.042-.943zm.521.472L13.094 3c-.022-.044-.017-.06-.004.018.015.09.028.213.05.443l.996-.1.995-.099a9 9 0 0 0-.069-.575 2 2 0 0 0-.19-.603zm.153.82-.995.099c.039.393.074.748.124 1.03.05.271.135.626.37.934l.796-.607.795-.606c.063.083.043.12.008-.076a13 13 0 0 1-.103-.874zm.295 1.456-.795.607a2 2 0 0 0 1.857.77l-.134-.992-.133-.991zm.928.385.134.991c.385-.052.697-.242.923-.4.234-.163.509-.389.815-.64l-.633-.773-.633-.774c-.333.272-.537.438-.692.546-.163.114-.151.073-.047.06zm1.239-.822.633.774a8 8 0 0 1 .348-.277c.066-.046.058-.031.011-.016l-.304-.953-.304-.952c-.408.13-.748.43-1.018.65zm.688-.472.304.953.397-.918.398-.917a2 2 0 0 0-1.403-.07zm.701.035-.397.918c-.046-.02-.052-.036.008.017.068.06.157.147.32.31l.707-.707.707-.707c-.145-.145-.288-.288-.418-.402a2 2 0 0 0-.53-.346zm.638.538-.707.708.893.892.707-.707.707-.707-.893-.893zm.893.893-.707.707c.163.163.25.252.31.32.053.06.037.054.017.008l.918-.397.917-.398a2 2 0 0 0-.346-.529 9 9 0 0 0-.402-.418zm.538.638-.918.397.953.304.953.304a2 2 0 0 0-.07-1.403zm.035.7-.953-.304c.016-.048.031-.057-.016.01-.052.073-.131.17-.278.349l.774.633.774.634c.13-.158.258-.315.358-.455.106-.148.22-.332.293-.562zm-.473.688-.774-.633c-.25.306-.476.581-.64.816-.157.227-.346.538-.398.921l.99.135.992.134c-.014.103-.054.114.06-.049.107-.155.272-.358.544-.69zm-.821 1.239-.991-.134a2 2 0 0 0 .77 1.857l.606-.795.606-.795zm.385.928-.607.796c.308.235.663.32.935.37.28.05.635.085 1.03.124l.099-.995.1-.995a13 13 0 0 1-.875-.103c-.196-.035-.159-.055-.076.008zm1.457.295-.1.995c.23.023.353.036.442.051.079.014.063.019.02-.004l.458-.888.459-.889c-.38-.196-.834-.225-1.18-.26zm.82.154-.459.888.93-.368.93-.368a2 2 0 0 0-.942-1.04zm.47.52-.93.368c-.017-.046-.011-.062-.006.018.006.09.007.214.007.445h2c0-.205 0-.407-.011-.58a2 2 0 0 0-.13-.619zm.071.831h-1v1.264h2v-1.264zm0 1.264h-1c0 .23 0 .355-.007.445-.005.08-.012.065.007.018l.93.368.93.367a2 2 0 0 0 .129-.619c.011-.172.011-.374.011-.58zm-.07.83-.93-.367.458.888.458.89a2 2 0 0 0 .944-1.042zm-.472.521L21 13.094c.044-.022.06-.017-.018-.004a8 8 0 0 1-.443.05l.1.996.099.995c.204-.02.405-.04.575-.069.18-.03.39-.08.603-.19zm-.82.153-.099-.995c-.394.039-.748.074-1.029.124-.272.05-.626.136-.934.37l.607.796.606.795c-.083.063-.12.043.076.008.185-.034.446-.06.873-.103zm-1.455.295-.607-.796a2 2 0 0 0-.77 1.858l.992-.134.99-.133zm-.385.928-.991.134c.052.384.241.695.399.922.163.235.389.51.64.816l.773-.633.774-.634a13 13 0 0 1-.545-.69c-.113-.163-.073-.151-.06-.048zm.821 1.239-.774.633c.146.179.225.275.277.349.047.065.032.057.017.01l.952-.306.952-.305a2 2 0 0 0-.292-.56c-.1-.14-.229-.297-.358-.455zm.472.686-.953.305.918.397.917.398a2 2 0 0 0 .07-1.404zm-.035.702-.918-.397c.02-.046.036-.052-.017.008a8 8 0 0 1-.31.32l.707.707.707.707c.145-.145.288-.288.402-.418.12-.137.25-.309.346-.529zm-.538.638-.707-.707-.893.892.707.708.707.707.893-.893zm-.893.893-.707-.707a8 8 0 0 1-.32.31c-.06.053-.054.037-.008.017l.397.918.398.917c.22-.095.391-.226.53-.346.13-.114.272-.257.417-.402zm-.638.538-.397-.918-.304.953-.304.953c.461.147.96.121 1.403-.07zm-.7.035.303-.953c.047.015.055.03-.01-.017a8 8 0 0 1-.35-.276l-.632.774-.633.774c.269.22.61.52 1.017.65zm-.69-.472.634-.774c-.306-.25-.582-.477-.816-.64-.227-.157-.539-.348-.924-.4l-.133.992-.133.991c-.104-.014-.115-.054.048.06.155.107.359.273.691.545zm-1.239-.822.133-.991a2 2 0 0 0-1.855.769l.795.607.795.606zm-.927.385-.795-.607c-.236.308-.322.663-.37.935-.051.281-.086.636-.125 1.03l.995.099.995.099c.043-.427.07-.689.103-.874.035-.195.055-.159-.008-.076zm-.295 1.457-.995-.1c-.023.23-.036.354-.051.444-.014.079-.018.062.005.018l.888.458.89.458c.11-.214.16-.424.19-.604.028-.17.047-.371.068-.575zm-.153.82L13.095 21l.368.93.368.93a2 2 0 0 0 1.041-.944zm-.52.472-.368-.93c.046-.019.063-.012-.018-.007-.09.006-.215.007-.446.007v2c.205 0 .407 0 .58-.011.182-.012.396-.04.62-.13zm-.832.07v-1h-1.263v2h1.263zm-1.263 0v-1c-.23 0-.355 0-.445-.007-.08-.005-.064-.011-.018.007l-.368.93-.368.93c.224.088.437.117.62.129.172.011.374.011.58.011zm-.83-.07.367-.93-.888.459-.889.459a2 2 0 0 0 1.041.942zm-.521-.471.888-.459c.023.044.018.06.004-.02a8 8 0 0 1-.05-.44l-.996.099-.995.1c.035.345.064.798.26 1.179zm-.154-.82.995-.1c-.04-.394-.074-.748-.124-1.03-.05-.27-.135-.626-.37-.934l-.796.607-.795.606c-.063-.083-.043-.12-.008.076.034.185.06.447.103.874zm-.295-1.457.795-.607a2 2 0 0 0-1.857-.77l.134.992.133.99v.001zm-.928-.385-.135-.991c-.383.052-.694.241-.921.399-.235.163-.51.389-.816.64l.633.773.634.774c.332-.272.535-.437.69-.545.163-.113.152-.073.049-.06zm-1.239.821-.633-.774c-.18.147-.276.226-.35.278-.066.047-.057.032-.009.016l.305.953.304.952c.23-.073.414-.187.562-.293.14-.1.297-.229.455-.358zm-.687.473-.304-.953-.397.918-.398.917a2 2 0 0 0 1.403.07zm-.701-.035.397-.918c.046.02.052.036-.008-.017a8 8 0 0 1-.32-.31l-.707.707-.707.707c.145.145.288.288.418.402.138.12.309.25.53.346zm-.638-.538.707-.707-.892-.893-.708.707-.707.707.893.893zm-.893-.893.708-.707a8 8 0 0 1-.31-.32c-.054-.06-.038-.054-.018-.008l-.918.397-.917.398c.095.22.226.391.346.53.114.13.257.272.402.417zm-.538-.638.918-.397-.953-.304-.953-.304a2 2 0 0 0 .07 1.403zm-.035-.7.953.303c-.015.047-.03.055.016-.01.052-.074.13-.17.277-.35l-.774-.632-.774-.633c-.22.269-.52.61-.65 1.017zm.472-.69.774.634c.25-.306.476-.581.64-.815.157-.226.347-.538.4-.923l-.992-.134-.99-.133c.013-.104.054-.116-.06.047a13 13 0 0 1-.546.691zm.822-1.238.991.134a2 2 0 0 0-.769-1.857l-.607.795-.606.795zm-.385-.928.607-.795c-.308-.236-.663-.322-.935-.37-.281-.051-.636-.086-1.03-.125l-.099.995-.099.995c.427.042.688.07.874.103.195.035.159.055.076-.008zm-1.457-.295.1-.995a8 8 0 0 1-.443-.051c-.079-.013-.062-.018-.018.005l-.458.888-.458.89c.213.11.423.159.603.19.17.028.371.047.575.068zm-.819-.153L3 13.095l-.93.368-.93.368a2 2 0 0 0 .944 1.041zm-.472-.52.93-.368c.019.046.012.062.007-.018A8 8 0 0 1 3 12.632H1c0 .205 0 .407.011.58.012.182.041.395.13.619zM2 12.632h1v-1.264H1v1.264zm0-1.264h1c0-.23 0-.355.007-.445.005-.08.012-.064-.007-.018l-.93-.368-.93-.368a2 2 0 0 0-.129.62C1 10.96 1 11.163 1 11.369zm.07-.83.93.367-.459-.888-.459-.889a2 2 0 0 0-.942 1.041zm.471-.521.459.888c-.044.023-.06.018.02.004a8 8 0 0 1 .44-.05l-.099-.996-.1-.995c-.345.035-.798.064-1.179.26zm.82-.154.1.995c.394-.04.748-.074 1.03-.124.27-.05.626-.135.934-.37l-.607-.796-.606-.795c.083-.063.12-.043-.076-.008-.185.034-.447.06-.874.103zm1.457-.295.607.795a2 2 0 0 0 .77-1.855l-.992.133-.991.133zm.385-.927.991-.134c-.052-.384-.242-.696-.4-.923-.162-.234-.389-.51-.64-.816l-.773.633-.774.634c.272.332.438.536.546.691.113.163.073.152.06.048zM4.381 7.4l.774-.633a8 8 0 0 1-.277-.349c-.046-.065-.031-.057-.016-.01l-.953.305-.952.304c.073.229.186.412.292.561.1.14.228.297.358.456zm-.472-.687.953-.304-.918-.397-.917-.398a2 2 0 0 0-.07 1.403zm.035-.701.918.397c-.02.046-.036.052.017-.008a8 8 0 0 1 .31-.32l-.707-.707-.707-.707c-.145.145-.288.288-.402.418-.12.138-.25.309-.346.53zm.538-.638.708.707.892-.892-.707-.708-.707-.707-.893.893zm.893-.893.707.708c.163-.164.252-.251.32-.31.06-.054.054-.038.008-.018l-.397-.918-.398-.917c-.22.095-.391.226-.53.346-.13.114-.272.257-.417.402zm.638-.538.397.918.304-.953.304-.953a2 2 0 0 0-1.403.07zm.7-.035-.303.953c-.047-.015-.055-.03.01.017.074.052.17.13.35.276l.632-.774.633-.774c-.269-.22-.61-.52-1.017-.65zm.69.472-.634.774c.306.25.581.476.816.64.226.157.538.347.922.398l.134-.99.133-.992c.103.014.115.054-.048-.059a13 13 0 0 1-.69-.545zm1.238.821-.133.991a2 2 0 0 0 1.855-.769l-.795-.607-.795-.606zm.927-.385.796.607c.234-.308.32-.663.37-.934.05-.281.085-.636.124-1.03l-.995-.099-.995-.1a14 14 0 0 1-.103.875c-.035.194-.055.158.008.075zm.295-1.456.995.1c.023-.23.036-.353.051-.442.014-.079.019-.063-.004-.02l-.888-.458-.89-.459c-.195.38-.224.834-.259 1.18zm.154-.82.888.46-.368-.93-.368-.93a2 2 0 0 0-1.04.941zm.52-.47.368.93c-.046.018-.062.011.018.006.09-.006.214-.007.445-.007V1c-.205 0-.407 0-.58.011a2 2 0 0 0-.619.13zm.831-.07v1h1.264V1h-1.264zM12 8V7a5 5 0 0 0-5 5h2a3 3 0 0 1 3-3zm-4 4H7a5 5 0 0 0 5 5v-2a3 3 0 0 1-3-3zm4 4v1a5 5 0 0 0 5-5h-2a3 3 0 0 1-3 3zm4-4h1a5 5 0 0 0-5-5v2a3 3 0 0 1 3 3z"
+                      fill="#fff"
+                    />
+                  </Svg>
                 </TouchableOpacity>
               ) : null}
               <TouchableOpacity
@@ -498,7 +503,13 @@ export default function GroupDetailScreen() {
                 onPress={openMembersDrawer}
                 activeOpacity={0.7}
               >
-                <Text style={styles.membersButtonText}>👤</Text>
+                {/* Settings Button */}
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <Circle cx="9" cy="7" r="4"/>
+                  <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </Svg>
               </TouchableOpacity>
             </View>
           </View>
@@ -533,11 +544,11 @@ export default function GroupDetailScreen() {
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.totalTransactions}</Text>
-              <Text style={styles.statLabel}>Total Transaksi</Text>
+              <Text style={styles.statLabel}>Total transactions</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{optimizedDebts.length}</Text>
-              <Text style={styles.statLabel}>Simplifikasi</Text>
+              <Text style={styles.statLabel}>Simplified debts</Text>
             </View>
           </View>
         </View>
@@ -604,7 +615,7 @@ export default function GroupDetailScreen() {
 
             {myOptimizedDebts.shouldPay.length > 0 ? (
               <View style={styles.actionSection}>
-                <Text style={styles.actionLabel}>Nominal yang harus dibayar:</Text>
+                <Text style={styles.actionLabel}>You must paid to:</Text>
                 {myOptimizedDebts.shouldPay.map((debt, index) => (
                   <View key={index} style={[styles.debtCard, styles.payCard]}>
                     <View style={styles.debtHeader}>
@@ -619,7 +630,7 @@ export default function GroupDetailScreen() {
                         onPress={() => handlePayDebt(debt)}
                         activeOpacity={0.7}
                       >
-                        <Text style={styles.payButtonText}>💸 Bayar</Text>
+                        <Text style={styles.payButtonText}>Pay now</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -656,12 +667,6 @@ export default function GroupDetailScreen() {
               <Text style={styles.badgeText}>{optimizedDebts.length} pembayaran</Text>
             </View>
           </View>
-
-          {transactions.length > 0 && (
-            <Text style={styles.simplificationNote}>
-              💡 Dari {transactions.length} transaksi disederhanakan menjadi {optimizedDebts.length} pembayaran
-            </Text>
-          )}
 
           {optimizedDebts.length === 0 ? (
             <View style={styles.emptyState}>
@@ -946,10 +951,10 @@ export default function GroupDetailScreen() {
       >
         <View style={styles.deleteModalOverlay}>
           <View style={styles.deleteModalContainer}>
-            <Text style={styles.deleteModalTitle}>Tambah Anggota</Text>
+            <Text style={styles.deleteModalTitle}>Invite to {group.name}</Text>
             
             <Text style={styles.deleteModalInstruction}>
-              Masukkan username anggota yang ingin ditambahkan:
+              Enter the username of the member you want to add:
             </Text>
 
             <TextInput
@@ -959,7 +964,7 @@ export default function GroupDetailScreen() {
                 setNewMemberUsername(text);
                 setAddMemberError('');
               }}
-              placeholder="Contoh: john"
+              placeholder="e.g., Supri"
               placeholderTextColor="#999"
               autoCapitalize="none"
               autoCorrect={false}
@@ -978,14 +983,14 @@ export default function GroupDetailScreen() {
                   setAddMemberError('');
                 }}
               >
-                <Text style={styles.deleteModalCancelText}>Batal</Text>
+                <Text style={styles.deleteModalCancelText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.deleteModalConfirmButton, { backgroundColor: '#10b981' }]}
                 onPress={handleAddMember}
               >
-                <Text style={styles.deleteModalConfirmText}>Tambah</Text>
+                <Text style={styles.deleteModalConfirmText}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1011,7 +1016,7 @@ export default function GroupDetailScreen() {
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.editModalContainer}>
-            <Text style={styles.deleteModalTitle}>Edit Grup</Text>
+            <Text style={styles.deleteModalTitle}>Edit Group</Text>
             
             {/* Group Image */}
             <TouchableOpacity
@@ -1024,7 +1029,7 @@ export default function GroupDetailScreen() {
               ) : (
                 <View style={styles.editImagePlaceholder}>
                   <Text style={styles.editPlaceholderEmoji}>👥</Text>
-                  <Text style={styles.editPlaceholderText}>Tap untuk ubah foto</Text>
+                  <Text style={styles.editPlaceholderText}>Tap to change</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -1038,17 +1043,15 @@ export default function GroupDetailScreen() {
                 <Text style={styles.removeEditImageText}>Delete</Text>
               </TouchableOpacity>
             ) : null}
-
-            <Text style={styles.editModalLabel}>Nama Grup</Text>
+            <Text style={styles.editModalLabel}>Group name</Text>
             <TextInput
               style={styles.deleteModalInput}
               value={editGroupName}
               onChangeText={setEditGroupName}
-              placeholder="Nama grup"
+              placeholder="New name"
               placeholderTextColor="#999"
             />
-
-            <Text style={styles.editModalLabel}>Deskripsi</Text>
+            <Text style={styles.editModalLabel}>Description</Text>
             <TextInput
               style={[styles.deleteModalInput, styles.editModalTextArea]}
               value={editGroupDescription}
@@ -1058,14 +1061,13 @@ export default function GroupDetailScreen() {
               multiline
               numberOfLines={3}
             />
-
             <View style={styles.deleteModalButtons}>
               <TouchableOpacity
                 style={styles.deleteModalCancelButton}
                 onPress={() => setShowEditModal(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.deleteModalCancelText}>Batal</Text>
+                <Text style={styles.deleteModalCancelText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1073,16 +1075,11 @@ export default function GroupDetailScreen() {
                 onPress={handleSaveGroupEdit}
                 activeOpacity={0.7}
               >
-                <Text style={styles.deleteModalConfirmText}>Simpan</Text>
+                <Text style={styles.deleteModalConfirmText}>Save</Text>
               </TouchableOpacity>
             </View>
 
             {/* Danger Zone - Delete Group */}
-            <View style={styles.editDangerZone}>
-              <Text style={styles.editDangerZoneTitle}>Danger Zone</Text>
-              <Text style={styles.editDangerZoneDescription}>
-                Menghapus grup akan menghapus semua transaksi di dalamnya
-              </Text>
               <TouchableOpacity
                 style={styles.editDeleteButton}
                 onPress={() => {
@@ -1091,9 +1088,8 @@ export default function GroupDetailScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.editDeleteButtonText}>🗑️ Hapus Grup</Text>
+                <Text style={styles.editDeleteButtonText}>Delete</Text>
               </TouchableOpacity>
-            </View>
               </View>
             </ScrollView>
           </TouchableOpacity>
@@ -1112,7 +1108,7 @@ export default function GroupDetailScreen() {
             <Text style={styles.deleteModalTitle}>Delete Group</Text>
             
             <Text style={styles.deleteModalWarning}>
-              ⚠️ This action cannot be undone. This will permanently delete the group and all its transactions.
+              This will permanently delete the group and all its transactions.
             </Text>
 
             <Text style={styles.deleteModalInstruction}>
@@ -1160,25 +1156,29 @@ export default function GroupDetailScreen() {
         visible={showPaymentModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowPaymentModal(false)}
+        onRequestClose={() => {
+          setShowPaymentModal(false);
+          setSelectedDebt(null);
+          setPaymentDescription('');
+        }}
       >
         <View style={styles.deleteModalOverlay}>
           <View style={styles.deleteModalContainer}>
-            <Text style={styles.deleteModalTitle}>💸 Konfirmasi Pembayaran</Text>
+            <Text style={styles.deleteModalTitle}>Payment Confirmation</Text>
             
             {selectedDebt && (
               <>
                 <View style={styles.paymentSummary}>
                   <View style={styles.paymentRow}>
-                    <Text style={styles.paymentLabel}>Dari:</Text>
+                    <Text style={styles.paymentLabel}>From:</Text>
                     <Text style={styles.paymentValue}>{selectedDebt.fromName}</Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text style={styles.paymentLabel}>Kepada:</Text>
+                    <Text style={styles.paymentLabel}>To:</Text>
                     <Text style={styles.paymentValue}>{selectedDebt.toName}</Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text style={styles.paymentLabel}>Jumlah:</Text>
+                    <Text style={styles.paymentLabel}>Amount:</Text>
                     <Text style={[styles.paymentValue, styles.paymentAmount]}>
                       {formatCurrency(selectedDebt.amount)}
                     </Text>
@@ -1196,7 +1196,7 @@ export default function GroupDetailScreen() {
                 />
 
                 <Text style={styles.paymentNote}>
-                  ℹ️ Pembayaran ini akan dicatat sebagai transaksi settlement dan akan menyeimbangkan hutang yang ada.
+                  Pembayaran ini akan dicatat sebagai transaksi settlement dan akan menyeimbangkan hutang yang ada.
                 </Text>
               </>
             )}
@@ -1210,14 +1210,14 @@ export default function GroupDetailScreen() {
                   setPaymentDescription('');
                 }}
               >
-                <Text style={styles.deleteModalCancelText}>Batal</Text>
+                <Text style={styles.deleteModalCancelText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.deleteModalConfirmButton, { backgroundColor: '#10b981' }]}
                 onPress={confirmPayment}
               >
-                <Text style={styles.deleteModalConfirmText}>✓ Konfirmasi</Text>
+                <Text style={styles.deleteModalConfirmText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1271,15 +1271,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
   },
-  membersButtonText: {
-    color: '#fff',
-    fontSize: 14,
-     
-    fontFamily: 'Biennale-SemiBold',
-  },
   headerTitle: {
     fontSize: 28,
-     
     color: '#fff',
     marginBottom: 8,
     fontFamily: Font.bold,
@@ -1287,7 +1280,7 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: '#e0e7ff',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   statsCard: {
     backgroundColor: '#fff',
@@ -1328,7 +1321,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#333',
     fontFamily: Font.bold,
   },
@@ -1379,21 +1372,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
      
     color: '#333',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
     marginBottom: 4,
   },
   debtAmount: {
     fontSize: 18,
-     
     color: '#344170',
     fontFamily: Font.bold,
   },
   payButton: {
-    backgroundColor: '#10b981',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    backgroundColor: '#0e9266ff',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 8,
   },
+payButtonPressed: {
+  backgroundColor: '#0c7a54',
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 3,
+  transform: [{ scale: 0.98 }],
+},
   payButtonText: {
     color: '#fff',
     fontSize: 14,
@@ -1486,7 +1485,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: '#f9fafb',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   transactionListItem: {
     flexDirection: 'row',
@@ -1556,13 +1555,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
     marginBottom: 2,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   transactionListDescription: {
     fontSize: 12,
     color: '#999',
     marginTop: 2,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   transactionListRight: {
     alignItems: 'flex-end',
@@ -1571,7 +1570,7 @@ const styles = StyleSheet.create({
   transactionListTime: {
     fontSize: 13,
     color: '#999',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -1587,7 +1586,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 11,
      
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   statusTextPaid: {
     color: '#059669',
@@ -1620,12 +1619,12 @@ const styles = StyleSheet.create({
   memberAvatarText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+    
     fontFamily: Font.semiBold,
   },
   memberName: {
     fontSize: 15,
-    fontWeight: '600',
+    
     color: '#1f2937',
     fontFamily: Font.semiBold,
     marginBottom: 2,
@@ -1649,7 +1648,6 @@ const styles = StyleSheet.create({
   },
   creatorText: {
     fontSize: 11,
-    fontWeight: '600',
     color: '#fff',
     fontFamily: Font.semiBold,
   },
@@ -1661,17 +1659,8 @@ const styles = StyleSheet.create({
   },
   youText: {
     fontSize: 11,
-    fontWeight: '600',
     color: '#fff',
     fontFamily: Font.semiBold,
-  },
-  simplificationNote: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 16,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    fontFamily: 'Biennale-Regular',
   },
   drawerOverlay: {
     flex: 1,
@@ -1680,12 +1669,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   drawerContainer: {
-    width: 300,
+    width: 200,
     height: '100%',
     backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 10,
   },
@@ -1693,8 +1682,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 50,
+    padding: 10,
+    paddingTop: 30,
     backgroundColor: '#000000ff',
   },
   drawerTitle: {
@@ -1705,7 +1694,6 @@ const styles = StyleSheet.create({
   drawerClose: {
     fontSize: 28,
     color: '#fff',
-    fontWeight: '300',
     fontFamily: Font.regular,
   },
   drawerContent: {
@@ -1713,7 +1701,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   drawerContentContainer: {
-    paddingVertical: 16,
+    paddingVertical: 8,
     paddingBottom: 80,
   },
   roleSection: {
@@ -1725,7 +1713,6 @@ const styles = StyleSheet.create({
   },
   roleTitle: {
     fontSize: 11,
-    fontWeight: '600',
     fontFamily: Font.semiBold,
     color: '#6b7280',
     letterSpacing: 0.5,
@@ -1785,7 +1772,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
     marginBottom: 12,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   deleteButton: {
     backgroundColor: '#dc2626',
@@ -1798,7 +1785,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
      
     color: '#fff',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   deleteModalOverlay: {
     flex: 1,
@@ -1809,15 +1796,15 @@ const styles = StyleSheet.create({
   },
   deleteModalContainer: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    width: '100%',
+    borderRadius: 15,
+    padding: 16,
+    width: '85%',
     maxWidth: 400,
   },
   deleteModalTitle: {
     fontSize: 20,
-     
     color: '#333',
+    padding: 10,
     marginBottom: 16,
     justifyContent: 'center',
     fontFamily: Font.bold,
@@ -1828,16 +1815,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fee2e2',
     padding: 12,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 10,
     lineHeight: 20,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   deleteModalInstruction: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 5,
     lineHeight: 20,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   deleteModalGroupName: {
      
@@ -1851,7 +1838,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
     marginBottom: 20,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   deleteModalButtons: {
     flexDirection: 'row',
@@ -1868,7 +1855,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
      
     color: '#666',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   deleteModalConfirmButton: {
     flex: 1,
@@ -1885,7 +1872,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
      
     color: '#fff',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   addMemberButton: {
     backgroundColor: '#10b981',
@@ -1897,7 +1884,7 @@ const styles = StyleSheet.create({
   },
   addMemberButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    
     color: '#fff',
     fontFamily: Font.semiBold,
   },
@@ -1905,7 +1892,7 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontSize: 13,
     marginBottom: 12,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   headerActions: {
     flexDirection: 'row',
@@ -1916,12 +1903,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 14,
-     
-    fontFamily: 'Biennale-SemiBold',
   },
   headerContent: {
     flexDirection: 'row',
@@ -1949,7 +1930,7 @@ const styles = StyleSheet.create({
   },
   groupEmojiLarge: {
     fontSize: 32,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   headerTextContent: {
     flex: 1,
@@ -1960,14 +1941,14 @@ const styles = StyleSheet.create({
   },
   editModalContainer: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 10,
+    padding: 20,
     width: '100%',
     maxWidth: 400,
   },
   editImageContainer: {
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: 0,
   },
   editGroupImage: {
     width: 100,
@@ -1988,63 +1969,42 @@ const styles = StyleSheet.create({
   editPlaceholderEmoji: {
     fontSize: 40,
     marginBottom: 4,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   editPlaceholderText: {
     fontSize: 11,
     color: '#666',
     textAlign: 'center',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   removeEditImageButton: {
-    marginBottom: 16,
+    marginBottom: 5,
     paddingVertical: 6,
     paddingHorizontal: 12,
     backgroundColor: '#fee2e2',
     borderRadius: 6,
     alignSelf: 'center',
+    marginTop: 10,
   },
   removeEditImageText: {
     color: '#dc2626',
     fontSize: 13,
-     
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   editModalLabel: {
     fontSize: 14,
-     
     color: '#333',
     marginBottom: 8,
     marginTop: 8,
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   editModalTextArea: {
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  editDangerZone: {
-    marginTop: 24,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#fee2e2',
-    backgroundColor: '#fef2f2',
-  },
-  editDangerZoneTitle: {
-    fontSize: 16,
-     
-    color: '#dc2626',
-    marginBottom: 8,
-    fontFamily: 'Biennale-Bold',
-  },
-  editDangerZoneDescription: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 12,
-    fontFamily: 'Biennale-Regular',
-  },
   editDeleteButton: {
     backgroundColor: '#dc2626',
+    marginTop: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -2052,9 +2012,8 @@ const styles = StyleSheet.create({
   },
   editDeleteButtonText: {
     fontSize: 15,
-     
     color: '#fff',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   paymentSummary: {
     backgroundColor: '#f9fafb',
