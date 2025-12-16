@@ -1,4 +1,5 @@
 import { BottomLeftArrow, RightArrow, TopRightArrow } from '@/components/ArrowIcons';
+import { CustomToast } from '@/components/CustomToast';
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { DebtGroup, GroupTransaction, StaticDB } from '@/data/staticDatabase';
@@ -45,9 +46,16 @@ export default function GroupDetailScreen() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<OptimizedDebt | null>(null);
   const [paymentDescription, setPaymentDescription] = useState('');
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [celebrationAmount, setCelebrationAmount] = useState(0);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [toast, setToast] = useState({
+    visible: false,
+    message: '',
+    type: 'success' as 'success' | 'error'
+  });
+  const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<{ requestId: string; amount: number } | null>(null);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [pendingReject, setPendingReject] = useState<string | null>(null);
 
   // Auto refresh when screen comes into focus
   useFocusEffect(
@@ -298,109 +306,89 @@ export default function GroupDetailScreen() {
       paymentDescription.trim() || `Settlement: ${selectedDebt.fromName} → ${selectedDebt.toName}`
     );
 
+    setShowPaymentModal(false);
+    setSelectedDebt(null);
+    setPaymentDescription('');
+    loadGroupData();
+
     if (result.success) {
-      setShowPaymentModal(false);
-      setSelectedDebt(null);
-      setPaymentDescription('');
-      loadGroupData();
-      
-      if (Platform.OS === 'web') {
-        alert('Settlement successfuly sent. Waiting for approval');
-      } else {
-        Alert.alert('Success', 'Request pelunasan berhasil dikirim! Menunggu approval dari penerima. ⏳');
-      }
+      setToast({
+        visible: true,
+        message: 'Settlement successfully sent. Waiting for approval ⏳',
+        type: 'success'
+      });
     } else {
-      if (Platform.OS === 'web') {
-        alert(result.error || 'Gagal mengirim request');
-      } else {
-        Alert.alert('Error', result.error || 'Gagal mengirim request');
-      }
+      setToast({
+        visible: true,
+        message: result.error || 'Failed to send request',
+        type: 'error'
+      });
     }
   };
 
   const handleApproveSettlement = (requestId: string, amount: number) => {
-    if (!user) return;
+    setPendingApproval({ requestId, amount });
+    setShowApprovalConfirm(true);
+  };
 
-    console.log('Approving settlement request:', requestId);
-    const result = StaticDB.approveSettlementRequest(requestId, user.id);
+  const confirmApproveSettlement = () => {
+    if (!user || !pendingApproval) return;
+
+    console.log('Approving settlement request:', pendingApproval.requestId);
+    const result = StaticDB.approveSettlementRequest(pendingApproval.requestId, user.id);
     console.log('Approval result:', result);
 
+    setShowApprovalConfirm(false);
+    setPendingApproval(null);
+
     if (result.success) {
-      // Show celebration first
-      setCelebrationAmount(amount);
-      setShowCelebration(true);
+      loadGroupData();
       
-      // Reload data immediately to update optimized debts (remove settled amount)
-      setTimeout(() => {
-        console.log('Reloading group data after approval...');
-        loadGroupData();
-      }, 100);
-      
-      // Hide celebration after 3 seconds and reload again to ensure sync
-      setTimeout(() => {
-        setShowCelebration(false);
-        console.log('Final reload after celebration...');
-        loadGroupData();
-      }, 3000);
+      setToast({
+        visible: true,
+        message: `🎉 Payment approved! ${formatCurrency(pendingApproval.amount)} has been settled`,
+        type: 'success'
+      });
     } else {
-      if (Platform.OS === 'web') {
-        alert(result.error || 'Gagal approve request');
-      } else {
-        Alert.alert('Error', result.error || 'Gagal approve request');
-      }
+      setToast({
+        visible: true,
+        message: result.error || 'Failed to approve request',
+        type: 'error'
+      });
     }
   };
 
   const handleRejectSettlement = (requestId: string) => {
-    if (!user) return;
+    setPendingReject(requestId);
+    setShowRejectConfirm(true);
+  };
 
-    // Web compatibility
-    if (Platform.OS === 'web') {
-      const reason = window.prompt('Alasan reject (opsional):');
-      if (reason === null) return; // User clicked cancel
-      
-      const result = StaticDB.rejectSettlementRequest(
-        requestId,
-        user.id,
-        reason || 'Tidak ada alasan'
-      );
+  const confirmRejectSettlement = () => {
+    if (!user || !pendingReject) return;
 
-      if (result.success) {
-        loadGroupData();
-        alert('Request ditolak');
-      } else {
-        alert(result.error || 'Gagal reject request');
-      }
-      return;
-    }
-
-    // Mobile (iOS/Android)
-    Alert.prompt(
-      'Reject Settlement',
-      'Alasan reject (opsional):',
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: (reason?: string) => {
-            const result = StaticDB.rejectSettlementRequest(
-              requestId,
-              user.id,
-              reason || 'Tidak ada alasan'
-            );
-
-            if (result.success) {
-              loadGroupData();
-              Alert.alert('Berhasil', 'Request ditolak');
-            } else {
-              Alert.alert('Error', result.error || 'Gagal reject request');
-            }
-          },
-        },
-      ],
-      'plain-text'
+    const result = StaticDB.rejectSettlementRequest(
+      pendingReject,
+      user.id,
+      'Request rejected'
     );
+
+    setShowRejectConfirm(false);
+    setPendingReject(null);
+
+    if (result.success) {
+      loadGroupData();
+      setToast({
+        visible: true,
+        message: 'Request rejected',
+        type: 'error'
+      });
+    } else {
+      setToast({
+        visible: true,
+        message: result.error || 'Failed to reject request',
+        type: 'error'
+      });
+    }
   };
 
   if (isLoading) {
@@ -422,44 +410,8 @@ export default function GroupDetailScreen() {
   const myOptimizedDebts = DebtOptimizer.getUserSuggestions(user.id, optimizedDebts);
   const stats = StaticDB.getGroupStatistics(group.id);
 
-  // Celebration Modal Component
-  const CelebrationModal = () => (
-    <Modal
-      visible={showCelebration}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => setShowCelebration(false)}
-    >
-      <View style={styles.celebrationOverlay}>
-        <View style={styles.celebrationCard}>
-          <Text style={styles.celebrationTitle}>🎉 Pelunasan Disetujui! 🎉</Text>
-          <Text style={styles.celebrationAmount}>
-            {formatCurrency(celebrationAmount)}
-          </Text>
-          <Text style={styles.celebrationMessage}>
-            Hutang telah dilunasi dan dicatat!
-          </Text>
-          
-          {/* Simple bar graph */}
-          <View style={styles.graphContainer}>
-            <View style={styles.graphBar}>
-              <View 
-                style={[
-                  styles.graphFill,
-                  { width: '100%' }
-                ]}
-              />
-            </View>
-            <Text style={styles.graphLabel}>Nominal Pelunasan</Text>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
   return (
     <View style={styles.container}>
-      <CelebrationModal />
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -1096,6 +1048,96 @@ export default function GroupDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Approval Confirmation Modal */}
+      <Modal
+        visible={showApprovalConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowApprovalConfirm(false);
+          setPendingApproval(null);
+        }}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContainer}>
+            <Text style={styles.deleteModalTitle}>Confirm Approval</Text>
+            
+            {pendingApproval && (
+              <View style={styles.paymentSummary}>
+                <Text style={styles.deleteModalWarning}>
+                  Are you sure you want to approve this settlement?
+                </Text>
+                <View style={styles.paymentRow}>
+                  <Text style={styles.paymentLabel}>Amount:</Text>
+                  <Text style={[styles.paymentValue, styles.paymentAmount]}>
+                    {formatCurrency(pendingApproval.amount)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={styles.deleteModalCancelButton}
+                onPress={() => {
+                  setShowApprovalConfirm(false);
+                  setPendingApproval(null);
+                }}
+              >
+                <Text style={styles.deleteModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.deleteModalConfirmButton, { backgroundColor: '#10b981' }]}
+                onPress={confirmApproveSettlement}
+              >
+                <Text style={styles.deleteModalConfirmText}>Approve</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reject Confirmation Modal */}
+      <Modal
+        visible={showRejectConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowRejectConfirm(false);
+          setPendingReject(null);
+        }}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContainer}>
+            <Text style={styles.deleteModalTitle}>Reject Settlement</Text>
+            
+            <Text style={styles.deleteModalWarning}>
+              Are you sure you want to reject this settlement request?
+            </Text>
+
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={styles.deleteModalCancelButton}
+                onPress={() => {
+                  setShowRejectConfirm(false);
+                  setPendingReject(null);
+                }}
+              >
+                <Text style={styles.deleteModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.deleteModalConfirmButton}
+                onPress={confirmRejectSettlement}
+              >
+                <Text style={styles.deleteModalConfirmText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <Modal
         visible={showDeleteModal}
@@ -1231,6 +1273,14 @@ export default function GroupDetailScreen() {
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
+
+      {/* Toast Notification */}
+      <CustomToast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={() => setToast({ ...toast, visible: false })}
+      />
     </View>
   );
 }
