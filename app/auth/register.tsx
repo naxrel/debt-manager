@@ -37,17 +37,29 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!username || !password || !name || !email) {
-      Alert.alert('Error', 'Silakan isi semua field');
+      if (Platform.OS === 'web') {
+        window.alert('Error\n\nSilakan isi semua field');
+      } else {
+        Alert.alert('Error', 'Silakan isi semua field');
+      }
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Password tidak sama');
+      if (Platform.OS === 'web') {
+        window.alert('Error\n\nPassword tidak sama');
+      } else {
+        Alert.alert('Error', 'Password tidak sama');
+      }
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password minimal 6 karakter');
+      if (Platform.OS === 'web') {
+        window.alert('Error\n\nPassword minimal 6 karakter');
+      } else {
+        Alert.alert('Error', 'Password minimal 6 karakter');
+      }
       return;
     }
 
@@ -56,11 +68,20 @@ export default function RegisterScreen() {
     setIsLoading(false);
 
     if (success) {
-      Alert.alert('Sukses', 'Akun berhasil dibuat', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
-      ]);
+      if (Platform.OS === 'web') {
+        window.alert('Sukses!\n\nAkun berhasil dibuat');
+        router.replace('/(tabs)/home');
+      } else {
+        Alert.alert('Sukses', 'Akun berhasil dibuat', [
+          { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
+        ]);
+      }
     } else {
-      Alert.alert('Registrasi Gagal', 'Username sudah digunakan');
+      if (Platform.OS === 'web') {
+        window.alert('Registrasi Gagal\n\nUsername sudah digunakan');
+      } else {
+        Alert.alert('Registrasi Gagal', 'Username sudah digunakan');
+      }
     }
   };
 
