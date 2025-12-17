@@ -405,7 +405,8 @@ export class StaticDB {
   }
 
   // Group operations
-  static readonly MAX_GROUP_MEMBERS = 10;
+  static readonly MAX_GROUP_MEMBERS = 15;
+  static readonly RECOMMENDED_GROUP_SIZE = 10;
 
   static getGroups(): DebtGroup[] {
     return this.groups.filter(g => g.isActive);
@@ -427,23 +428,30 @@ export class StaticDB {
     creatorId: string,
     memberIds: string[],
     groupImage?: string
-  ): { success: boolean; group?: DebtGroup; error?: string } {
-    // Validate member count
+  ): { success: boolean; group?: DebtGroup; error?: string; warning?: string } {
+    // Hard limit: Maximum members
     if (memberIds.length > this.MAX_GROUP_MEMBERS) {
       return {
         success: false,
-        error: `Maksimum ${this.MAX_GROUP_MEMBERS} anggota per grup`,
+        error: `Maximum ${this.MAX_GROUP_MEMBERS} members per group. Consider creating sub-groups for better debt tracking.`,
       };
     }
 
     // Ensure creator is included in members
     const allMemberIds = Array.from(new Set([creatorId, ...memberIds]));
 
+    // Hard limit check
     if (allMemberIds.length > this.MAX_GROUP_MEMBERS) {
       return {
         success: false,
-        error: `Maksimum ${this.MAX_GROUP_MEMBERS} anggota per grup`,
+        error: `Maximum ${this.MAX_GROUP_MEMBERS} members per group. Consider creating sub-groups for better debt tracking.`,
       };
+    }
+
+    // Soft warning for large groups
+    let warning: string | undefined;
+    if (allMemberIds.length > this.RECOMMENDED_GROUP_SIZE) {
+      warning = `⚠️ Large group (${allMemberIds.length} members). Debt tracking may become complex. Recommended: ${this.RECOMMENDED_GROUP_SIZE} or fewer members.`;
     }
 
     // Validate all members exist
@@ -467,7 +475,7 @@ export class StaticDB {
     };
 
     this.groups.push(newGroup);
-    return { success: true, group: newGroup };
+    return { success: true, group: newGroup, warning };
   }
 
   static updateGroup(
@@ -509,7 +517,7 @@ export class StaticDB {
     if (group.memberIds.length >= this.MAX_GROUP_MEMBERS) {
       return {
         success: false,
-        error: `Maksimum ${this.MAX_GROUP_MEMBERS} anggota per grup`,
+        error: `Maximum ${this.MAX_GROUP_MEMBERS} members per group`,
       };
     }
 
@@ -959,18 +967,17 @@ export class StaticDB {
     request.reviewedAt = new Date().toISOString();
     request.reviewedBy = userId;
 
-    // Create settlement transaction with reversed direction to cancel the debt
-    // Original: fromUser owes toUser (fromUser → toUser)
-    // Settlement: fromUser pays toUser, so we create reverse transaction (toUser → fromUser) with isPaid=true
-    // This will offset the balance: original debt + reverse payment = 0
+    // Create settlement transaction in CORRECT direction (payer → receiver)
+    // fromUser pays toUser (fromUser → toUser)
+    // Mark as isPaid so original debt is offset but transaction shows correct direction
     const transactionResult = this.addGroupTransaction({
       groupId: request.groupId,
-      fromUserId: request.toUserId, // REVERSED: receiver becomes sender
-      toUserId: request.fromUserId,   // REVERSED: sender becomes receiver  
+      fromUserId: request.fromUserId, // Payer (penghutang)
+      toUserId: request.toUserId,     // Receiver (pemberi hutang)
       amount: request.amount,
       description: `✓ ${request.description}`,
       date: new Date().toISOString(),
-      isPaid: false, // Mark as unpaid so it counts in balance calculation to offset the debt
+      isPaid: true, // Mark as PAID to indicate this is a settlement that offsets the debt
       createdBy: request.fromUserId,
     });
 
