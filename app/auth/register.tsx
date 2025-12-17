@@ -69,11 +69,11 @@ export default function RegisterScreen() {
 
     if (success) {
       if (Platform.OS === 'web') {
-        window.alert('Sukses!\n\nAkun berhasil dibuat');
-        router.replace('/(tabs)/home');
+        window.alert('Sukses!\n\nAkun berhasil dibuat. Silakan login untuk melanjutkan.');
+        router.replace('/auth/login');
       } else {
-        Alert.alert('Sukses', 'Akun berhasil dibuat', [
-          { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
+        Alert.alert('Sukses', 'Akun berhasil dibuat. Silakan login untuk melanjutkan.', [
+          { text: 'OK', onPress: () => router.replace('/auth/login') },
         ]);
       }
     } else {
