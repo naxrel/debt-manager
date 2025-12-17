@@ -1,21 +1,20 @@
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -58,11 +57,16 @@ export default function LoginScreen() {
     if (success) {
       router.replace('/(tabs)/home');
     } else {
-      Alert.alert(
-        'Failed login', 
-        'Username or password wrong. Please try again.',
-        [{ text: 'OK' }]
-      );
+      // Web-compatible error handling
+      if (Platform.OS === 'web') {
+        window.alert('Login gagal!\n\nUsername atau password salah. Silakan coba lagi.');
+      } else {
+        Alert.alert(
+          'Login Gagal', 
+          'Username atau password salah. Silakan coba lagi.',
+          [{ text: 'OK' }]
+        );
+      }
     }
   };
 
