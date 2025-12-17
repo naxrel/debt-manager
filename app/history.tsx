@@ -5,12 +5,12 @@ import { Debt, GroupTransaction, StaticDB } from '@/data/staticDatabase';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -42,7 +42,7 @@ export default function HistoryScreen() {
       refreshDebts();
       loadGroupTransactions();
     }
-  }, [user, refreshDebts, loadGroupTransactions]);
+  }, [user]); // Remove refreshDebts and loadGroupTransactions from dependencies to prevent infinite loop
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
