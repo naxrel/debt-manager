@@ -1,6 +1,14 @@
 // Static Database untuk Demo
 // Database ini berisi user dan data utang piutang yang sudah terdaftar
 
+export interface PaymentMethod {
+  id: string;
+  type: 'bank' | 'ewallet';
+  provider: string; // "BCA", "Mandiri", "GoPay", "OVO", "DANA"
+  accountNumber: string;
+  isPrimary?: boolean; // Rekening utama
+}
+
 export interface User {
   id: string;
   username: string;
@@ -8,6 +16,7 @@ export interface User {
   name: string;
   email: string;
   profileImage?: string; // URI/URL gambar profile
+  paymentMethods?: PaymentMethod[];
 }
 
 export interface Debt {
@@ -73,6 +82,22 @@ export const STATIC_USERS: User[] = [
     password: 'admin123',
     name: 'Admin User',
     email: 'admin@example.com',
+    profileImage: 'https://i.pravatar.cc/150?img=1',
+    paymentMethods: [
+      {
+        id: 'pm1',
+        type: 'bank',
+        provider: 'BCA',
+        accountNumber: '1234567890',
+        isPrimary: true
+      },
+      {
+        id: 'pm2',
+        type: 'ewallet',
+        provider: 'GoPay',
+        accountNumber: '081234567890'
+      }
+    ]
   },
   {
     id: '2',
@@ -80,6 +105,28 @@ export const STATIC_USERS: User[] = [
     password: 'john123',
     name: 'John Doe',
     email: 'john@example.com',
+    profileImage: 'https://i.pravatar.cc/150?img=12',
+    paymentMethods: [
+      {
+        id: 'pm3',
+        type: 'bank',
+        provider: 'BCA',
+        accountNumber: '9876543210',
+        isPrimary: true
+      },
+      {
+        id: 'pm4',
+        type: 'bank',
+        provider: 'Mandiri',
+        accountNumber: '1122334455'
+      },
+      {
+        id: 'pm5',
+        type: 'ewallet',
+        provider: 'OVO',
+        accountNumber: '085678901234'
+      }
+    ]
   },
   {
     id: '3',
@@ -87,6 +134,22 @@ export const STATIC_USERS: User[] = [
     password: 'jane123',
     name: 'Jane Smith',
     email: 'jane@example.com',
+    profileImage: 'https://i.pravatar.cc/150?img=5',
+    paymentMethods: [
+      {
+        id: 'pm6',
+        type: 'bank',
+        provider: 'Mandiri',
+        accountNumber: '5566778899',
+        isPrimary: true
+      },
+      {
+        id: 'pm7',
+        type: 'ewallet',
+        provider: 'DANA',
+        accountNumber: '087654321098'
+      }
+    ]
   },
   {
     id: '4',
@@ -94,6 +157,7 @@ export const STATIC_USERS: User[] = [
     password: 'dong123',
     name: 'Dongs',
     email: 'Dongs@example.com',
+    profileImage: 'https://i.pravatar.cc/150?img=8',
   }
 ];
 
@@ -217,6 +281,67 @@ export const STATIC_DEBTS: Debt[] = [
     initiatedBy: '1',
     approvedBy: '3',
     approvedAt: '2025-12-10T10:00:00.000Z',
+  },
+  {
+    id: 'd10',
+    userId: '3',
+    type: 'piutang', // atau 'piutang'
+    name: 'Dongs',
+    amount: 100000,
+    description: 'Deskripsi transaksi',
+    date: '2025-12-15',
+    isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '3',
+  },
+  {
+    id: 'd11',
+    userId: '4', // Dongs
+    type: 'hutang',
+    name: 'Jane Smith',
+    otherUserId: '3', // Jane's ID
+    amount: 100000,
+    description: 'Deskripsi transaksi',
+    date: '2025-12-15',
+    isPaid: false,
+    status: 'confirmed',
+    initiatedBy: '4',
+  },
+  {
+  id: 'd12',
+  userId: '3',
+  type: 'piutang', // atau 'piutang'
+  name: 'Mbut',
+  amount: 150000,
+  description: 'Deskripsi transaksi',
+  date: '2025-12-20',
+  isPaid: false,
+  status: 'confirmed',
+  initiatedBy: '3',
+  },
+  {
+  id: 'd13',
+  userId: '3',
+  type: 'piutang', // atau 'piutang'
+  name: 'Dad',
+  amount: 150000,
+  description: 'Deskripsi transaksi',
+  date: '2025-12-20',
+  isPaid: false,
+  status: 'confirmed',
+  initiatedBy: '3',
+  },
+  {
+  id: 'd14',
+  userId: '3',
+  type: 'piutang', // atau 'piutang'
+  name: 'Jancuk',
+  amount: 150000,
+  description: 'Deskripsi transaksi',
+  date: '2025-12-20',
+  isPaid: false,
+  status: 'confirmed',
+  initiatedBy: '3',
   },
 ];
 
