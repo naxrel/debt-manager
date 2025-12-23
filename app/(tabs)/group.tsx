@@ -4,14 +4,14 @@ import { DebtGroup, StaticDB } from '@/data/staticDatabase';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -111,26 +111,6 @@ export default function GroupScreen() {
             )}
           </View>
         </View>
-
-        {/* Quick Action to Business Intelligence */}
-        <TouchableOpacity
-          style={styles.optimizationCard}
-          onPress={() => router.push('/business-intelligence')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.optimizationIcon}>
-            <Text style={styles.optimizationEmoji}>📊</Text>
-          </View>
-          <View style={styles.optimizationContent}>
-            <Text style={styles.optimizationTitle}>Business Intelligence</Text>
-            <Text style={styles.optimizationSubtitle}>
-              Analyze your debts here
-            </Text>
-          </View>
-          <Svg width={24} height={24} viewBox="0 0 1024 1024" fill="none">
-            <Path fill="#2563eb" d="M338.752 104.704a64 64 0 000 90.496l316.8 316.8-316.8 316.8a64 64 0 0090.496 90.496l362.048-362.048a64 64 0 000-90.496L429.248 104.704a64 64 0 00-90.496 0z" />
-          </Svg>
-        </TouchableOpacity>
 
         {/* Groups List */}
         <View style={styles.section}>

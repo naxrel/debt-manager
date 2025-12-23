@@ -1,17 +1,18 @@
+import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { StaticDB } from '@/data/staticDatabase';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Platform,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -321,10 +322,8 @@ export default function PendingApprovalsScreen() {
             <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Persetujuan Pending</Text>
-        <Text style={styles.headerSubtitle}>
-          {pendingDebts.length} transaksi menunggu persetujuan Anda
-        </Text>
+        <Text style={styles.headerTitle}>Pending Approval</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <FlatList
@@ -355,31 +354,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#344170',
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    padding: 8,
+    paddingTop: 50,
+    borderBottomWidth: 0,
+    borderBottomColor: '#f3f4f6',
   },
   backButton: {
-    marginBottom: 16,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 10,
     cursor: 'pointer' as any,
   },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'Biennale-Regular',
-  },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-    fontFamily: 'Biennale-Bold',
+    fontSize: 18,
+    fontFamily: Font.semiBold,
+    color: '#1f2937',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#e0e7ff',
-    fontFamily: 'Biennale-Regular',
+  headerSpacer: {
+    width: 40,
   },
   listContainer: {
     padding: 16,
@@ -403,27 +404,25 @@ const styles = StyleSheet.create({
   },
   debtName: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 4,
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   debtMeta: {
     fontSize: 13,
     color: '#999',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   debtBadge: {
     alignItems: 'flex-end',
   },
   debtType: {
     fontSize: 12,
-    fontWeight: '600',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     overflow: 'hidden',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   hutangBadge: {
     backgroundColor: '#fee2e2',
@@ -435,16 +434,15 @@ const styles = StyleSheet.create({
   },
   debtAmount: {
     fontSize: 24,
-    fontWeight: 'bold',
     color: '#344170',
     marginBottom: 8,
-    fontFamily: 'Biennale-Bold',
+    fontFamily: Font.bold,
   },
   debtDescription: {
     fontSize: 14,
     color: '#666',
     marginBottom: 12,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   debtInfo: {
     backgroundColor: '#eff6ff',
@@ -456,7 +454,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1e40af',
     lineHeight: 18,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   rejectInputContainer: {
     marginBottom: 12,
@@ -470,7 +468,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 80,
     textAlignVertical: 'top',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -489,8 +487,7 @@ const styles = StyleSheet.create({
   approveButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   rejectButton: {
     backgroundColor: '#dc2626',
@@ -498,8 +495,7 @@ const styles = StyleSheet.create({
   rejectButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   cancelButton: {
     backgroundColor: '#6b7280',
@@ -507,8 +503,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   emptyState: {
     alignItems: 'center',
@@ -518,19 +513,18 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 48,
     marginBottom: 16,
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 8,
-    fontFamily: 'Biennale-SemiBold',
+    fontFamily: Font.semiBold,
   },
   emptySubtext: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    fontFamily: 'Biennale-Regular',
+    fontFamily: Font.regular,
   },
 });

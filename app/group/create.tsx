@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { StaticDB } from '../../data/staticDatabase';
+import { Path, Svg } from 'react-native-svg';
 export default function CreateGroup() {
   const { user } = useAuth();
   const [groupName, setGroupName] = useState('');
@@ -145,10 +146,13 @@ export default function CreateGroup() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity 
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.cancelButton}>Batal</Text>
+          onPress={() => router.back()} 
+                    style={styles.backButton}
+                    activeOpacity={0.7}
+                  >
+                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                      <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+                    </Svg>
         </TouchableOpacity>
         <Text style={styles.title}>Create new group</Text>
         <View style={{ width: 50 }} />
@@ -327,18 +331,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 10,
+    paddingTop: 30,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  cancelButton: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontFamily: 'Biennale-Regular',
+  backButton: {
+    alignItems: 'flex-start',
+    paddingLeft: 2,
+    cursor: 'pointer' as any,
   },
   title: {
     fontSize: 18,
+    paddingLeft: 12,
     fontFamily: Font.semiBold,
   },
   content: {

@@ -252,24 +252,22 @@ export default function AddDebtScreen() {
               onPress={() => setType('hutang')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleButtonText, type === 'hutang' && styles.toggleButtonTextActive]}>Debt</Text>
+              <Text style={[styles.toggleButtonText, type === 'hutang' && styles.toggleButtonTextActive]}>- Debt</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.toggleButton, styles.toggleButtonRight, type === 'piutang' && styles.toggleButtonActive]}
               onPress={() => setType('piutang')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleButtonText, type === 'piutang' && styles.toggleButtonTextActive]}>Receive</Text>
+              <Text style={[styles.toggleButtonText, type === 'piutang' && styles.toggleButtonTextActive]}>+ Receive</Text>
             </TouchableOpacity>
           </View>
 
           {/* Form Inputs */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username*</Text>
+            <Text style={styles.label}>To / From</Text>
             <TextInput
               style={styles.input}
-              placeholder="@username"
-              placeholderTextColor="#9ca3af"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"

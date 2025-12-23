@@ -1,5 +1,6 @@
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -13,7 +14,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
 
 export default function SecurityScreen() {
   const router = useRouter();
@@ -24,21 +24,46 @@ export default function SecurityScreen() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [errors, setErrors] = useState({ 
+    currentPassword: '', 
+    newPassword: '', 
+    confirmPassword: '' 
+  });
 
   const handleChangePassword = () => {
     // Validasi
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Semua field harus diisi');
-      return;
+    const newErrors = { 
+      currentPassword: '', 
+      newPassword: '', 
+      confirmPassword: '' 
+    };
+    let hasError = false;
+
+    if (!currentPassword) {
+      newErrors.currentPassword = 'Current password tidak boleh kosong';
+      hasError = true;
     }
 
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Password baru tidak cocok');
-      return;
+    if (!newPassword) {
+      newErrors.newPassword = 'New password tidak boleh kosong';
+      hasError = true;
+    } else if (newPassword.length < 6) {
+      newErrors.newPassword = 'Password minimal 6 karakter';
+      hasError = true;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password baru minimal 6 karakter');
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Confirm password tidak boleh kosong';
+      hasError = true;
+    } else if (newPassword !== confirmPassword) {
+      newErrors.confirmPassword = 'Password tidak cocok';
+      hasError = true;
+    }
+
+    setErrors(newErrors);
+
+    if (hasError) {
       return;
     }
 
@@ -50,6 +75,7 @@ export default function SecurityScreen() {
           setCurrentPassword('');
           setNewPassword('');
           setConfirmPassword('');
+          setErrors({ currentPassword: '', newPassword: '', confirmPassword: '' });
           router.back();
         },
       },
@@ -63,9 +89,7 @@ export default function SecurityScreen() {
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
-          </Svg>
+          <Ionicons name="chevron-back" size={24} color="#1f2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Security</Text>
         <View style={{ width: 40 }} />
@@ -77,98 +101,135 @@ export default function SecurityScreen() {
           {/* Current Password */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Current Password</Text>
-            <View style={styles.inputContainer}>
+            <View style={[
+              styles.inputWrapper,
+              focusedInput === 'currentPassword' && styles.inputWrapperFocused,
+              errors.currentPassword && styles.inputWrapperError
+            ]}>
+              <Ionicons 
+                name="lock-closed-outline" 
+                size={20} 
+                color={focusedInput === 'currentPassword' ? '#2563eb' : '#9ca3af'} 
+                style={styles.inputIcon}
+              />
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.inputPassword]}
                 placeholder="Enter current password"
                 placeholderTextColor="#9ca3af"
                 value={currentPassword}
-                onChangeText={setCurrentPassword}
+                onChangeText={(text) => {
+                  setCurrentPassword(text);
+                  if (errors.currentPassword) setErrors({ ...errors, currentPassword: '' });
+                }}
+                onFocus={() => setFocusedInput('currentPassword')}
+                onBlur={() => setFocusedInput(null)}
                 secureTextEntry={!showCurrentPassword}
                 autoCapitalize="none"
               />
               <TouchableOpacity
                 onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                style={styles.eyeButton}
+                style={styles.eyeIcon}
               >
-                {showCurrentPassword ? (
-                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path stroke="#6b7280" strokeWidth="2" d="M6.887 5.172c.578-.578.867-.868 1.235-1.02S8.898 4 9.716 4h4.61c.826 0 1.239 0 1.61.155.37.155.66.45 1.239 1.037l1.674 1.699c.568.576.852.865 1.002 1.23.149.364.149.768.149 1.578v4.644c0 .818 0 1.226-.152 1.594s-.441.656-1.02 1.235l-1.656 1.656c-.579.579-.867.867-1.235 1.02-.368.152-.776.152-1.594.152H9.7c-.81 0-1.214 0-1.579-.15-.364-.149-.653-.433-1.229-1.001l-1.699-1.674c-.588-.58-.882-.87-1.037-1.24S4 15.152 4 14.326v-4.61c0-.818 0-1.226.152-1.594s.442-.657 1.02-1.235z" />
-                    <Path stroke="#6b7280" strokeLinecap="round" strokeWidth="2" d="m8 11 .422.211a8 8 0 0 0 7.156 0L16 11M12 12.5V14M9 12l-.5 1M15 12l.5 1" />
-                  </Svg>
-                ) : (
-                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path stroke="#6b7280" strokeWidth="2" d="M12 5c-5.444 0-8.469 4.234-9.544 6.116-.221.386-.331.58-.32.868.013.288.143.476.402.852C3.818 14.694 7.294 19 12 19s8.182-4.306 9.462-6.164c.26-.376.39-.564.401-.852s-.098-.482-.319-.868C20.47 9.234 17.444 5 12 5Z" />
-                    <Circle cx="12" cy="12" r="4" fill="#6b7280" />
-                  </Svg>
-                )}
+                <Ionicons
+                  name={showCurrentPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color="#9ca3af"
+                />
               </TouchableOpacity>
             </View>
+            {errors.currentPassword ? (
+              <Text style={styles.errorText}>{errors.currentPassword}</Text>
+            ) : null}
           </View>
 
           {/* New Password */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>New Password</Text>
-            <View style={styles.inputContainer}>
+            <View style={[
+              styles.inputWrapper,
+              focusedInput === 'newPassword' && styles.inputWrapperFocused,
+              errors.newPassword && styles.inputWrapperError
+            ]}>
+              <Ionicons 
+                name="lock-closed-outline" 
+                size={20} 
+                color={focusedInput === 'newPassword' ? '#2563eb' : '#9ca3af'} 
+                style={styles.inputIcon}
+              />
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.inputPassword]}
                 placeholder="Enter new password"
                 placeholderTextColor="#9ca3af"
                 value={newPassword}
-                onChangeText={setNewPassword}
+                onChangeText={(text) => {
+                  setNewPassword(text);
+                  if (errors.newPassword) setErrors({ ...errors, newPassword: '' });
+                }}
+                onFocus={() => setFocusedInput('newPassword')}
+                onBlur={() => setFocusedInput(null)}
                 secureTextEntry={!showNewPassword}
                 autoCapitalize="none"
               />
               <TouchableOpacity
                 onPress={() => setShowNewPassword(!showNewPassword)}
-                style={styles.eyeButton}
+                style={styles.eyeIcon}
               >
-                {showNewPassword ? (
-                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path stroke="#6b7280" strokeWidth="2" d="M6.887 5.172c.578-.578.867-.868 1.235-1.02S8.898 4 9.716 4h4.61c.826 0 1.239 0 1.61.155.37.155.66.45 1.239 1.037l1.674 1.699c.568.576.852.865 1.002 1.23.149.364.149.768.149 1.578v4.644c0 .818 0 1.226-.152 1.594s-.441.656-1.02 1.235l-1.656 1.656c-.579.579-.867.867-1.235 1.02-.368.152-.776.152-1.594.152H9.7c-.81 0-1.214 0-1.579-.15-.364-.149-.653-.433-1.229-1.001l-1.699-1.674c-.588-.58-.882-.87-1.037-1.24S4 15.152 4 14.326v-4.61c0-.818 0-1.226.152-1.594s.442-.657 1.02-1.235z" />
-                    <Path stroke="#6b7280" strokeLinecap="round" strokeWidth="2" d="m8 11 .422.211a8 8 0 0 0 7.156 0L16 11M12 12.5V14M9 12l-.5 1M15 12l.5 1" />
-                  </Svg>
-                ) : (
-                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path stroke="#6b7280" strokeWidth="2" d="M12 5c-5.444 0-8.469 4.234-9.544 6.116-.221.386-.331.58-.32.868.013.288.143.476.402.852C3.818 14.694 7.294 19 12 19s8.182-4.306 9.462-6.164c.26-.376.39-.564.401-.852s-.098-.482-.319-.868C20.47 9.234 17.444 5 12 5Z" />
-                    <Circle cx="12" cy="12" r="4" fill="#6b7280" />
-                  </Svg>
-                )}
+                <Ionicons
+                  name={showNewPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color="#9ca3af"
+                />
               </TouchableOpacity>
             </View>
-            <Text style={styles.hint}>Must be at least 6 characters.</Text>
+            {errors.newPassword ? (
+              <Text style={styles.errorText}>{errors.newPassword}</Text>
+            ) : (
+              <Text style={styles.hint}>Must be at least 6 characters.</Text>
+            )}
           </View>
 
           {/* Confirm New Password */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Confirm New Password</Text>
-            <View style={styles.inputContainer}>
+            <View style={[
+              styles.inputWrapper,
+              focusedInput === 'confirmPassword' && styles.inputWrapperFocused,
+              errors.confirmPassword && styles.inputWrapperError
+            ]}>
+              <Ionicons 
+                name="lock-closed-outline" 
+                size={20} 
+                color={focusedInput === 'confirmPassword' ? '#2563eb' : '#9ca3af'} 
+                style={styles.inputIcon}
+              />
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.inputPassword]}
                 placeholder="Re-enter new password"
                 placeholderTextColor="#9ca3af"
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
+                }}
+                onFocus={() => setFocusedInput('confirmPassword')}
+                onBlur={() => setFocusedInput(null)}
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
               />
               <TouchableOpacity
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeButton}
+                style={styles.eyeIcon}
               >
-                {showConfirmPassword ? (
-                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path stroke="#6b7280" strokeWidth="2" d="M6.887 5.172c.578-.578.867-.868 1.235-1.02S8.898 4 9.716 4h4.61c.826 0 1.239 0 1.61.155.37.155.66.45 1.239 1.037l1.674 1.699c.568.576.852.865 1.002 1.23.149.364.149.768.149 1.578v4.644c0 .818 0 1.226-.152 1.594s-.441.656-1.02 1.235l-1.656 1.656c-.579.579-.867.867-1.235 1.02-.368.152-.776.152-1.594.152H9.7c-.81 0-1.214 0-1.579-.15-.364-.149-.653-.433-1.229-1.001l-1.699-1.674c-.588-.58-.882-.87-1.037-1.24S4 15.152 4 14.326v-4.61c0-.818 0-1.226.152-1.594s.442-.657 1.02-1.235z" />
-                    <Path stroke="#6b7280" strokeLinecap="round" strokeWidth="2" d="m8 11 .422.211a8 8 0 0 0 7.156 0L16 11M12 12.5V14M9 12l-.5 1M15 12l.5 1" />
-                  </Svg>
-                ) : (
-                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path stroke="#6b7280" strokeWidth="2" d="M12 5c-5.444 0-8.469 4.234-9.544 6.116-.221.386-.331.58-.32.868.013.288.143.476.402.852C3.818 14.694 7.294 19 12 19s8.182-4.306 9.462-6.164c.26-.376.39-.564.401-.852s-.098-.482-.319-.868C20.47 9.234 17.444 5 12 5Z" />
-                    <Circle cx="12" cy="12" r="4" fill="#6b7280" />
-                  </Svg>
-                )}
+                <Ionicons
+                  name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color="#9ca3af"
+                />
               </TouchableOpacity>
             </View>
+            {errors.confirmPassword ? (
+              <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+            ) : null}
           </View>
 
           <TouchableOpacity
@@ -220,37 +281,59 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
     fontFamily: Font.semiBold,
-    color: '#1f2937',
+    color: '#1e293b',
     marginBottom: 8,
   },
-  inputContainer: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    height: 52,
+  },
+  inputWrapperFocused: {
+    borderColor: '#2563eb',
+    backgroundColor: '#f8fafc',
+  },
+  inputWrapperError: {
+    borderColor: '#ef4444',
+  },
+  inputIcon: {
+    marginRight: 8,
   },
   input: {
     flex: 1,
-    padding: 16,
     fontSize: 16,
-    fontFamily: Font.regular,
-    color: '#1f2937',
+    color: '#1e293b',
+    paddingVertical: 0,
   },
-  eyeButton: {
-    padding: 16,
+  inputPassword: {
+    paddingRight: 8,
+  },
+  eyeIcon: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginTop: 6,
+    marginLeft: 4,
   },
   hint: {
     fontSize: 12,
     fontFamily: Font.regular,
     color: '#9ca3af',
-    marginTop: 4,
+    marginTop: 6,
+    marginLeft: 4,
   },
   saveButton: {
     backgroundColor: '#2563eb',

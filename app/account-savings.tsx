@@ -150,9 +150,8 @@ export default function AccountSavingsScreen() {
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} hitSlop={20} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={28} color="#007AFF" />
-                    <Text style={styles.backButtonText}>Back</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Savings</Text>
+                <Text style={styles.headerTitle}>Payment Methods</Text>
                 <TouchableOpacity onPress={openAddModal} hitSlop={20}>
                     <Ionicons name="add" size={28} color="#007AFF" />
                 </TouchableOpacity>
@@ -304,7 +303,7 @@ export default function AccountSavingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F2F2F7', // iOS System Gray 6
+        backgroundColor: '#ffffffff', // iOS System Gray 6
     },
     header: {
         flexDirection: 'row',
@@ -313,17 +312,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 60,
         paddingBottom: 12,
-        backgroundColor: '#F2F2F7',
+        backgroundColor: '#ffffffff',
     },
     backButton: {
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    backButtonText: {
-        fontSize: 17,
-        color: '#007AFF',
-        fontFamily: Font.regular,
-        marginLeft: -4,
     },
     headerTitle: {
         fontSize: 17,
@@ -434,7 +427,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 16,
-        backgroundColor: '#F2F2F7',
+        backgroundColor: '#ffffffff',
     },
     modalCancel: {
         fontSize: 17,

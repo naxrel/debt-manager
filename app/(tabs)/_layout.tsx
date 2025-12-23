@@ -76,12 +76,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabIcon name="settings" color={color} size={24} />,
         }}
       />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }

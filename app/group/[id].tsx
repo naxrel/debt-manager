@@ -1,5 +1,6 @@
 import { BottomLeftArrow, RightArrow, TopRightArrow } from '@/components/ArrowIcons';
 import { CustomToast } from '@/components/CustomToast';
+import MemberCard from '@/components/group/MemberCard';
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { DebtGroup, GroupTransaction, StaticDB } from '@/data/staticDatabase';
@@ -56,6 +57,8 @@ export default function GroupDetailScreen() {
   const [pendingApproval, setPendingApproval] = useState<{ requestId: string; amount: number } | null>(null);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [pendingReject, setPendingReject] = useState<string | null>(null);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [showMemberCard, setShowMemberCard] = useState(false);
 
   // Auto refresh when screen comes into focus
   useFocusEffect(
@@ -363,6 +366,23 @@ export default function GroupDetailScreen() {
     setShowRejectConfirm(true);
   };
 
+  const handleMemberClick = (memberId: string) => {
+    const member = StaticDB.getUserById(memberId);
+    if (member) {
+      setSelectedMember({
+        id: member.id,
+        username: member.username,
+        name: member.name,
+        profileImage: member.profileImage,
+        bankAccount: (member as any).bankAccount,
+        bankName: (member as any).bankName,
+        phoneNumber: (member as any).phoneNumber,
+      });
+      closeMembersDrawer();
+      setTimeout(() => setShowMemberCard(true), 300);
+    }
+  };
+
   const confirmRejectSettlement = () => {
     if (!user || !pendingReject) return;
 
@@ -509,7 +529,7 @@ export default function GroupDetailScreen() {
         {pendingRequests.length > 0 && (
           <View style={styles.section}>
             <View style={styles.settlementRequestHeader}>
-              <Text style={styles.sectionTitle}>⏳ Pending Approval</Text>
+              <Text style={styles.sectionTitle}>Pending Approval</Text>
               <View style={styles.pendingBadge}>
                 <Text style={styles.pendingBadgeText}>{pendingRequests.length}</Text>
               </View>
@@ -520,7 +540,7 @@ export default function GroupDetailScreen() {
                 <View key={request.id} style={styles.settlementRequestCard}>
                   <View style={styles.settlementRequestInfo}>
                     <Text style={styles.settlementRequestTitle}>
-                      💸 {fromUser?.name} ingin melunasi
+                      {fromUser?.name} wanted to pay
                     </Text>
                     <Text style={styles.settlementRequestAmount}>
                       {formatCurrency(request.amount)}
@@ -798,6 +818,7 @@ export default function GroupDetailScreen() {
                       <TouchableOpacity 
                         style={styles.memberItem}
                         activeOpacity={0.7}
+                        onPress={() => handleMemberClick(creator.id)}
                       >
                         <View style={styles.memberAvatarContainer}>
                           {creator.profileImage ? (
@@ -846,6 +867,7 @@ export default function GroupDetailScreen() {
                           key={member.id}
                           style={styles.memberItem}
                           activeOpacity={0.7}
+                          onPress={() => handleMemberClick(member.id)}
                         >
                           <View style={styles.memberAvatarContainer}>
                             {member.profileImage ? (
@@ -1266,6 +1288,16 @@ export default function GroupDetailScreen() {
         </View>
       </Modal>
 
+      {/* Member Card Bottom Sheet */}
+      {selectedMember && (
+        <MemberCard
+          visible={showMemberCard}
+          onClose={() => setShowMemberCard(false)}
+          member={selectedMember}
+          headerPaddingTop={50}
+        />
+      )}
+
       {/* Add Transaction Button */}
       <TouchableOpacity
         style={styles.fabButton}
@@ -1387,7 +1419,7 @@ const styles = StyleSheet.create({
     fontFamily: Font.semiBold,
   },
   actionSection: {
-    marginBottom: 16,
+    marginBottom: 5,
   },
   actionLabel: {
     fontSize: 16,
@@ -1397,8 +1429,8 @@ const styles = StyleSheet.create({
   },
   debtCard: {
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+    padding: 7,
+    borderRadius: 15,
     marginBottom: 8,
   },
   payCard: {
@@ -1420,7 +1452,6 @@ const styles = StyleSheet.create({
   },
   debtName: {
     fontSize: 16,
-     
     color: '#333',
     fontFamily: Font.semiBold,
     marginBottom: 4,
@@ -1719,7 +1750,7 @@ payButtonPressed: {
     alignItems: 'flex-end',
   },
   drawerContainer: {
-    width: 200,
+    width: 350,
     height: '100%',
     backgroundColor: '#fff',
     shadowColor: '#000',
@@ -2106,7 +2137,7 @@ payButtonPressed: {
   settlementRequestHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 5 ,
     gap: 8,
   },
   pendingBadge: {
@@ -2121,21 +2152,18 @@ payButtonPressed: {
     fontFamily: Font.bold,
   },
   settlementRequestCard: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: '#fff6e3ff',
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#fbbf24',
-    padding: 16,
-    marginBottom: 12,
+    padding: 10,
   },
   settlementRequestInfo: {
-    marginBottom: 12,
+    marginBottom: 5,
   },
   settlementRequestTitle: {
     fontSize: 16,
     color: '#333',
     fontFamily: Font.semiBold,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   settlementRequestAmount: {
     fontSize: 24,
@@ -2156,7 +2184,7 @@ payButtonPressed: {
   },
   settlementRequestActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 100,
   },
   approveButton: {
     flex: 1,

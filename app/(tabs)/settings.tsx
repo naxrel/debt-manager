@@ -3,11 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -31,8 +31,8 @@ export default function SettingsScreen() {
         },
         {
           icon: 'savings',
-          label: 'Account Savings',
-          onPress: () => {}, // Nanti
+          label: 'Payment Methods',
+          onPress: () => router.push('/account-savings'),
         },
         {
           icon: 'security',

@@ -1,3 +1,4 @@
+import { Font } from '@/constants/theme';
 import React, { useEffect, useRef } from 'react';
 import {
     Animated,
@@ -146,13 +147,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#fff',
     marginRight: 12,
-    fontWeight: 'bold',
+    fontFamily: Font.bold,
   },
   message: {
     flex: 1,
     color: '#fff',
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: Font.regular,
     lineHeight: 20,
   },
   swipeIndicator: {

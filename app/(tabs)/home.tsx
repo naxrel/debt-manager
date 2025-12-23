@@ -11,6 +11,7 @@ import {
     Modal,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -24,6 +25,8 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'receive' | 'toPay'>('receive');
   const [pendingCount, setPendingCount] = useState(0);
   const [showBalanceModal, setShowBalanceModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'unpaid' | 'paid'>('unpaid');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -84,11 +87,29 @@ export default function HomeScreen() {
   const balance = personalBalance + groupBalance;
   
   // Filter debts by type for tabs (include settlement_requested agar tetap muncul di list)
-  const receiveDebts = debts.filter(d => !d.isPaid && d.type === 'piutang' && (d.status === 'confirmed' || d.status === 'settlement_requested'));
-  const toPayDebts = debts.filter(d => !d.isPaid && d.type === 'hutang' && (d.status === 'confirmed' || d.status === 'settlement_requested'));
+  let filteredDebts = debts.filter(d => {
+    // Filter by tab type
+    if (activeTab === 'receive' && d.type !== 'piutang') return false;
+    if (activeTab === 'toPay' && d.type !== 'hutang') return false;
+    
+    // Filter by status (paid/unpaid)
+    if (filterStatus === 'unpaid' && d.isPaid) return false;
+    if (filterStatus === 'paid' && !d.isPaid) return false;
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchName = d.name.toLowerCase().includes(query);
+      const matchAmount = d.amount.toString().includes(query);
+      const matchDescription = d.description?.toLowerCase().includes(query);
+      if (!matchName && !matchAmount && !matchDescription) return false;
+    }
+    
+    // Include confirmed and settlement_requested
+    return d.status === 'confirmed' || d.status === 'settlement_requested';
+  });
   
-  // Get debts based on active tab
-  const displayDebts = activeTab === 'receive' ? receiveDebts : toPayDebts;
+  const displayDebts = filteredDebts;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -150,13 +171,6 @@ export default function HomeScreen() {
           <Text style={[styles.userName, isDarkMode && styles.textDark]}>{user.name}</Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.themeToggle}
-            onPress={toggleTheme}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.themeIcon}>{isDarkMode ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Svg width={24} height={24} viewBox="0 0 23 21" fill="none">
             <Path d="M9.28062 6.46494V5.72152C9.28062 4.10317 9.28062 3.294 9.75458 2.73451C10.2285 2.17502 11.0267 2.04199 12.623 1.77594L14.2942 1.49741C17.5373 0.956891 19.1589 0.686633 20.2197 1.58533C21.2806 2.48403 21.2806 4.12794 21.2806 7.41577V13.2502C21.2806 16.5381 21.2806 18.182 20.2197 19.0807C19.1589 19.9794 17.5373 19.7091 14.2942 19.1686L12.623 18.8901C11.0267 18.624 10.2285 18.491 9.75458 17.9315C9.28062 17.372 9.28062 16.5628 9.28062 14.9445V14.399" stroke="#000" strokeWidth="2"/>
@@ -234,6 +248,53 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={styles.searchIcon}>
+          <Path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </Svg>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by name, amount, or description..."
+          placeholderTextColor="#9ca3af"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery ? (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>✕</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {/* Filter Tabs */}
+      <View style={styles.filterTabs}>
+        <TouchableOpacity
+          style={[styles.filterTab, filterStatus === 'unpaid' && styles.filterTabActive]}
+          onPress={() => setFilterStatus('unpaid')}
+        >
+          <Text style={[styles.filterTabText, filterStatus === 'unpaid' && styles.filterTabTextActive]}>
+            Unpaid
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, filterStatus === 'paid' && styles.filterTabActive]}
+          onPress={() => setFilterStatus('paid')}
+        >
+          <Text style={[styles.filterTabText, filterStatus === 'paid' && styles.filterTabTextActive]}>
+            Paid
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, filterStatus === 'all' && styles.filterTabActive]}
+          onPress={() => setFilterStatus('all')}
+        >
+          <Text style={[styles.filterTabText, filterStatus === 'all' && styles.filterTabTextActive]}>
+            All
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity
@@ -242,14 +303,6 @@ export default function HomeScreen() {
         >
           <Text style={styles.actionButtonIcon}>💳</Text>
           <Text style={styles.actionButtonText}>Debt</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/business-intelligence')}
-        >
-          <Text style={styles.actionButtonIcon}>📈</Text>
-          <Text style={styles.actionButtonText}>Summary</Text>
         </TouchableOpacity>
       </View>
 
@@ -555,6 +608,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Font.regular,
     color: '#9ca3af',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1f2937',
+    fontFamily: Font.regular,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  clearButtonText: {
+    fontSize: 18,
+    color: '#9ca3af',
+  },
+  filterTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginTop: 12,
+    gap: 8,
+  },
+  filterTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+  },
+  filterTabActive: {
+    backgroundColor: '#344170',
+  },
+  filterTabText: {
+    fontSize: 13,
+    color: '#6b7280',
+    fontFamily: Font.regular,
+  },
+  filterTabTextActive: {
+    color: '#ffffff',
   },
   modalOverlay: {
     flex: 1,
