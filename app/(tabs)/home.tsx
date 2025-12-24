@@ -2,20 +2,31 @@ import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { Debt, StaticDB } from '@/data/staticDatabase';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+
+interface Debt {
+  id: string;
+  type: 'hutang' | 'piutang';
+  name: string;
+  amount: number;
+  date: string;
+  description?: string;
+  status: string;
+  isPaid: boolean;
+  groupId?: string;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -53,7 +64,8 @@ export default function HomeScreen() {
 
   const calculatePendingCount = () => {
     if (!user) return;
-    const pending = StaticDB.getPendingDebtsForUser(user.id);
+    // Backend doesn't have pending debts, use confirmed unpaid debts
+    const pending = debts.filter(d => !d.isPaid && d.status === 'confirmed');
     setPendingCount(pending.length);
   };
 
@@ -74,28 +86,27 @@ export default function HomeScreen() {
   const personalReceive = personalDebts.filter(d => d.type === 'piutang' && d.status === 'confirmed').reduce((sum, d) => sum + d.amount, 0);
   const personalPay = personalDebts.filter(d => d.type === 'hutang' && d.status === 'confirmed').reduce((sum, d) => sum + d.amount, 0);
   const personalBalance = personalReceive - personalPay;
-  
-  // Calculate group balance from group transactions (include isPaid for receive side)
-  const allGroupTransactions = StaticDB.getAllGroupTransactions();
-  const groupReceiveTransactions = allGroupTransactions.filter(gt => gt.toUserId === user.id);
-  const groupPayTransactions = allGroupTransactions.filter(gt => !gt.isPaid && gt.fromUserId === user.id);
-  const groupReceive = groupReceiveTransactions.reduce((sum, gt) => sum + gt.amount, 0);
-  const groupPay = groupPayTransactions.reduce((sum, gt) => sum + gt.amount, 0);
+
+  // Calculate group balance from group transactions
+  // TODO: Load group transactions from API
+  // For now, only show personal balance
+  const groupReceive = 0;
+  const groupPay = 0;
   const groupBalance = groupReceive - groupPay;
-  
+
   // Total balance (personal + group)
   const balance = personalBalance + groupBalance;
-  
+
   // Filter debts by type for tabs (include settlement_requested agar tetap muncul di list)
   let filteredDebts = debts.filter(d => {
     // Filter by tab type
     if (activeTab === 'receive' && d.type !== 'piutang') return false;
     if (activeTab === 'toPay' && d.type !== 'hutang') return false;
-    
+
     // Filter by status (paid/unpaid)
     if (filterStatus === 'unpaid' && d.isPaid) return false;
     if (filterStatus === 'paid' && !d.isPaid) return false;
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -104,11 +115,11 @@ export default function HomeScreen() {
       const matchDescription = d.description?.toLowerCase().includes(query);
       if (!matchName && !matchAmount && !matchDescription) return false;
     }
-    
+
     // Include confirmed and settlement_requested
     return d.status === 'confirmed' || d.status === 'settlement_requested';
   });
-  
+
   const displayDebts = filteredDebts;
 
   const formatCurrency = (amount: number) => {
@@ -138,7 +149,7 @@ export default function HomeScreen() {
       <TouchableOpacity
         style={styles.debtCard}
         activeOpacity={0.7}
-        onPress={() => router.push(`/debt/detail?id=${item.id}`)}
+      // onPress={() => router.push(`/debt/detail?id=${item.id}`)} // Route deleted
       >
         <View style={styles.debtRow}>
           <View style={styles.debtAvatar}>
@@ -172,15 +183,15 @@ export default function HomeScreen() {
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Svg width={24} height={24} viewBox="0 0 23 21" fill="none">
-            <Path d="M9.28062 6.46494V5.72152C9.28062 4.10317 9.28062 3.294 9.75458 2.73451C10.2285 2.17502 11.0267 2.04199 12.623 1.77594L14.2942 1.49741C17.5373 0.956891 19.1589 0.686633 20.2197 1.58533C21.2806 2.48403 21.2806 4.12794 21.2806 7.41577V13.2502C21.2806 16.5381 21.2806 18.182 20.2197 19.0807C19.1589 19.9794 17.5373 19.7091 14.2942 19.1686L12.623 18.8901C11.0267 18.624 10.2285 18.491 9.75458 17.9315C9.28062 17.372 9.28062 16.5628 9.28062 14.9445V14.399" stroke="#000" strokeWidth="2"/>
-            <Path d="M1.28062 10.333L0.499756 9.70831L-4.57838e-07 10.333L0.499756 10.9577L1.28062 10.333ZM10.2806 11.333C10.8329 11.333 11.2806 10.8853 11.2806 10.333C11.2806 9.78072 10.8329 9.33301 10.2806 9.33301V10.333V11.333ZM5.28062 5.33301L4.49976 4.70831L0.499756 9.70831L1.28062 10.333L2.06149 10.9577L6.06149 5.9577L5.28062 5.33301ZM1.28062 10.333L0.499756 10.9577L4.49976 15.9577L5.28062 15.333L6.06149 14.7083L2.06149 9.70831L1.28062 10.333ZM1.28062 10.333V11.333H10.2806V10.333V9.33301H1.28062V10.333Z" fill="#000"/>
-          </Svg>
-        </TouchableOpacity>
+            <Svg width={24} height={24} viewBox="0 0 23 21" fill="none">
+              <Path d="M9.28062 6.46494V5.72152C9.28062 4.10317 9.28062 3.294 9.75458 2.73451C10.2285 2.17502 11.0267 2.04199 12.623 1.77594L14.2942 1.49741C17.5373 0.956891 19.1589 0.686633 20.2197 1.58533C21.2806 2.48403 21.2806 4.12794 21.2806 7.41577V13.2502C21.2806 16.5381 21.2806 18.182 20.2197 19.0807C19.1589 19.9794 17.5373 19.7091 14.2942 19.1686L12.623 18.8901C11.0267 18.624 10.2285 18.491 9.75458 17.9315C9.28062 17.372 9.28062 16.5628 9.28062 14.9445V14.399" stroke="#000" strokeWidth="2" />
+              <Path d="M1.28062 10.333L0.499756 9.70831L-4.57838e-07 10.333L0.499756 10.9577L1.28062 10.333ZM10.2806 11.333C10.8329 11.333 11.2806 10.8853 11.2806 10.333C11.2806 9.78072 10.8329 9.33301 10.2806 9.33301V10.333V11.333ZM5.28062 5.33301L4.49976 4.70831L0.499756 9.70831L1.28062 10.333L2.06149 10.9577L6.06149 5.9577L5.28062 5.33301ZM1.28062 10.333L0.499756 10.9577L4.49976 15.9577L5.28062 15.333L6.06149 14.7083L2.06149 9.70831L1.28062 10.333ZM1.28062 10.333V11.333H10.2806V10.333V9.33301H1.28062V10.333Z" fill="#000" />
+            </Svg>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.statCard, styles.balanceCard]}
         onPress={() => setShowBalanceModal(true)}
         activeOpacity={0.7}
@@ -212,7 +223,7 @@ export default function HomeScreen() {
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.modalBody}>
               <Text style={styles.modalTotalLabel}>Total Balance</Text>
               <Text style={[
@@ -221,9 +232,9 @@ export default function HomeScreen() {
               ]}>
                 {formatCurrency(balance)}
               </Text>
-              
+
               <View style={styles.modalDivider} />
-              
+
               <View style={styles.modalRow}>
                 <Text style={styles.modalRowLabel}>Personal:</Text>
                 <Text style={[
@@ -233,7 +244,7 @@ export default function HomeScreen() {
                   {formatCurrency(personalBalance)}
                 </Text>
               </View>
-              
+
               <View style={styles.modalRow}>
                 <Text style={styles.modalRowLabel}>Group:</Text>
                 <Text style={[
@@ -251,7 +262,7 @@ export default function HomeScreen() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={styles.searchIcon}>
-          <Path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <Path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
         <TextInput
           style={styles.searchInput}
@@ -337,7 +348,7 @@ export default function HomeScreen() {
           activeTab === 'receive' && pendingCount > 0 ? (
             <TouchableOpacity
               style={styles.pendingNotification}
-              onPress={() => router.push('/debt/pending')}
+            // onPress={() => router.push('/debt/pending')} // Route deleted
             >
               <View style={styles.pendingIcon}>
                 <Text style={styles.pendingIconText}>⏰</Text>

@@ -1,40 +1,47 @@
+import { groupsApi, groupTransactionsApi } from '@/api';
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
-import { Debt, GroupTransaction, StaticDB } from '@/data/staticDatabase';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
-type TransactionItem = 
-  | { type: 'personal'; data: Debt }
-  | { type: 'group'; data: GroupTransaction; groupName: string };
+type TransactionItem =
+  | { type: 'personal'; data: any }
+  | { type: 'group'; data: any; groupName: string };
 
 export default function HistoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { debts, isLoading, refreshDebts } = useDebt();
   const [activeTab, setActiveTab] = useState<'all' | 'personal' | 'group'>('all');
-  const [groupTransactions, setGroupTransactions] = useState<GroupTransaction[]>([]);
+  const [groupTransactions, setGroupTransactions] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
 
-  const loadGroupTransactions = useCallback(() => {
+  const loadGroupTransactions = useCallback(async () => {
     if (!user) return;
-    const userGroups = StaticDB.getUserGroups(user.id);
-    const allTransactions: GroupTransaction[] = [];
-    userGroups.forEach(group => {
-      const groupTrans = StaticDB.getGroupTransactions(group.id);
-      allTransactions.push(...groupTrans);
-    });
-    setGroupTransactions(allTransactions);
+    try {
+      const userGroups = await groupsApi.getAll();
+      setGroups(userGroups);
+
+      const allTransactions: any[] = [];
+      for (const group of userGroups) {
+        const groupTrans = await groupTransactionsApi.getAll(group.id);
+        allTransactions.push(...groupTrans);
+      }
+      setGroupTransactions(allTransactions);
+    } catch (error) {
+      console.error('Error loading group transactions:', error);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -68,7 +75,7 @@ export default function HistoryScreen() {
     }));
 
     const groupTransactionItems: TransactionItem[] = groupTransactions.map(gt => {
-      const group = StaticDB.getGroupById(gt.groupId);
+      const group = groups.find(g => g.id === gt.groupId);
       return {
         type: 'group' as const,
         data: gt,
@@ -96,7 +103,7 @@ export default function HistoryScreen() {
         <AnimatedTouchable
           entering={FadeInDown.delay(index * 50).duration(300).easing(Easing.out(Easing.ease))}
           style={styles.debtCard}
-          onPress={() => router.push(`/debt/detail?id=${item.data.id}`)}
+          // onPress={() => router.push(`/debt/detail?id=${item.data.id}`)} // Route deleted
           activeOpacity={0.7}
         >
           <View style={styles.cardHeader}>
@@ -137,9 +144,8 @@ export default function HistoryScreen() {
         </AnimatedTouchable>
       );
     } else {
-      const fromUser = StaticDB.getUserById(item.data.fromUserId);
-      const toUser = StaticDB.getUserById(item.data.toUserId);
-      const isUserPaying = user && item.data.fromUserId === user.id;
+      // For group transactions, user info is in the transaction data
+      const isUserPaying = user && item.data.fromUserId === user.userId;
 
       return (
         <AnimatedTouchable
@@ -158,7 +164,7 @@ export default function HistoryScreen() {
             <View style={styles.cardLeft}>
               <Text style={styles.debtName}>{item.groupName}</Text>
               <Text style={styles.debtDescription}>
-                {fromUser?.name} → {toUser?.name}
+                Transaction in group
               </Text>
               {item.data.description ? (
                 <Text style={styles.debtDescription}>{item.data.description}</Text>
@@ -252,7 +258,7 @@ export default function HistoryScreen() {
         <FlatList
           data={filteredTransactions}
           renderItem={renderTransactionItem}
-          keyExtractor={(item, index) => 
+          keyExtractor={(item, index) =>
             item.type === 'personal' ? `personal-${item.data.id}` : `group-${item.data.id}`
           }
           contentContainerStyle={styles.listContent}

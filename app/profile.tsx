@@ -1,6 +1,6 @@
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { StaticDB } from '@/data/staticDatabase';
+// import { StaticDB } // from '@/data/staticDatabase' - REMOVED;
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -33,24 +33,21 @@ export default function ProfileScreen() {
       return;
     }
 
-    const result = StaticDB.updateUser(user.id, {
-      name: name.trim(),
-      profileImage: profileImage || undefined,
-    });
+    // TODO: Backend doesn't have PUT /users/profile endpoint yet
+    // For now, profile is read-only
+    Alert.alert('Info', 'Profile update endpoint belum tersedia di backend');
+    setIsEditing(false);
 
-    if (result) {
-      await refreshUser();
-      Alert.alert('Berhasil', 'Profile berhasil diperbarui', [
-        {
-          text: 'OK',
-          onPress: () => {
-            setIsEditing(false);
-          },
-        },
-      ]);
-    } else {
-      Alert.alert('Error', 'Gagal memperbarui profile');
-    }
+    // const result = await usersApi.updateProfile({
+    //   name: name.trim(),
+    //   profileImage: profileImage || undefined,
+    // });
+
+    // if (result) {
+    //   await refreshUser();
+    //   Alert.alert('Berhasil', 'Profile berhasil diperbarui');
+    //   setIsEditing(false);
+    // }
   };
 
   const handlePickImage = async () => {

@@ -1,24 +1,31 @@
 import { Font } from '@/constants/theme';
-import { PaymentMethod, StaticDB } from '@/data/staticDatabase';
+// import { PaymentMethod } from '@/data/staticDatabase';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Image,
-    Modal,
-    PanResponder,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  PanResponder,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_HEIGHT = SCREEN_HEIGHT * 0.4; // 40% of screen height
+
+interface PaymentMethod {
+  id: string;
+  provider: string;
+  accountNumber: string;
+  isPrimary?: boolean;
+}
 
 interface MemberCardProps {
   visible: boolean;
@@ -35,11 +42,11 @@ interface MemberCardProps {
   headerPaddingTop?: number;
 }
 
-export default function MemberCard({ 
-  visible, 
-  onClose, 
+export default function MemberCard({
+  visible,
+  onClose,
   member,
-  headerPaddingTop = 50 
+  headerPaddingTop = 50
 }: MemberCardProps) {
   const translateY = useRef(new Animated.Value(MAX_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -76,13 +83,9 @@ export default function MemberCard({
   useEffect(() => {
     if (visible) {
       openModal();
-      // Fetch payment methods from database
-      const user = StaticDB.getUserById(member.id);
-      if (user && user.paymentMethods) {
-        setPaymentMethods(user.paymentMethods);
-      } else {
-        setPaymentMethods([]);
-      }
+      // TODO: Fetch payment methods from API
+      // For now, payment methods should come from member props or separate API call
+      setPaymentMethods([]);
     } else {
       closeModalInstant();
     }
@@ -159,7 +162,7 @@ export default function MemberCard({
       <View style={styles.container}>
         {/* Dark overlay */}
         <TouchableWithoutFeedback onPress={closeModal}>
-          <Animated.View 
+          <Animated.View
             style={[
               styles.overlay,
               {
@@ -168,7 +171,7 @@ export default function MemberCard({
                   outputRange: [0, 0.5],
                 }),
               },
-            ]} 
+            ]}
           />
         </TouchableWithoutFeedback>
 
@@ -192,8 +195,8 @@ export default function MemberCard({
             <View style={styles.headerLeft}>
               <View style={styles.avatar}>
                 {member.profileImage ? (
-                  <Image 
-                    source={{ uri: member.profileImage }} 
+                  <Image
+                    source={{ uri: member.profileImage }}
                     style={styles.avatarImage}
                   />
                 ) : (
@@ -231,8 +234,8 @@ export default function MemberCard({
                   <Ionicons name="card-outline" size={20} color="#2563eb" />
                   <Text style={styles.infoLabel}>Payment Methods</Text>
                 </View>
-                <ScrollView 
-                  horizontal 
+                <ScrollView
+                  horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.paymentScrollContent}
                 >
@@ -240,10 +243,10 @@ export default function MemberCard({
                     <View key={payment.id} style={styles.paymentCard}>
                       <View style={styles.paymentLeft}>
                         <View style={styles.paymentIconContainer}>
-                          <Ionicons 
-                            name={getProviderIcon(payment.provider) as any} 
-                            size={18} 
-                            color="#2563eb" 
+                          <Ionicons
+                            name={getProviderIcon(payment.provider) as any}
+                            size={18}
+                            color="#2563eb"
                           />
                         </View>
                         <View style={styles.paymentInfo}>
@@ -258,14 +261,14 @@ export default function MemberCard({
                           <Text style={styles.paymentNumber}>{payment.accountNumber}</Text>
                         </View>
                       </View>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.copyButton}
                         onPress={() => handleCopyAccount(payment)}
                       >
-                        <Ionicons 
-                          name={copiedId === payment.id ? "checkmark" : "copy-outline"} 
-                          size={20} 
-                          color={copiedId === payment.id ? "#10b981" : "#64748b"} 
+                        <Ionicons
+                          name={copiedId === payment.id ? "checkmark" : "copy-outline"}
+                          size={20}
+                          color={copiedId === payment.id ? "#10b981" : "#64748b"}
                         />
                       </TouchableOpacity>
                     </View>

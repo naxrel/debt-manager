@@ -1,6 +1,7 @@
+import { groupsApi, groupTransactionsApi } from '@/api';
 import { Font } from '@/constants/theme';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +15,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../../../contexts/AuthContext';
-import { StaticDB, User } from '../../../data/staticDatabase';
 
 export default function AddGroupTransaction() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,14 +26,28 @@ export default function AddGroupTransaction() {
   const [isLoading, setIsLoading] = useState(false);
   const [showFromDropdown, setShowFromDropdown] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [group, setGroup] = useState<any>(null);
+  const [members, setMembers] = useState<any[]>([]);
 
-  const group = id ? StaticDB.getGroupById(id) : null;
-  const members = group?.memberIds
-    .map(memberId => StaticDB.getUserById(memberId))
-    .filter(u => u !== undefined) as User[];
+  useEffect(() => {
+    if (id) {
+      loadGroup();
+    }
+  }, [id]);
+
+  const loadGroup = async () => {
+    try {
+      const groupData = await groupsApi.getById(id!);
+      setGroup(groupData);
+      setMembers(groupData.members || []);
+    } catch (error) {
+      console.error('Error loading group:', error);
+      Alert.alert('Error', 'Gagal memuat data grup');
+    }
+  };
 
   // Real-time validation
-  React.useEffect(() => {
+  useEffect(() => {
     if (fromUserId && toUserId && fromUserId === toUserId) {
       setValidationError('Sender and receiver cannot be the same person');
     } else {
@@ -55,7 +69,7 @@ export default function AddGroupTransaction() {
     // Remove non-numeric characters
     const numericValue = value.replace(/[^0-9]/g, '');
     if (!numericValue) return '';
-    
+
     // Add thousand separators
     return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   };
@@ -74,7 +88,7 @@ export default function AddGroupTransaction() {
     return parseFloat(amount.replace(/\./g, '')) || 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!group || !user) {
       Alert.alert('Error', 'Data tidak valid');
       return;
@@ -103,24 +117,21 @@ export default function AddGroupTransaction() {
 
     setIsLoading(true);
 
-    const result = StaticDB.addGroupTransaction({
-      groupId: group.id,
-      fromUserId,
-      toUserId,
-      amount: numAmount,
-      description: description.trim(),
-      date: new Date().toISOString(), // Include timestamp for proper sorting
-      isPaid: false,
-      createdBy: user.id,
-    });
+    try {
+      await groupTransactionsApi.create({
+        groupId: group.id,
+        fromUserId,
+        toUserId,
+        amount: numAmount,
+        description: description.trim(),
+        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+      });
 
-    setIsLoading(false);
-
-    if (result.success) {
-      // Navigate back immediately to trigger refresh
+      setIsLoading(false);
       router.back();
-    } else {
-      Alert.alert('Error', result.error || 'Gagal menambahkan transaksi');
+    } catch (error: any) {
+      setIsLoading(false);
+      Alert.alert('Error', error.message || 'Gagal menambahkan transaksi');
     }
   };
 
@@ -296,7 +307,7 @@ export default function AddGroupTransaction() {
               keyboardType="numeric"
             />
           </View>
-          
+
           <View style={styles.quickAmountContainer}>
             <Text style={styles.quickAmountLabel}>Quick amount:</Text>
             <View style={styles.quickAmountButtons}>
@@ -308,7 +319,7 @@ export default function AddGroupTransaction() {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.quickAmountButtonText}>
-                    {value >= 1000000 
+                    {value >= 1000000
                       ? `${value / 1000000}M`
                       : `${value / 1000}k`}
                   </Text>
@@ -341,7 +352,7 @@ export default function AddGroupTransaction() {
               !amount ||
               !description.trim() ||
               isLoading) &&
-              styles.submitButtonDisabled,
+            styles.submitButtonDisabled,
           ]}
           onPress={handleSubmit}
           disabled={

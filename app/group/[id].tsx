@@ -1,9 +1,9 @@
+import { groupsApi, groupTransactionsApi, settlementsApi, usersApi } from '@/api';
 import { BottomLeftArrow, RightArrow, TopRightArrow } from '@/components/ArrowIcons';
 import { CustomToast } from '@/components/CustomToast';
 import MemberCard from '@/components/group/MemberCard';
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { DebtGroup, GroupTransaction, StaticDB } from '@/data/staticDatabase';
 import { DebtOptimizer, OptimizedDebt } from '@/utils/debtOptimizer';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -28,10 +28,11 @@ import Svg, { Circle, Path } from 'react-native-svg';
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const [group, setGroup] = useState<DebtGroup | null>(null);
-  const [transactions, setTransactions] = useState<GroupTransaction[]>([]);
+  const [group, setGroup] = useState<any | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [optimizedDebts, setOptimizedDebts] = useState<OptimizedDebt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [members, setMembers] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMembersDrawer, setShowMembersDrawer] = useState(false);
   const [slideAnim] = useState(new Animated.Value(300));
@@ -71,77 +72,69 @@ export default function GroupDetailScreen() {
     loadGroupData();
   }, [id]);
 
-  const loadGroupData = () => {
+  const loadGroupData = async () => {
     if (!id || !user) return;
 
-    const groupData = StaticDB.getGroupById(id);
-    if (!groupData) {
-      Alert.alert('Error', 'Grup tidak ditemukan', [
-        { text: 'OK', onPress: () => router.back() },
+    try {
+      setIsLoading(true);
+      const [groupData, groupTransactions, pendingSettlements] = await Promise.all([
+        groupsApi.getById(id),
+        groupTransactionsApi.getAll(id),
+        settlementsApi.getPending(id)
       ]);
-      return;
+
+      if (!groupData) {
+        Alert.alert('Error', 'Grup tidak ditemukan', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+        return;
+      }
+
+      setGroup(groupData);
+      setTransactions(groupTransactions);
+      setPendingRequests(pendingSettlements);
+
+      // Members already included in groupData
+      const groupMembers = groupData.members || [];
+      setMembers(groupMembers);
+
+      // Calculate balances manually from group transactions
+      const balanceMap = new Map<string, number>();
+
+      // Initialize all members with 0 balance
+      groupMembers.forEach((member: any) => {
+        balanceMap.set(member.id, 0);
+      });
+
+      // Calculate net balance for each member (only unpaid transactions)
+      const unpaidTransactions = groupTransactions.filter((t: any) => !t.isPaid);
+
+      unpaidTransactions.forEach((t: any) => {
+        // fromUser owes money (negative balance)
+        const fromBalance = balanceMap.get(t.fromUserId) || 0;
+        balanceMap.set(t.fromUserId, fromBalance - t.amount);
+
+        // toUser is owed money (positive balance)
+        const toBalance = balanceMap.get(t.toUserId) || 0;
+        balanceMap.set(t.toUserId, toBalance + t.amount);
+      });
+
+      // Convert to UserBalance format
+      const userBalances = groupMembers.map((member: any) => ({
+        userId: member.id,
+        userName: member.name,
+        balance: balanceMap.get(member.id) || 0,
+      }));
+
+      // Optimize using the balance
+      const optimizedDebts = DebtOptimizer.optimizeDebts(userBalances);
+      setOptimizedDebts(optimizedDebts);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading group:', error);
+      setIsLoading(false);
+      Alert.alert('Error', 'Gagal memuat data grup');
     }
-
-    setGroup(groupData);
-    
-    // Load pending settlement requests for current user
-    const pending = StaticDB.getPendingSettlementRequests(user.id, id);
-    setPendingRequests(pending);
-    const groupTransactions = StaticDB.getGroupTransactions(id);
-    setTransactions(groupTransactions);
-
-    // Calculate optimization for this group only
-    const members = groupData.memberIds
-      .map(memberId => StaticDB.getUserById(memberId))
-      .filter(u => u !== undefined);
-
-    // Calculate balances manually from group transactions
-    const balanceMap = new Map<string, number>();
-    
-    // Initialize all members with 0 balance
-    groupData.memberIds.forEach(memberId => {
-      balanceMap.set(memberId, 0);
-    });
-
-    // Calculate net balance for each member (only unpaid transactions)
-    const unpaidTransactions = groupTransactions.filter(t => !t.isPaid);
-    console.log('Total Transactions:', groupTransactions.length);
-    console.log('Unpaid Transactions:', unpaidTransactions.length);
-    console.log('Unpaid Details:', unpaidTransactions.map(t => ({
-      from: StaticDB.getUserById(t.fromUserId)?.name,
-      to: StaticDB.getUserById(t.toUserId)?.name,
-      amount: t.amount,
-      isPaid: t.isPaid
-    })));
-    
-    unpaidTransactions.forEach(t => {
-      // fromUser owes money (negative balance)
-      const fromBalance = balanceMap.get(t.fromUserId) || 0;
-      balanceMap.set(t.fromUserId, fromBalance - t.amount);
-      
-      // toUser is owed money (positive balance)
-      const toBalance = balanceMap.get(t.toUserId) || 0;
-      balanceMap.set(t.toUserId, toBalance + t.amount);
-    });
-
-    console.log('Balance Map:', Array.from(balanceMap.entries()));
-
-    // Convert to UserBalance format
-    const userBalances = members.map(member => ({
-      userId: member.id,
-      userName: member.name,
-      balance: balanceMap.get(member.id) || 0,
-    }));
-
-    console.log('User Balances:', userBalances);
-
-    // Optimize using the balance
-    const optimizedDebts = DebtOptimizer.optimizeDebts(userBalances);
-    
-    console.log('Optimized Debts:', optimizedDebts);
-    
-    setOptimizedDebts(optimizedDebts);
-    setIsLoading(false);
   };
 
   const handleRefresh = () => {
@@ -195,53 +188,54 @@ export default function GroupDetailScreen() {
     }
   };
 
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (!group) return;
 
-    const result = StaticDB.deleteGroup(group.id);
-    if (result.success) {
+    try {
+      await groupsApi.delete(group.id);
       Alert.alert('Berhasil', 'Grup berhasil dihapus', [
         { text: 'OK', onPress: () => router.back() },
       ]);
-    } else {
-      Alert.alert('Error', result.error || 'Gagal menghapus grup');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Gagal menghapus grup');
     }
   };
 
-  const handleAddMember = () => {
+  const handleAddMember = async () => {
     if (!group || !newMemberUsername.trim()) {
       setAddMemberError('Masukkan username');
       return;
     }
 
-    const foundUser = StaticDB.getUserByUsername(newMemberUsername.trim());
-    
-    if (!foundUser) {
-      setAddMemberError(`Username "${newMemberUsername}" tidak ditemukan`);
-      return;
-    }
+    try {
+      const users = await usersApi.getAllUsers();
+      const foundUser = users.find(u => u.username === newMemberUsername.trim());
 
-    if (group.memberIds.includes(foundUser.id)) {
-      setAddMemberError('User sudah menjadi anggota grup');
-      return;
-    }
+      if (!foundUser) {
+        setAddMemberError(`Username "${newMemberUsername}" tidak ditemukan`);
+        return;
+      }
 
-    const result = StaticDB.addMemberToGroup(group.id, foundUser.id);
-    
-    if (result.success) {
+      const memberIds = group.members?.map((m: any) => m.id) || [];
+      if (memberIds.includes(foundUser.id)) {
+        setAddMemberError('User sudah menjadi anggota grup');
+        return;
+      }
+
+      await groupsApi.addMember(group.id, foundUser.id);
       setShowAddMemberModal(false);
       setNewMemberUsername('');
       setAddMemberError('');
-      loadGroupData(); // Refresh
+      await loadGroupData(); // Refresh
       Alert.alert('Berhasil', `${foundUser.name} successfully added to group`);
-    } else {
-      setAddMemberError(result.error || 'Failed to invite group');
+    } catch (error: any) {
+      setAddMemberError(error.message || 'Failed to invite group');
     }
   };
 
   const handlePickGroupImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert('Permission Denied', 'Accessing gallery needed your permission');
       return;
@@ -259,7 +253,7 @@ export default function GroupDetailScreen() {
     }
   };
 
-  const handleSaveGroupEdit = () => {
+  const handleSaveGroupEdit = async () => {
     if (!group || !editGroupName.trim()) {
       if (Platform.OS === 'web') {
         alert('You should fill atleast the name, y\'know');
@@ -269,25 +263,25 @@ export default function GroupDetailScreen() {
       return;
     }
 
-    const result = StaticDB.updateGroup(group.id, {
-      name: editGroupName.trim(),
-      description: editGroupDescription.trim(),
-      groupImage: editGroupImage || undefined,
-    });
+    try {
+      await groupsApi.update(group.id, {
+        name: editGroupName.trim(),
+        description: editGroupDescription.trim(),
+        groupImage: editGroupImage || undefined,
+      });
 
-    if (result.success) {
       setShowEditModal(false);
-      loadGroupData();
+      await loadGroupData();
       if (Platform.OS === 'web') {
         alert('Grup berhasil diperbarui');
       } else {
         Alert.alert('Berhasil', 'Grup berhasil diperbarui');
       }
-    } else {
+    } catch (error: any) {
       if (Platform.OS === 'web') {
-        alert(result.error || 'Gagal memperbarui grup');
+        alert(error.message || 'Gagal memperbarui grup');
       } else {
-        Alert.alert('Error', result.error || 'Gagal memperbarui grup');
+        Alert.alert('Error', error.message || 'Gagal memperbarui grup');
       }
     }
   };
@@ -297,33 +291,32 @@ export default function GroupDetailScreen() {
     setShowPaymentModal(true);
   };
 
-  const confirmPayment = () => {
+  const confirmPayment = async () => {
     if (!selectedDebt || !group || !user) return;
 
-    // Create settlement request instead of direct transaction
-    const result = StaticDB.createSettlementRequest(
-      group.id,
-      selectedDebt.from,
-      selectedDebt.to,
-      selectedDebt.amount,
-      paymentDescription.trim() || `Settlement: ${selectedDebt.fromName} → ${selectedDebt.toName}`
-    );
+    try {
+      await settlementsApi.create({
+        groupId: group.id,
+        fromUserId: selectedDebt.from,
+        toUserId: selectedDebt.to,
+        amount: selectedDebt.amount,
+        description: paymentDescription.trim() || `Settlement: ${selectedDebt.fromName} → ${selectedDebt.toName}`
+      });
 
-    setShowPaymentModal(false);
-    setSelectedDebt(null);
-    setPaymentDescription('');
-    loadGroupData();
+      setShowPaymentModal(false);
+      setSelectedDebt(null);
+      setPaymentDescription('');
+      await loadGroupData();
 
-    if (result.success) {
       setToast({
         visible: true,
         message: 'Settlement successfully sent. Waiting for approval ⏳',
         type: 'success'
       });
-    } else {
+    } catch (error: any) {
       setToast({
         visible: true,
-        message: result.error || 'Failed to send request',
+        message: error.message || 'Failed to send request',
         type: 'error'
       });
     }
@@ -334,28 +327,25 @@ export default function GroupDetailScreen() {
     setShowApprovalConfirm(true);
   };
 
-  const confirmApproveSettlement = () => {
+  const confirmApproveSettlement = async () => {
     if (!user || !pendingApproval) return;
 
-    console.log('Approving settlement request:', pendingApproval.requestId);
-    const result = StaticDB.approveSettlementRequest(pendingApproval.requestId, user.id);
-    console.log('Approval result:', result);
+    try {
+      await settlementsApi.review(pendingApproval.requestId, { status: 'approved' });
 
-    setShowApprovalConfirm(false);
-    setPendingApproval(null);
+      setShowApprovalConfirm(false);
+      setPendingApproval(null);
+      await loadGroupData();
 
-    if (result.success) {
-      loadGroupData();
-      
       setToast({
         visible: true,
         message: `🎉 Payment approved! ${formatCurrency(pendingApproval.amount)} has been settled`,
         type: 'success'
       });
-    } else {
+    } catch (error: any) {
       setToast({
         visible: true,
-        message: result.error || 'Failed to approve request',
+        message: error.message || 'Failed to approve request',
         type: 'error'
       });
     }
@@ -367,45 +357,44 @@ export default function GroupDetailScreen() {
   };
 
   const handleMemberClick = (memberId: string) => {
-    const member = StaticDB.getUserById(memberId);
+    const member = members.find(m => m.id === memberId);
     if (member) {
       setSelectedMember({
         id: member.id,
         username: member.username,
         name: member.name,
         profileImage: member.profileImage,
-        bankAccount: (member as any).bankAccount,
-        bankName: (member as any).bankName,
-        phoneNumber: (member as any).phoneNumber,
+        bankAccount: member.bankAccount,
+        bankName: member.bankName,
+        phoneNumber: member.phoneNumber,
       });
       closeMembersDrawer();
       setTimeout(() => setShowMemberCard(true), 300);
     }
   };
 
-  const confirmRejectSettlement = () => {
+  const confirmRejectSettlement = async () => {
     if (!user || !pendingReject) return;
 
-    const result = StaticDB.rejectSettlementRequest(
-      pendingReject,
-      user.id,
-      'Request rejected'
-    );
+    try {
+      await settlementsApi.review(pendingReject, {
+        status: 'rejected',
+        rejectionReason: 'Request rejected'
+      });
 
-    setShowRejectConfirm(false);
-    setPendingReject(null);
+      setShowRejectConfirm(false);
+      setPendingReject(null);
+      await loadGroupData();
 
-    if (result.success) {
-      loadGroupData();
       setToast({
         visible: true,
         message: 'Request rejected',
         type: 'error'
       });
-    } else {
+    } catch (error: any) {
       setToast({
         visible: true,
-        message: result.error || 'Failed to reject request',
+        message: error.message || 'Failed to reject request',
         type: 'error'
       });
     }
@@ -427,8 +416,12 @@ export default function GroupDetailScreen() {
     );
   }
 
-  const myOptimizedDebts = DebtOptimizer.getUserSuggestions(user.id, optimizedDebts);
-  const stats = StaticDB.getGroupStatistics(group.id);
+  const myOptimizedDebts = DebtOptimizer.getUserSuggestions(user.userId, optimizedDebts);
+  const stats = {
+    memberCount: members.length,
+    totalTransactions: transactions.length,
+    totalAmount: transactions.reduce((sum: number, t: any) => sum + t.amount, 0)
+  };
 
   return (
     <View style={styles.container}>
@@ -450,7 +443,7 @@ export default function GroupDetailScreen() {
               </Svg>
             </TouchableOpacity>
             <View style={styles.headerActions}>
-              {user && group.creatorId === user.id ? (
+              {user && group.creatorId === user.userId ? (
                 <TouchableOpacity
                   style={styles.editButton}
                   onPress={() => {
@@ -477,10 +470,10 @@ export default function GroupDetailScreen() {
               >
                 {/* Settings Button */}
                 <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <Circle cx="9" cy="7" r="4"/>
-                  <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <Circle cx="9" cy="7" r="4" />
+                  <Path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <Path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </Svg>
               </TouchableOpacity>
             </View>
@@ -488,9 +481,9 @@ export default function GroupDetailScreen() {
           <View style={styles.headerContent}>
             <View style={styles.groupImageContainer}>
               {group.groupImage ? (
-                <Image 
-                  source={{ uri: group.groupImage }} 
-                  style={styles.groupImageLarge} 
+                <Image
+                  source={{ uri: group.groupImage }}
+                  style={styles.groupImageLarge}
                 />
               ) : (
                 <View style={styles.groupImagePlaceholder}>
@@ -535,7 +528,7 @@ export default function GroupDetailScreen() {
               </View>
             </View>
             {pendingRequests.map((request) => {
-              const fromUser = StaticDB.getUserById(request.fromUserId);
+              const fromUser = members.find(m => m.id === request.fromUserId);
               return (
                 <View key={request.id} style={styles.settlementRequestCard}>
                   <View style={styles.settlementRequestInfo}>
@@ -647,9 +640,9 @@ export default function GroupDetailScreen() {
           ) : (
             <View style={styles.simplificationList}>
               {optimizedDebts.map((debt, index) => {
-                const isUserInvolved = user && (debt.from === user.id || debt.to === user.id);
-                const canUserPay = user && debt.from === user.id;
-                
+                const isUserInvolved = user && (debt.from === user.userId || debt.to === user.userId);
+                const canUserPay = user && debt.from === user.userId;
+
                 return (
                   <View key={index} style={styles.simplificationItem}>
                     <View style={styles.simplificationRow}>
@@ -686,88 +679,88 @@ export default function GroupDetailScreen() {
               {transactions
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                 .map((transaction, index, sortedTransactions) => {
-                const fromUser = StaticDB.getUserById(transaction.fromUserId);
-                const toUser = StaticDB.getUserById(transaction.toUserId);
-                const creator = StaticDB.getUserById(transaction.createdBy);
-                
-                // Group by date (only date part, not time)
-                const currentDate = transaction.date.split('T')[0];
-                const previousDate = index > 0 ? sortedTransactions[index - 1].date.split('T')[0] : null;
-                const showDateHeader = currentDate !== previousDate;
+                  const fromUser = members.find(m => m.id === transaction.fromUserId);
+                  const toUser = members.find(m => m.id === transaction.toUserId);
+                  const creator = members.find(m => m.id === transaction.createdBy);
 
-                // Format date: "Today", "Yesterday", "Aug 8" or "Jun 9, 2025"
-                const formatDateHeader = (dateString: string) => {
-                  const date = new Date(dateString);
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const dateOnly = new Date(date);
-                  dateOnly.setHours(0, 0, 0, 0);
-                  
-                  const diffTime = today.getTime() - dateOnly.getTime();
-                  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                  
-                  if (diffDays === 0) return 'Today';
-                  if (diffDays === 1) return 'Yesterday';
-                  
-                  const showYear = date.getFullYear() !== today.getFullYear();
-                  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                  const month = monthNames[date.getMonth()];
-                  const day = date.getDate();
-                  const year = date.getFullYear();
-                  
-                  return showYear ? `${month} ${day}, ${year}` : `${month} ${day}`;
-                };
+                  // Group by date (only date part, not time)
+                  const currentDate = transaction.date.split('T')[0];
+                  const previousDate = index > 0 ? sortedTransactions[index - 1].date.split('T')[0] : null;
+                  const showDateHeader = currentDate !== previousDate;
 
-                // Determine transaction type for current user
-                const isUserOwes = user && transaction.fromUserId === user.id; // User berhutang (merah) - bottom left arrow
-                const isUserReceives = user && transaction.toUserId === user.id; // User menerima (hijau) - top right arrow
-                const isOthersTransaction = user && transaction.fromUserId !== user.id && transaction.toUserId !== user.id; // Hutang orang lain (kuning) - right arrow
+                  // Format date: "Today", "Yesterday", "Aug 8" or "Jun 9, 2025"
+                  const formatDateHeader = (dateString: string) => {
+                    const date = new Date(dateString);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const dateOnly = new Date(date);
+                    dateOnly.setHours(0, 0, 0, 0);
 
-                // Set icon style and arrow direction based on transaction type
-                const iconBackgroundColor = isUserOwes ? '#fee2e2' : isUserReceives ? '#d1fae5' : '#fef3c7';
-                const iconColor = isUserOwes ? '#dc2626' : isUserReceives ? '#10b981' : '#f59e0b';
+                    const diffTime = today.getTime() - dateOnly.getTime();
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-                // Select appropriate arrow component
-                const ArrowComponent = isUserOwes ? BottomLeftArrow : isUserReceives ? TopRightArrow : RightArrow;
+                    if (diffDays === 0) return 'Today';
+                    if (diffDays === 1) return 'Yesterday';
 
-                return (
-                  <View key={transaction.id}>
-                    {showDateHeader ? (
-                      <Text style={styles.transactionDateHeader}>{formatDateHeader(currentDate)}</Text>
-                    ) : null}
-                    <TouchableOpacity 
-                      style={styles.transactionListItem}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.transactionIconContainer}>
-                        <View style={[
-                          isOthersTransaction ? styles.transactionIcon : 
-                          isUserOwes ? styles.transactionIconOwes : 
-                          styles.transactionIconReceives,
-                          { backgroundColor: iconBackgroundColor }
-                        ]}>
-                          <ArrowComponent color={iconColor} size={20} />
+                    const showYear = date.getFullYear() !== today.getFullYear();
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const month = monthNames[date.getMonth()];
+                    const day = date.getDate();
+                    const year = date.getFullYear();
+
+                    return showYear ? `${month} ${day}, ${year}` : `${month} ${day}`;
+                  };
+
+                  // Determine transaction type for current user
+                  const isUserOwes = user && transaction.fromUserId === user.userId; // User berhutang (merah) - bottom left arrow
+                  const isUserReceives = user && transaction.toUserId === user.userId; // User menerima (hijau) - top right arrow
+                  const isOthersTransaction = user && transaction.fromUserId !== user.userId && transaction.toUserId !== user.userId; // Hutang orang lain (kuning) - right arrow
+
+                  // Set icon style and arrow direction based on transaction type
+                  const iconBackgroundColor = isUserOwes ? '#fee2e2' : isUserReceives ? '#d1fae5' : '#fef3c7';
+                  const iconColor = isUserOwes ? '#dc2626' : isUserReceives ? '#10b981' : '#f59e0b';
+
+                  // Select appropriate arrow component
+                  const ArrowComponent = isUserOwes ? BottomLeftArrow : isUserReceives ? TopRightArrow : RightArrow;
+
+                  return (
+                    <View key={transaction.id}>
+                      {showDateHeader ? (
+                        <Text style={styles.transactionDateHeader}>{formatDateHeader(currentDate)}</Text>
+                      ) : null}
+                      <TouchableOpacity
+                        style={styles.transactionListItem}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.transactionIconContainer}>
+                          <View style={[
+                            isOthersTransaction ? styles.transactionIcon :
+                              isUserOwes ? styles.transactionIconOwes :
+                                styles.transactionIconReceives,
+                            { backgroundColor: iconBackgroundColor }
+                          ]}>
+                            <ArrowComponent color={iconColor} size={20} />
+                          </View>
                         </View>
-                      </View>
-                      <View style={styles.transactionListContent}>
-                        <View style={styles.transactionListLeft}>
-                          <Text style={styles.transactionListAmount}>
-                            {formatCurrency(transaction.amount)}
-                          </Text>
-                          <Text style={styles.transactionListUsers}>
-                            {fromUser?.name || 'Unknown'} → {toUser?.name || 'Unknown'}
-                          </Text>
-                          {transaction.description ? (
-                            <Text style={styles.transactionListDescription}>
-                              {transaction.description}
+                        <View style={styles.transactionListContent}>
+                          <View style={styles.transactionListLeft}>
+                            <Text style={styles.transactionListAmount}>
+                              {formatCurrency(transaction.amount)}
                             </Text>
-                          ) : null}
+                            <Text style={styles.transactionListUsers}>
+                              {fromUser?.name || 'Unknown'} → {toUser?.name || 'Unknown'}
+                            </Text>
+                            {transaction.description ? (
+                              <Text style={styles.transactionListDescription}>
+                                {transaction.description}
+                              </Text>
+                            ) : null}
+                          </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
             </View>
           )}
         </View>
@@ -801,30 +794,30 @@ export default function GroupDetailScreen() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView 
+              <ScrollView
                 style={styles.drawerContent}
                 contentContainerStyle={styles.drawerContentContainer}
                 showsVerticalScrollIndicator={false}
               >
                 {/* Creator Section */}
                 {(() => {
-                  const creator = StaticDB.getUserById(group.creatorId);
+                  const creator = members.find(m => m.id === group.creatorId);
                   if (!creator) return null;
                   return (
                     <View>
                       <View style={styles.roleHeader}>
                         <Text style={styles.roleTitle}>CREATOR — 1</Text>
                       </View>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.memberItem}
                         activeOpacity={0.7}
                         onPress={() => handleMemberClick(creator.id)}
                       >
                         <View style={styles.memberAvatarContainer}>
                           {creator.profileImage ? (
-                            <Image 
-                              source={{ uri: creator.profileImage }} 
-                              style={styles.memberAvatar} 
+                            <Image
+                              source={{ uri: creator.profileImage }}
+                              style={styles.memberAvatar}
                             />
                           ) : (
                             <View style={styles.memberAvatar}>
@@ -837,7 +830,7 @@ export default function GroupDetailScreen() {
                         <View style={styles.memberTextContainer}>
                           <Text style={styles.memberName}>
                             {creator.name}
-                            {creator.id === user.id && (
+                            {creator.id === user?.userId && (
                               <Text style={styles.youIndicator}> (You)</Text>
                             )}
                           </Text>
@@ -850,20 +843,17 @@ export default function GroupDetailScreen() {
 
                 {/* Members Section */}
                 {(() => {
-                  const members = group?.memberIds
-                    .filter(id => id !== group.creatorId)
-                    .map(id => StaticDB.getUserById(id))
-                    .filter(m => m !== undefined);
-                  
-                  if (!members || members.length === 0) return null;
-                  
+                  const groupMembers = members.filter(m => m.id !== group.creatorId);
+
+                  if (!groupMembers || groupMembers.length === 0) return null;
+
                   return (
                     <View style={styles.roleSection}>
                       <View style={styles.roleHeader}>
-                        <Text style={styles.roleTitle}>MEMBERS — {members.length}</Text>
+                        <Text style={styles.roleTitle}>MEMBERS — {groupMembers.length}</Text>
                       </View>
-                      {members.map(member => (
-                        <TouchableOpacity 
+                      {groupMembers.map(member => (
+                        <TouchableOpacity
                           key={member.id}
                           style={styles.memberItem}
                           activeOpacity={0.7}
@@ -871,9 +861,9 @@ export default function GroupDetailScreen() {
                         >
                           <View style={styles.memberAvatarContainer}>
                             {member.profileImage ? (
-                              <Image 
-                                source={{ uri: member.profileImage }} 
-                                style={styles.memberAvatar} 
+                              <Image
+                                source={{ uri: member.profileImage }}
+                                style={styles.memberAvatar}
                               />
                             ) : (
                               <View style={styles.memberAvatar}>
@@ -886,7 +876,7 @@ export default function GroupDetailScreen() {
                           <View style={styles.memberTextContainer}>
                             <Text style={styles.memberName}>
                               {member.name}
-                              {member.id === user.id && (
+                              {member.id === user.userId && (
                                 <Text style={styles.youIndicator}> (You)</Text>
                               )}
                             </Text>
@@ -899,7 +889,7 @@ export default function GroupDetailScreen() {
                 })()}
 
                 {/* Add Member Button - Only for creator */}
-                {user && group.creatorId === user.id ? (
+                {user && group.creatorId === user.userId ? (
                   <TouchableOpacity
                     style={styles.addMemberButton}
                     onPress={() => {
@@ -926,7 +916,7 @@ export default function GroupDetailScreen() {
         <View style={styles.deleteModalOverlay}>
           <View style={styles.deleteModalContainer}>
             <Text style={styles.deleteModalTitle}>Invite to {group.name}</Text>
-            
+
             <Text style={styles.deleteModalInstruction}>
               Enter the username of the member you want to add:
             </Text>
@@ -978,92 +968,92 @@ export default function GroupDetailScreen() {
         animationType="fade"
         onRequestClose={() => setShowEditModal(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.deleteModalOverlay}
           activeOpacity={1}
           onPress={() => setShowEditModal(false)}
         >
           <TouchableOpacity activeOpacity={1}>
-            <ScrollView 
+            <ScrollView
               contentContainerStyle={styles.editModalScrollContent}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.editModalContainer}>
-            <Text style={styles.deleteModalTitle}>Edit Group</Text>
-            
-            {/* Group Image */}
-            <TouchableOpacity
-              style={styles.editImageContainer}
-              onPress={handlePickGroupImage}
-              activeOpacity={0.7}
-            >
-              {editGroupImage ? (
-                <Image source={{ uri: editGroupImage }} style={styles.editGroupImage} />
-              ) : (
-                <View style={styles.editImagePlaceholder}>
-                  <Text style={styles.editPlaceholderEmoji}>👥</Text>
-                  <Text style={styles.editPlaceholderText}>Tap to change</Text>
+                <Text style={styles.deleteModalTitle}>Edit Group</Text>
+
+                {/* Group Image */}
+                <TouchableOpacity
+                  style={styles.editImageContainer}
+                  onPress={handlePickGroupImage}
+                  activeOpacity={0.7}
+                >
+                  {editGroupImage ? (
+                    <Image source={{ uri: editGroupImage }} style={styles.editGroupImage} />
+                  ) : (
+                    <View style={styles.editImagePlaceholder}>
+                      <Text style={styles.editPlaceholderEmoji}>👥</Text>
+                      <Text style={styles.editPlaceholderText}>Tap to change</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {editGroupImage ? (
+                  <TouchableOpacity
+                    onPress={() => setEditGroupImage(null)}
+                    style={styles.removeEditImageButton}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.removeEditImageText}>Delete</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <Text style={styles.editModalLabel}>Group name</Text>
+                <TextInput
+                  style={styles.deleteModalInput}
+                  value={editGroupName}
+                  onChangeText={setEditGroupName}
+                  placeholder="New name"
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.editModalLabel}>Description</Text>
+                <TextInput
+                  style={[styles.deleteModalInput, styles.editModalTextArea]}
+                  value={editGroupDescription}
+                  onChangeText={setEditGroupDescription}
+                  placeholder="Deskripsi grup (opsional)"
+                  placeholderTextColor="#999"
+                  multiline
+                  numberOfLines={3}
+                />
+                <View style={styles.deleteModalButtons}>
+                  <TouchableOpacity
+                    style={styles.deleteModalCancelButton}
+                    onPress={() => setShowEditModal(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.deleteModalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.deleteModalConfirmButton, { backgroundColor: '#2563eb' }]}
+                    onPress={handleSaveGroupEdit}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.deleteModalConfirmText}>Save</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-            </TouchableOpacity>
 
-            {editGroupImage ? (
-              <TouchableOpacity
-                onPress={() => setEditGroupImage(null)}
-                style={styles.removeEditImageButton}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.removeEditImageText}>Delete</Text>
-              </TouchableOpacity>
-            ) : null}
-            <Text style={styles.editModalLabel}>Group name</Text>
-            <TextInput
-              style={styles.deleteModalInput}
-              value={editGroupName}
-              onChangeText={setEditGroupName}
-              placeholder="New name"
-              placeholderTextColor="#999"
-            />
-            <Text style={styles.editModalLabel}>Description</Text>
-            <TextInput
-              style={[styles.deleteModalInput, styles.editModalTextArea]}
-              value={editGroupDescription}
-              onChangeText={setEditGroupDescription}
-              placeholder="Deskripsi grup (opsional)"
-              placeholderTextColor="#999"
-              multiline
-              numberOfLines={3}
-            />
-            <View style={styles.deleteModalButtons}>
-              <TouchableOpacity
-                style={styles.deleteModalCancelButton}
-                onPress={() => setShowEditModal(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.deleteModalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.deleteModalConfirmButton, { backgroundColor: '#2563eb' }]}
-                onPress={handleSaveGroupEdit}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.deleteModalConfirmText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Danger Zone - Delete Group */}
-              <TouchableOpacity
-                style={styles.editDeleteButton}
-                onPress={() => {
-                  setShowEditModal(false);
-                  setTimeout(() => handleDeleteGroup(), 300);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.editDeleteButtonText}>Delete</Text>
-              </TouchableOpacity>
+                {/* Danger Zone - Delete Group */}
+                <TouchableOpacity
+                  style={styles.editDeleteButton}
+                  onPress={() => {
+                    setShowEditModal(false);
+                    setTimeout(() => handleDeleteGroup(), 300);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.editDeleteButtonText}>Delete</Text>
+                </TouchableOpacity>
               </View>
             </ScrollView>
           </TouchableOpacity>
@@ -1083,7 +1073,7 @@ export default function GroupDetailScreen() {
         <View style={styles.deleteModalOverlay}>
           <View style={styles.deleteModalContainer}>
             <Text style={styles.deleteModalTitle}>Confirm Approval</Text>
-            
+
             {pendingApproval && (
               <View style={styles.paymentSummary}>
                 <Text style={styles.deleteModalWarning}>
@@ -1133,7 +1123,7 @@ export default function GroupDetailScreen() {
         <View style={styles.deleteModalOverlay}>
           <View style={styles.deleteModalContainer}>
             <Text style={styles.deleteModalTitle}>Reject Settlement</Text>
-            
+
             <Text style={styles.deleteModalWarning}>
               Are you sure you want to reject this settlement request?
             </Text>
@@ -1170,7 +1160,7 @@ export default function GroupDetailScreen() {
         <View style={styles.deleteModalOverlay}>
           <View style={styles.deleteModalContainer}>
             <Text style={styles.deleteModalTitle}>Delete Group</Text>
-            
+
             <Text style={styles.deleteModalWarning}>
               This will permanently delete the group and all its transactions.
             </Text>
@@ -1229,7 +1219,7 @@ export default function GroupDetailScreen() {
         <View style={styles.deleteModalOverlay}>
           <View style={styles.deleteModalContainer}>
             <Text style={styles.deleteModalTitle}>Payment Confirmation</Text>
-            
+
             {selectedDebt && (
               <>
                 <View style={styles.paymentSummary}>
@@ -1467,13 +1457,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
   },
-payButtonPressed: {
-  backgroundColor: '#0c7a54',
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 3,
-  transform: [{ scale: 0.98 }],
-},
+  payButtonPressed: {
+    backgroundColor: '#0c7a54',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    transform: [{ scale: 0.98 }],
+  },
   payButtonText: {
     color: '#fff',
     fontSize: 14,
@@ -1561,7 +1551,7 @@ payButtonPressed: {
   },
   transactionDateHeader: {
     fontSize: 13,
-     
+
     color: '#666',
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -1611,7 +1601,7 @@ payButtonPressed: {
   transactionIconText: {
     fontSize: 18,
     color: '#10b981',
-     
+
     fontFamily: Font.bold,
   },
   transactionListContent: {
@@ -1627,7 +1617,7 @@ payButtonPressed: {
   },
   transactionListAmount: {
     fontSize: 16,
-     
+
     color: '#333',
     marginBottom: 2,
     fontFamily: Font.bold,
@@ -1666,7 +1656,7 @@ payButtonPressed: {
   },
   statusText: {
     fontSize: 11,
-     
+
     fontFamily: Font.semiBold,
   },
   statusTextPaid: {
@@ -1700,12 +1690,12 @@ payButtonPressed: {
   memberAvatarText: {
     color: '#fff',
     fontSize: 14,
-    
+
     fontFamily: Font.semiBold,
   },
   memberName: {
     fontSize: 15,
-    
+
     color: '#1f2937',
     fontFamily: Font.semiBold,
     marginBottom: 2,
@@ -1844,7 +1834,7 @@ payButtonPressed: {
   },
   dangerZoneTitle: {
     fontSize: 16,
-     
+
     color: '#dc2626',
     marginBottom: 8,
     fontFamily: Font.bold,
@@ -1864,7 +1854,7 @@ payButtonPressed: {
   },
   deleteButtonText: {
     fontSize: 15,
-     
+
     color: '#fff',
     fontFamily: Font.semiBold,
   },
@@ -1908,7 +1898,7 @@ payButtonPressed: {
     fontFamily: Font.regular,
   },
   deleteModalGroupName: {
-     
+
     color: '#333',
   },
   deleteModalInput: {
@@ -1934,7 +1924,7 @@ payButtonPressed: {
   },
   deleteModalCancelText: {
     fontSize: 15,
-     
+
     color: '#666',
     fontFamily: Font.semiBold,
   },
@@ -1951,7 +1941,7 @@ payButtonPressed: {
   },
   deleteModalConfirmText: {
     fontSize: 15,
-     
+
     color: '#fff',
     fontFamily: Font.semiBold,
   },
@@ -1965,7 +1955,7 @@ payButtonPressed: {
   },
   addMemberButtonText: {
     fontSize: 14,
-    
+
     color: '#fff',
     fontFamily: Font.semiBold,
   },
@@ -2137,7 +2127,7 @@ payButtonPressed: {
   settlementRequestHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5 ,
+    marginBottom: 5,
     gap: 8,
   },
   pendingBadge: {

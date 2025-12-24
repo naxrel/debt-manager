@@ -1,7 +1,7 @@
+import { usersApi } from '@/api';
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
-import { StaticDB } from '@/data/staticDatabase';
 import dayjs from 'dayjs';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -38,18 +38,18 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
 
   const generateCalendarDays = () => {
     const days = [];
-    
+
     // 1. Empty cells for days before month starts
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(<View key={`empty-start-${i}`} style={styles.calendarDay} />);
     }
-    
+
     // 2. Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = currentMonth.date(day);
       const isSelected = date.format('YYYY-MM-DD') === selectedDate.format('YYYY-MM-DD');
       const isToday = date.format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD');
-      
+
       days.push(
         <TouchableOpacity
           key={day}
@@ -58,9 +58,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
           activeOpacity={0.7}
         >
           <View style={[
-             styles.dayContainer, 
-             isSelected && styles.dayContainerSelected,
-             isToday && !isSelected && styles.dayContainerToday
+            styles.dayContainer,
+            isSelected && styles.dayContainerSelected,
+            isToday && !isSelected && styles.dayContainerToday
           ]}>
             <Text style={[
               styles.calendarDayText,
@@ -73,25 +73,25 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
         </TouchableOpacity>
       );
     }
-    
+
     // 3. FIX UTAMA: Tambahkan empty cells di akhir agar grid tetap rapi
     // Menghitung berapa sisa kotak yang dibutuhkan agar totalnya kelipatan 7
     const totalSlots = days.length;
     const remainder = totalSlots % 7;
     if (remainder !== 0) {
-        const slotsNeeded = 7 - remainder;
-        for (let i = 0; i < slotsNeeded; i++) {
-            days.push(<View key={`empty-end-${i}`} style={styles.calendarDay} />);
-        }
+      const slotsNeeded = 7 - remainder;
+      for (let i = 0; i < slotsNeeded; i++) {
+        days.push(<View key={`empty-end-${i}`} style={styles.calendarDay} />);
+      }
     }
-    
+
     return days;
   };
 
   const renderWeeks = () => {
     const days = generateCalendarDays();
     const weeks = [];
-    
+
     for (let i = 0; i < days.length; i += 7) {
       weeks.push(
         <View key={i} style={styles.calendarWeek}>
@@ -99,7 +99,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
         </View>
       );
     }
-    
+
     return weeks;
   };
 
@@ -107,17 +107,17 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
     <View style={styles.calendarContainer}>
       {/* Header Month Navigation */}
       <View style={styles.calendarHeader}>
-        <TouchableOpacity onPress={previousMonth} style={styles.calendarNavButton} hitSlop={{top:10, bottom:10, left:10, right:10}}>
+        <TouchableOpacity onPress={previousMonth} style={styles.calendarNavButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
             <Path stroke="#007AFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="m15 19-7-7 7-7" />
           </Svg>
         </TouchableOpacity>
-        
+
         <Text style={styles.calendarTitle}>
           {currentMonth.format('MMMM YYYY')}
         </Text>
-        
-        <TouchableOpacity onPress={nextMonth} style={styles.calendarNavButton} hitSlop={{top:10, bottom:10, left:10, right:10}}>
+
+        <TouchableOpacity onPress={nextMonth} style={styles.calendarNavButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
             <Path stroke="#007AFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" />
           </Svg>
@@ -156,8 +156,8 @@ export default function AddDebtScreen() {
   // ... (Kode logic handleSubmit, formatNumber, dll sama persis seperti sebelumnya) ...
   // Saya persingkat bagian logic ini agar fokus ke solusi UI, 
   // Pastikan Anda menyalin logic handleSubmit, formatNumber, handleAmountChange dari kode lama Anda ke sini.
-  
-  const handleSubmit = () => {
+
+  const handleSubmit = async () => {
     if (!user) {
       if (Platform.OS === 'web') alert('User tidak ditemukan');
       else Alert.alert('Error', 'User tidak ditemukan');
@@ -175,32 +175,33 @@ export default function AddDebtScreen() {
       return;
     }
 
-    const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
-    const otherUser = StaticDB.getUserByUsername(cleanUsername);
-    
-    if (!otherUser) {
-      if (Platform.OS === 'web') alert(`Username @${cleanUsername} belum terdaftar.`);
-      else Alert.alert('Error', `Username @${cleanUsername} belum terdaftar.`);
-      return;
-    }
-
-    if (otherUser.id === user.id) {
-       if (Platform.OS === 'web') alert('Tidak bisa transaksi dengan diri sendiri');
-       else Alert.alert('Error', 'Tidak bisa transaksi dengan diri sendiri');
-       return;
-    }
-
     try {
-      addDebt({
+      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+
+      // Get all users and find by username
+      const allUsers = await usersApi.getAllUsers();
+      const otherUser = allUsers.find(u => u.username === cleanUsername);
+
+      if (!otherUser) {
+        if (Platform.OS === 'web') alert(`Username @${cleanUsername} belum terdaftar.`);
+        else Alert.alert('Error', `Username @${cleanUsername} belum terdaftar.`);
+        return;
+      }
+
+      if (otherUser.id === user.userId) {
+        if (Platform.OS === 'web') alert('Tidak bisa transaksi dengan diri sendiri');
+        else Alert.alert('Error', 'Tidak bisa transaksi dengan diri sendiri');
+        return;
+      }
+
+      await addDebt({
         type,
         name: otherUser.name,
         otherUserId: otherUser.id,
         amount: amountNumber,
         description,
         date: date.format('YYYY-MM-DD'),
-        isPaid: false,
-        status: 'pending',
-        initiatedBy: user.id,
+        status: 'confirmed', // Backend doesn't support pending approval
       });
 
       if (Platform.OS === 'web') {
@@ -209,9 +210,9 @@ export default function AddDebtScreen() {
       } else {
         Alert.alert('Sukses', `Transaksi berhasil dibuat`, [{ text: 'OK', onPress: () => router.back() }]);
       }
-    } catch (error) {
-       if (Platform.OS === 'web') alert('Gagal');
-       else Alert.alert('Error', 'Gagal');
+    } catch (error: any) {
+      if (Platform.OS === 'web') alert(error.message || 'Gagal membuat transaksi');
+      else Alert.alert('Error', error.message || 'Gagal membuat transaksi');
     }
   };
 
@@ -329,25 +330,25 @@ export default function AddDebtScreen() {
         animationType="fade"
         onRequestClose={() => setShowDatePicker(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowDatePicker(false)}
         >
-          <TouchableOpacity 
-            activeOpacity={1} 
+          <TouchableOpacity
+            activeOpacity={1}
             onPress={(e) => e.stopPropagation()}
             style={styles.modalContentWrapper} // Wrapper baru untuk web centering
           >
             <View style={styles.datePickerModal}>
               <View style={styles.modalHeaderBar} />
               <Text style={styles.datePickerTitle}>Select Date</Text>
-              
+
               <CustomCalendar
                 selectedDate={date}
                 onSelectDate={setDate}
               />
-              
+
               <TouchableOpacity
                 style={styles.datePickerCloseButton}
                 onPress={() => setShowDatePicker(false)}
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
-  backButton: { 
+  backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',

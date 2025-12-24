@@ -1,3 +1,4 @@
+import { groupsApi, usersApi } from '@/api';
 import { Font } from '@/constants/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -15,9 +16,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../contexts/AuthContext';
-import { StaticDB } from '../../data/staticDatabase';
 import { Path, Svg } from 'react-native-svg';
+import { useAuth } from '../../contexts/AuthContext';
+const MAX_GROUP_MEMBERS = 20; // Backend limit
+
 export default function CreateGroup() {
   const { user } = useAuth();
   const [groupName, setGroupName] = useState('');
@@ -27,39 +29,50 @@ export default function CreateGroup() {
   const [searchUsername, setSearchUsername] = useState('');
   const [searchError, setSearchError] = useState('');
   const [groupImage, setGroupImage] = useState<string | null>(null);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
 
-  const handleSearchUser = () => {
+  const handleSearchUser = async () => {
     if (!searchUsername.trim()) {
       setSearchError('Masukkan username');
       return;
     }
 
-    const foundUser = StaticDB.getUserByUsername(searchUsername.trim());
-    
-    if (!foundUser) {
-      setSearchError(`Username "${searchUsername}" tidak ditemukan`);
-      return;
-    }
+    try {
+      const users = await usersApi.getAllUsers();
+      const foundUser = users.find(u => u.username === searchUsername.trim());
 
-    if (foundUser.id === user?.id) {
-      setSearchError('Anda otomatis menjadi anggota grup');
-      return;
-    }
+      if (!foundUser) {
+        setSearchError(`Username "${searchUsername}" tidak ditemukan`);
+        return;
+      }
 
-    if (selectedMembers.includes(foundUser.id)) {
-      setSearchError('User sudah ditambahkan');
-      return;
-    }
+      if (foundUser.id === user?.userId) {
+        setSearchError('Anda otomatis menjadi anggota grup');
+        return;
+      }
 
-    if (selectedMembers.length + 1 >= StaticDB.MAX_GROUP_MEMBERS) {
-      setSearchError(`Maksimum ${StaticDB.MAX_GROUP_MEMBERS} anggota per grup (termasuk Anda)`);
-      return;
-    }
+      if (selectedMembers.includes(foundUser.id)) {
+        setSearchError('User sudah ditambahkan');
+        return;
+      }
 
-    // Add member
-    setSelectedMembers(prev => [...prev, foundUser.id]);
-    setSearchUsername('');
-    setSearchError('');
+      if (selectedMembers.length + 1 >= MAX_GROUP_MEMBERS) {
+        setSearchError(`Maksimum ${MAX_GROUP_MEMBERS} anggota per grup (termasuk Anda)`);
+        return;
+      }
+
+      // Add member
+      setSelectedMembers(prev => [...prev, foundUser.id]);
+      setSearchUsername('');
+      setSearchError('');
+
+      // Cache users for display
+      if (!allUsers.find(u => u.id === foundUser.id)) {
+        setAllUsers(prev => [...prev, foundUser]);
+      }
+    } catch (error: any) {
+      setSearchError(error.message || 'Gagal mencari user');
+    }
   };
 
   const removeMember = (userId: string) => {
@@ -68,7 +81,7 @@ export default function CreateGroup() {
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert('Permission Denied', 'Akses ke galeri diperlukan untuk mengganti foto grup');
       return;
@@ -90,7 +103,7 @@ export default function CreateGroup() {
     }
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!groupName.trim()) {
       if (Platform.OS === 'web') {
         alert('Nama grup tidak boleh kosong');
@@ -111,17 +124,21 @@ export default function CreateGroup() {
 
     setIsLoading(true);
 
-    const result = StaticDB.createGroup(
-      groupName.trim(),
-      description.trim(),
-      user!.id,
-      selectedMembers,
-      groupImage || undefined
-    );
+    try {
+      // Create group
+      const group = await groupsApi.create({
+        name: groupName.trim(),
+        description: description.trim(),
+        groupImage: groupImage || undefined
+      });
 
-    setIsLoading(false);
+      // Add members one by one
+      for (const memberId of selectedMembers) {
+        await groupsApi.addMember(group.id, memberId);
+      }
 
-    if (result.success) {
+      setIsLoading(false);
+
       if (Platform.OS === 'web') {
         alert('Grup berhasil dibuat');
         router.back();
@@ -133,11 +150,12 @@ export default function CreateGroup() {
           },
         ]);
       }
-    } else {
+    } catch (error: any) {
+      setIsLoading(false);
       if (Platform.OS === 'web') {
-        alert(result.error || 'Gagal membuat grup');
+        alert(error.message || 'Gagal membuat grup');
       } else {
-        Alert.alert('Error', result.error || 'Gagal membuat grup');
+        Alert.alert('Error', error.message || 'Gagal membuat grup');
       }
     }
   };
@@ -145,14 +163,14 @@ export default function CreateGroup() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.back()} 
-                    style={styles.backButton}
-                    activeOpacity={0.7}
-                  >
-                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                      <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
-                    </Svg>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+          </Svg>
         </TouchableOpacity>
         <Text style={styles.title}>Create new group</Text>
         <View style={{ width: 50 }} />
@@ -213,7 +231,7 @@ export default function CreateGroup() {
 
         <View style={styles.section}>
           <Text style={styles.label}>
-            Tambah Anggota * ({selectedMembers.length + 1}/{StaticDB.MAX_GROUP_MEMBERS})
+            Tambah Anggota * ({selectedMembers.length + 1}/{MAX_GROUP_MEMBERS})
           </Text>
           <Text style={styles.hint}>
             Anda otomatis menjadi anggota grup ini. Cari user berdasarkan username.
@@ -266,7 +284,7 @@ export default function CreateGroup() {
 
           {/* Selected members */}
           {selectedMembers.map(memberId => {
-            const member = StaticDB.getUserById(memberId);
+            const member = allUsers.find(u => u.id === memberId);
             if (!member) return null;
             return (
               <View
@@ -302,7 +320,7 @@ export default function CreateGroup() {
           style={[
             styles.createButton,
             (!groupName.trim() || selectedMembers.length === 0 || isLoading) &&
-              styles.createButtonDisabled,
+            styles.createButtonDisabled,
           ]}
           onPress={handleCreateGroup}
           disabled={!groupName.trim() || selectedMembers.length === 0 || isLoading}

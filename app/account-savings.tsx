@@ -1,66 +1,81 @@
+import { PaymentMethod, paymentMethodsApi } from '@/api';
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { PaymentMethod, StaticDB } from '@/data/staticDatabase';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics'; // *Recommended: Install expo-haptics
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    KeyboardAvoidingView,
+    LayoutAnimation,
     Modal,
+    Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    LayoutAnimation,
-    Platform,
     UIManager,
-    KeyboardAvoidingView,
-    Pressable
+    View
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import * as Haptics from 'expo-haptics'; // *Recommended: Install expo-haptics
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-type PaymentType = 'bank' | 'ewallet';
+type PaymentType = 'bank_transfer' | 'e_wallet';
 
 export default function AccountSavingsScreen() {
     const router = useRouter();
     const { user } = useAuth();
-    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(
-        StaticDB.getUserById(user?.id || '')?.paymentMethods || []
-    );
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
 
     // Form state
-    const [selectedType, setSelectedType] = useState<PaymentType>('bank');
+    const [selectedType, setSelectedType] = useState<PaymentType>('bank_transfer');
     const [selectedProvider, setSelectedProvider] = useState('');
     const [accountNumber, setAccountNumber] = useState('');
+    const [accountHolder, setAccountHolder] = useState('');
     const [isPrimary, setIsPrimary] = useState(false);
 
-    const getProviderIcon = (type: PaymentType) => type === 'bank' ? 'card' : 'wallet';
-    const getTypeLabel = (type: PaymentType) => type === 'bank' ? 'Bank Account' : 'E-Wallet';
+    useEffect(() => {
+        loadPaymentMethods();
+    }, []);
+
+    const loadPaymentMethods = async () => {
+        try {
+            const methods = await paymentMethodsApi.getAll();
+            setPaymentMethods(methods);
+        } catch (error) {
+            console.error('Error loading payment methods:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getProviderIcon = (type: string) => type === 'bank_transfer' ? 'card' : 'wallet';
+    const getTypeLabel = (type: string) => type === 'bank_transfer' ? 'Bank Account' : 'E-Wallet';
 
     const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'medium') => {
         // Safe check if haptics are available
         Haptics.impactAsync(
-            style === 'light' ? Haptics.ImpactFeedbackStyle.Light : 
-            style === 'heavy' ? Haptics.ImpactFeedbackStyle.Heavy : 
-            Haptics.ImpactFeedbackStyle.Medium
+            style === 'light' ? Haptics.ImpactFeedbackStyle.Light :
+                style === 'heavy' ? Haptics.ImpactFeedbackStyle.Heavy :
+                    Haptics.ImpactFeedbackStyle.Medium
         );
     };
 
     const openAddModal = () => {
         triggerHaptic('light');
-        setSelectedType('bank');
+        setSelectedType('bank_transfer');
         setSelectedProvider('');
         setAccountNumber('');
+        setAccountHolder(user?.name || '');
         setIsPrimary(false);
         setEditingPayment(null);
         setShowAddModal(true);
@@ -69,49 +84,49 @@ export default function AccountSavingsScreen() {
     const openEditModal = (payment: PaymentMethod) => {
         triggerHaptic('light');
         setEditingPayment(payment);
-        setSelectedType(payment.type);
+        setSelectedType(payment.type as PaymentType);
         setSelectedProvider(payment.provider);
         setAccountNumber(payment.accountNumber);
+        setAccountHolder(payment.accountHolder);
         setIsPrimary(payment.isPrimary || false);
         setShowAddModal(true);
     };
 
-    const handleSave = () => {
-        if (!selectedProvider || !accountNumber) {
+    const handleSave = async () => {
+        if (!selectedProvider || !accountNumber || !accountHolder) {
             triggerHaptic('heavy'); // Error feedback
             Alert.alert('Missing Information', 'Please fill in all fields to proceed.');
             return;
         }
 
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        
-        const newPaymentPayload = {
-            type: selectedType,
-            provider: selectedProvider,
-            accountNumber,
-            isPrimary
-        };
+        try {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
-        if (editingPayment) {
-            const updated = paymentMethods.map(pm =>
-                pm.id === editingPayment.id
-                    ? { ...pm, ...newPaymentPayload }
-                    : isPrimary ? { ...pm, isPrimary: false } : pm
-            );
-            setPaymentMethods(updated);
-        } else {
-            const newPayment: PaymentMethod = {
-                id: `pm${Date.now()}`,
-                ...newPaymentPayload
-            };
-            const updated = isPrimary
-                ? [...paymentMethods.map(pm => ({ ...pm, isPrimary: false })), newPayment]
-                : [...paymentMethods, newPayment];
-            setPaymentMethods(updated);
+            if (editingPayment) {
+                await paymentMethodsApi.update(editingPayment.id, {
+                    type: selectedType,
+                    provider: selectedProvider,
+                    accountNumber,
+                    accountHolder,
+                    isPrimary
+                });
+            } else {
+                await paymentMethodsApi.create({
+                    type: selectedType,
+                    provider: selectedProvider,
+                    accountNumber,
+                    accountHolder,
+                    isPrimary
+                });
+            }
+
+            await loadPaymentMethods();
+            triggerHaptic('medium'); // Success feedback
+            setShowAddModal(false);
+        } catch (error: any) {
+            triggerHaptic('heavy');
+            Alert.alert('Error', error.message || 'Failed to save payment method');
         }
-
-        triggerHaptic('medium'); // Success feedback
-        setShowAddModal(false);
     };
 
     const handleDelete = (paymentId: string) => {
@@ -124,24 +139,30 @@ export default function AccountSavingsScreen() {
                 {
                     text: 'Delete',
                     style: 'destructive',
-                    onPress: () => {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
-                        setPaymentMethods(paymentMethods.filter(pm => pm.id !== paymentId));
-                        triggerHaptic('medium');
+                    onPress: async () => {
+                        try {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+                            await paymentMethodsApi.delete(paymentId);
+                            await loadPaymentMethods();
+                            triggerHaptic('medium');
+                        } catch (error: any) {
+                            Alert.alert('Error', error.message || 'Failed to delete');
+                        }
                     },
                 },
             ]
         );
     };
 
-    const handleSetPrimary = (paymentId: string) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        triggerHaptic('light');
-        const updated = paymentMethods.map(pm => ({
-            ...pm,
-            isPrimary: pm.id === paymentId,
-        }));
-        setPaymentMethods(updated);
+    const handleSetPrimary = async (paymentId: string) => {
+        try {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            triggerHaptic('light');
+            await paymentMethodsApi.setPrimary(paymentId);
+            await loadPaymentMethods();
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to set as primary');
+        }
     };
 
     return (
@@ -159,7 +180,7 @@ export default function AccountSavingsScreen() {
 
             <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <Text style={styles.sectionHeader}>PAYMENT METHODS</Text>
-                
+
                 {paymentMethods.length === 0 ? (
                     <View style={styles.emptyState}>
                         <View style={styles.emptyIconBg}>
@@ -172,19 +193,19 @@ export default function AccountSavingsScreen() {
                     <View style={styles.listContainer}>
                         {paymentMethods.map((payment, index) => (
                             <View key={payment.id}>
-                                <TouchableOpacity 
-                                    style={styles.row} 
+                                <TouchableOpacity
+                                    style={styles.row}
                                     onPress={() => openEditModal(payment)}
                                     activeOpacity={0.7}
                                 >
-                                    <View style={[styles.iconBox, { backgroundColor: payment.type === 'bank' ? '#EBF5FF' : '#FDF2F8' }]}>
-                                        <Ionicons 
-                                            name={getProviderIcon(payment.type) as any} 
-                                            size={20} 
-                                            color={payment.type === 'bank' ? '#007AFF' : '#DB2777'} 
+                                    <View style={[styles.iconBox, { backgroundColor: payment.type === 'bank_transfer' ? '#EBF5FF' : '#FDF2F8' }]}>
+                                        <Ionicons
+                                            name={getProviderIcon(payment.type) as any}
+                                            size={20}
+                                            color={payment.type === 'bank_transfer' ? '#007AFF' : '#DB2777'}
                                         />
                                     </View>
-                                    
+
                                     <View style={styles.rowContent}>
                                         <Text style={styles.rowTitle}>{payment.provider}</Text>
                                         <Text style={styles.rowSubtitle}>{payment.accountNumber} • {getTypeLabel(payment.type)}</Text>
@@ -197,7 +218,7 @@ export default function AccountSavingsScreen() {
                                             <Ionicons name="star-outline" size={22} color="#C7C7CC" />
                                         </TouchableOpacity>
                                     )}
-                                    
+
                                     <Ionicons name="chevron-forward" size={20} color="#C7C7CC" style={{ marginLeft: 8 }} />
                                 </TouchableOpacity>
                                 {index < paymentMethods.length - 1 && <View style={styles.separator} />}
@@ -229,20 +250,20 @@ export default function AccountSavingsScreen() {
                     <ScrollView style={styles.modalContent} keyboardDismissMode="interactive">
                         <Text style={styles.formLabel}>ACCOUNT TYPE</Text>
                         <View style={styles.formGroup}>
-                            <Pressable 
-                                style={[styles.formRow, styles.formRowFirst]} 
-                                onPress={() => { setSelectedType('bank'); triggerHaptic('light'); }}
+                            <Pressable
+                                style={[styles.formRow, styles.formRowFirst]}
+                                onPress={() => { setSelectedType('bank_transfer'); triggerHaptic('light'); }}
                             >
                                 <Text style={styles.formRowLabel}>Bank Transfer</Text>
-                                {selectedType === 'bank' && <Ionicons name="checkmark" size={20} color="#007AFF" />}
+                                {selectedType === 'bank_transfer' && <Ionicons name="checkmark" size={20} color="#007AFF" />}
                             </Pressable>
                             <View style={styles.formSeparator} />
-                            <Pressable 
-                                style={[styles.formRow, styles.formRowLast]} 
-                                onPress={() => { setSelectedType('ewallet'); triggerHaptic('light'); }}
+                            <Pressable
+                                style={[styles.formRow, styles.formRowLast]}
+                                onPress={() => { setSelectedType('e_wallet'); triggerHaptic('light'); }}
                             >
                                 <Text style={styles.formRowLabel}>E-Wallet</Text>
-                                {selectedType === 'ewallet' && <Ionicons name="checkmark" size={20} color="#007AFF" />}
+                                {selectedType === 'e_wallet' && <Ionicons name="checkmark" size={20} color="#007AFF" />}
                             </Pressable>
                         </View>
 
@@ -276,7 +297,7 @@ export default function AccountSavingsScreen() {
                         <View style={styles.formGroup}>
                             <View style={[styles.formRow, styles.formRowSingle]}>
                                 <Text style={styles.formRowLabel}>Set as Primary</Text>
-                                <Pressable 
+                                <Pressable
                                     onPress={() => { setIsPrimary(!isPrimary); triggerHaptic('light'); }}
                                     style={[styles.switch, isPrimary && styles.switchActive]}
                                 >

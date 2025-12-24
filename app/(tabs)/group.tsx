@@ -1,26 +1,27 @@
+import { Group, groupsApi } from '@/api';
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { DebtGroup, StaticDB } from '@/data/staticDatabase';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 export default function GroupScreen() {
   const { user } = useAuth();
-  const [groups, setGroups] = useState<DebtGroup[]>([]);
-  const [filteredGroups, setFilteredGroups] = useState<DebtGroup[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -28,17 +29,24 @@ export default function GroupScreen() {
     }
   }, [user]);
 
-  const loadGroups = () => {
-    if (user) {
-      const userGroups = StaticDB.getUserGroups(user.id);
-      setGroups(userGroups);
-      setFilteredGroups(userGroups);
+  const loadGroups = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const data = await groupsApi.getAll();
+      setGroups(data);
+      setFilteredGroups(data);
+    } catch (error) {
+      console.error('Error loading groups:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    loadGroups();
+    await loadGroups();
     setIsRefreshing(false);
   };
 
@@ -83,20 +91,20 @@ export default function GroupScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>deBT Group</Text>
           <Text style={styles.headerSubtitle}>
-           Manage your money wisely!
+            Manage your money wisely!
           </Text>
-          
+
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                  <Circle cx="11" cy="11" r="7" stroke="#33363F" strokeWidth="2" />
-                  <Path
-                    stroke="#33363F"
-                    strokeLinecap="round"
-                    strokeWidth="2"
-                    d="M11 8a3 3 0 0 0-3 3M20 20l-3-3"
-                  />
-                </Svg>
+              <Circle cx="11" cy="11" r="7" stroke="#33363F" strokeWidth="2" />
+              <Path
+                stroke="#33363F"
+                strokeLinecap="round"
+                strokeWidth="2"
+                d="M11 8a3 3 0 0 0-3 3M20 20l-3-3"
+              />
+            </Svg>
             <TextInput
               style={styles.searchInput}
               placeholder="Find group..."
@@ -147,7 +155,7 @@ export default function GroupScreen() {
             </View>
           ) : (
             filteredGroups.map(group => {
-              const stats = StaticDB.getGroupStatistics(group.id);
+              const memberCount = group._count?.members || group.members?.length || 0;
               return (
                 <TouchableOpacity
                   key={group.id}
@@ -157,9 +165,9 @@ export default function GroupScreen() {
                 >
                   <View style={styles.groupIcon}>
                     {group.groupImage ? (
-                      <Image 
-                        source={{ uri: group.groupImage }} 
-                        style={styles.groupImage} 
+                      <Image
+                        source={{ uri: group.groupImage }}
+                        style={styles.groupImage}
                       />
                     ) : (
                       <Text style={styles.groupEmoji}>👥</Text>
@@ -168,7 +176,7 @@ export default function GroupScreen() {
                   <View style={styles.groupInfo}>
                     <View style={styles.groupNameRow}>
                       <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
-                      {group.creatorId === user.id && (
+                      {group.creatorId === user?.userId && (
                         <View style={styles.creatorBadge}>
                           <Text style={styles.creatorText}>Creator</Text>
                         </View>
@@ -180,7 +188,7 @@ export default function GroupScreen() {
                       </Text>
                     )}
                     <Text style={styles.groupMemberCount}>
-                      {stats.memberCount} member{stats.memberCount > 1 ? 's' : ''}
+                      {memberCount} member{memberCount > 1 ? 's' : ''}
                     </Text>
                   </View>
                   <Svg width={24} height={24} viewBox="0 0 1024 1024" fill="none">

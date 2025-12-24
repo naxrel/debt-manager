@@ -1,6 +1,14 @@
-import { StaticDB, User } from '@/data/staticDatabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authApi, usersApi } from '@/api';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+
+// Updated User type to match API response
+interface User {
+  userId: string;
+  username: string;
+  name: string;
+  email: string;
+  profileImage?: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -9,6 +17,7 @@ interface AuthContextType {
   register: (username: string, password: string, name: string, email: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,6 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -24,12 +34,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkLoginStatus = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
+      setError(null);
+      const storedUser = await authApi.getStoredUser();
+      const token = await authApi.getToken();
+
+      if (storedUser && token) {
+        // Verify token is still valid by fetching profile
+        try {
+          const profile = await usersApi.getProfile();
+          setUser({
+            userId: profile.id,
+            username: profile.username,
+            name: profile.name,
+            email: profile.email,
+            profileImage: (profile as any).profileImage || null,
+          });
+        } catch (err) {
+          // Token invalid, clear storage
+          await authApi.logout();
+          setUser(null);
+        }
       }
-    } catch (error) {
-      console.error('Error checking login status:', error);
+    } catch (err) {
+      console.error('Error checking login status:', err);
+      setError('Gagal memeriksa status login');
     } finally {
       setIsLoading(false);
     }
@@ -37,16 +65,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const authenticatedUser = StaticDB.authenticateUser(username, password);
-      if (authenticatedUser) {
-        await AsyncStorage.setItem('user', JSON.stringify(authenticatedUser));
-        setUser(authenticatedUser);
-        return true;
-      }
+      setError(null);
+      setIsLoading(true);
+
+      const response = await authApi.login({ username, password });
+
+      setUser({
+        userId: response.user.userId,
+        username: response.user.username,
+        name: response.user.name,
+        email: response.user.email,
+        profileImage: null,
+      });
+
+      return true;
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Username atau password salah');
       return false;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -57,48 +95,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string
   ): Promise<boolean> => {
     try {
-      // Check if username already exists
-      const existingUser = StaticDB.getUserByUsername(username);
-      if (existingUser) {
-        return false;
-      }
+      setError(null);
+      setIsLoading(true);
 
-      const newUser = StaticDB.registerUser({ username, password, name, email });
-      await AsyncStorage.setItem('user', JSON.stringify(newUser));
-      setUser(newUser);
-      return true;
-    } catch (error) {
-      console.error('Registration error:', error);
+      // Register user
+      await authApi.register({ username, password, name, email });
+
+      // Auto login after registration
+      const loginSuccess = await login(username, password);
+      return loginSuccess;
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setError(err.message || 'Gagal mendaftar. Username mungkin sudah digunakan.');
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
-      await AsyncStorage.removeItem('user');
+      setError(null);
+      await authApi.logout();
       setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch (err: any) {
+      console.error('Logout error:', err);
+      setError(err.message || 'Gagal logout');
     }
   };
 
   const refreshUser = async (): Promise<void> => {
     try {
+      setError(null);
       if (user) {
-        // Get latest user data from database
-        const updatedUser = StaticDB.getUserById(user.id);
-        if (updatedUser) {
-          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-          setUser(updatedUser);
-        }
+        const profile = await usersApi.getProfile();
+        setUser({
+          userId: profile.id,
+          username: profile.username,
+          name: profile.name,
+          email: profile.email,
+        });
       }
-    } catch (error) {
-      console.error('Refresh user error:', error);
+    } catch (err: any) {
+      console.error('Refresh user error:', err);
+      setError(err.message || 'Gagal memperbarui data user');
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser, error }}>
       {children}
     </AuthContext.Provider>
   );
