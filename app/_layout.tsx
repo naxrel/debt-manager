@@ -44,6 +44,7 @@ export default function RootLayout() {
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
               <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="auth/login" options={{ headerShown: false }} />
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
@@ -55,6 +56,7 @@ export default function RootLayout() {
             <Stack.Screen name="group/create" options={{ headerShown: false }} />
             <Stack.Screen name="group/[id]/add-transaction" options={{ headerShown: false }} />
             <Stack.Screen name="history" options={{ headerShown: false }} />
+            <Stack.Screen name="about" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false }} />
             <Stack.Screen name="security" options={{ headerShown: false }} />
             <Stack.Screen name="account-savings" options={{ headerShown: false }} />

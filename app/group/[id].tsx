@@ -25,6 +25,23 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+// THEME CONSTANTS - Centralized for easy maintenance
+const COLORS = {
+  background: '#F8F9FD',
+  cardBg: '#FFFFFF',
+  primaryText: '#1A1A1A',
+  secondaryText: '#909090',
+  success: '#00C896',
+  danger: '#FF5555',
+  warning: '#FFB74D',
+  border: '#EEEFFF',
+  iconBgBlue: '#E3F2FD',
+  iconTextBlue: '#2196F3',
+  iconBgRed: '#FFEBEE',
+  iconTextRed: '#F44336',
+  headerText: '#111',
+};
+
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -507,28 +524,10 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
-        {/* Group Stats */}
-        <View style={styles.statsCard}>
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.memberCount}</Text>
-              <Text style={styles.statLabel}>Member</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.totalTransactions}</Text>
-              <Text style={styles.statLabel}>Total transactions</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{optimizedDebts.length}</Text>
-              <Text style={styles.statLabel}>Simplified debts</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Pending Settlement Requests */}
         {pendingRequests.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.settlementRequestHeader}>
+            <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Pending Approval</Text>
               <View style={styles.pendingBadge}>
                 <Text style={styles.pendingBadgeText}>{pendingRequests.length}</Text>
@@ -537,18 +536,18 @@ export default function GroupDetailScreen() {
             {pendingRequests.map((request) => {
               const fromUser = StaticDB.getUserById(request.fromUserId);
               return (
-                <View key={request.id} style={styles.settlementRequestCard}>
-                  <View style={styles.settlementRequestInfo}>
-                    <Text style={styles.settlementRequestTitle}>
-                      {fromUser?.name} wanted to pay
+                <View key={request.id} style={styles.settlementCard}>
+                  <View style={styles.settlementInfo}>
+                    <Text style={styles.settlementTitle}>
+                      {fromUser?.name} wants to pay
                     </Text>
-                    <Text style={styles.settlementRequestAmount}>
+                    <Text style={styles.settlementAmount}>
                       {formatCurrency(request.amount)}
                     </Text>
-                    <Text style={styles.settlementRequestDescription}>
+                    <Text style={styles.settlementDescription}>
                       {request.description}
                     </Text>
-                    <Text style={styles.settlementRequestDate}>
+                    <Text style={styles.settlementDate}>
                       {new Date(request.createdAt).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',
@@ -557,7 +556,7 @@ export default function GroupDetailScreen() {
                       })}
                     </Text>
                   </View>
-                  <View style={styles.settlementRequestActions}>
+                  <View style={styles.settlementActions}>
                     <TouchableOpacity
                       style={styles.approveButton}
                       onPress={() => handleApproveSettlement(request.id, request.amount)}
@@ -583,11 +582,9 @@ export default function GroupDetailScreen() {
         {(myOptimizedDebts.shouldPay.length > 0 ||
           myOptimizedDebts.willReceive.length > 0) ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}></Text>
-
             {myOptimizedDebts.shouldPay.length > 0 ? (
               <View style={styles.actionSection}>
-                <Text style={styles.actionLabel}>You must paid to:</Text>
+                <Text style={styles.sectionTitle}>You must pay</Text>
                 {myOptimizedDebts.shouldPay.map((debt, index) => (
                   <View key={index} style={[styles.debtCard, styles.payCard]}>
                     <View style={styles.debtHeader}>
@@ -612,7 +609,7 @@ export default function GroupDetailScreen() {
 
             {myOptimizedDebts.willReceive.length > 0 ? (
               <View style={styles.actionSection}>
-                <Text style={styles.actionLabel}>Nominal yang diterima:</Text>
+                <Text style={styles.sectionTitle}>You will receive</Text>
                 {myOptimizedDebts.willReceive.map((debt, index) => (
                   <View
                     key={index}
@@ -1320,13 +1317,13 @@ export default function GroupDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   scrollView: {
     flex: 1,
@@ -1355,7 +1352,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    color: '#fff',
+    color: COLORS.cardBg,
     marginBottom: 8,
     fontFamily: Font.bold,
   },
@@ -1364,37 +1361,9 @@ const styles = StyleSheet.create({
     color: '#e0e7ff',
     fontFamily: Font.regular,
   },
-  statsCard: {
-    backgroundColor: '#fff',
-    margin: 16,
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    color: '#344170',
-    marginBottom: 4,
-    fontFamily: Font.bold,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontFamily: Font.regular,
-  },
   section: {
     padding: 16,
+    paddingTop: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1403,9 +1372,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 17,
+    color: COLORS.primaryText,
     fontFamily: Font.bold,
+    marginBottom: 12,
   },
   badge: {
     backgroundColor: '#e8ebf5',
@@ -1419,27 +1389,21 @@ const styles = StyleSheet.create({
     fontFamily: Font.semiBold,
   },
   actionSection: {
-    marginBottom: 5,
-  },
-  actionLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 12,
-    fontFamily: Font.semiBold,
+    marginBottom: 16,
   },
   debtCard: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     padding: 7,
     borderRadius: 15,
     marginBottom: 8,
   },
   payCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#ef4444',
+    borderLeftColor: COLORS.danger,
   },
   receiveCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
+    borderLeftColor: COLORS.success,
   },
   debtHeader: {
     flexDirection: 'row',
@@ -1452,7 +1416,7 @@ const styles = StyleSheet.create({
   },
   debtName: {
     fontSize: 16,
-    color: '#333',
+    color: COLORS.primaryText,
     fontFamily: Font.semiBold,
     marginBottom: 4,
   },
@@ -1462,7 +1426,7 @@ const styles = StyleSheet.create({
     fontFamily: Font.bold,
   },
   payButton: {
-    backgroundColor: '#0e9266ff',
+    backgroundColor: COLORS.success,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1475,14 +1439,14 @@ payButtonPressed: {
   transform: [{ scale: 0.98 }],
 },
   payButtonText: {
-    color: '#fff',
+    color: COLORS.cardBg,
     fontSize: 14,
     fontFamily: Font.semiBold,
   },
   emptyState: {
     alignItems: 'center',
     padding: 40,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     borderRadius: 16,
   },
   emptyIcon: {
@@ -1492,18 +1456,18 @@ payButtonPressed: {
   },
   emptyText: {
     fontSize: 18,
-    color: '#333',
+    color: COLORS.primaryText,
     fontFamily: Font.semiBold,
   },
   simplificationList: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     padding: 16,
     borderRadius: 12,
   },
   simplificationItem: {
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: COLORS.border,
   },
   simplificationRow: {
     flexDirection: 'row',
@@ -1517,17 +1481,17 @@ payButtonPressed: {
     paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#10b981',
+    borderColor: COLORS.success,
     alignSelf: 'flex-start',
   },
   quickPayButtonText: {
-    color: '#10b981',
+    color: COLORS.success,
     fontSize: 13,
     fontFamily: Font.semiBold,
   },
   simplificationFromName: {
     fontSize: 16,
-    color: '#333',
+    color: COLORS.primaryText,
     minWidth: 80,
     fontFamily: Font.semiBold,
   },
@@ -1538,34 +1502,34 @@ payButtonPressed: {
   },
   simplificationToName: {
     fontSize: 16,
-    color: '#333',
+    color: COLORS.primaryText,
     minWidth: 80,
     fontFamily: Font.semiBold,
   },
   simplificationEquals: {
     fontSize: 18,
-    color: '#666',
+    color: COLORS.secondaryText,
     fontFamily: Font.bold,
   },
   simplificationAmount: {
     fontSize: 18,
-    color: '#10b981',
+    color: COLORS.success,
     flex: 1,
     textAlign: 'right',
     fontFamily: Font.bold,
   },
   transactionList: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     borderRadius: 12,
     overflow: 'hidden',
   },
   transactionDateHeader: {
     fontSize: 13,
      
-    color: '#666',
+    color: COLORS.secondaryText,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#f9fafb',
+    backgroundColor: COLORS.background,
     fontFamily: Font.semiBold,
   },
   transactionListItem: {
@@ -1573,7 +1537,7 @@ payButtonPressed: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: COLORS.border,
   },
   transactionIconContainer: {
     marginRight: 12,
@@ -1584,7 +1548,7 @@ payButtonPressed: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#d1fae5',
+    backgroundColor: COLORS.iconBgBlue,
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 3,
@@ -1610,7 +1574,7 @@ payButtonPressed: {
   },
   transactionIconText: {
     fontSize: 18,
-    color: '#10b981',
+    color: COLORS.success,
      
     fontFamily: Font.bold,
   },
@@ -1628,19 +1592,19 @@ payButtonPressed: {
   transactionListAmount: {
     fontSize: 16,
      
-    color: '#333',
+    color: COLORS.primaryText,
     marginBottom: 2,
     fontFamily: Font.bold,
   },
   transactionListUsers: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.secondaryText,
     marginBottom: 2,
     fontFamily: Font.regular,
   },
   transactionListDescription: {
     fontSize: 12,
-    color: '#999',
+    color: COLORS.tertiaryText,
     marginTop: 2,
     fontFamily: Font.regular,
   },
@@ -1650,7 +1614,7 @@ payButtonPressed: {
   },
   transactionListTime: {
     fontSize: 13,
-    color: '#999',
+    color: COLORS.tertiaryText,
     fontFamily: Font.regular,
   },
   statusBadge: {
@@ -1659,7 +1623,7 @@ payButtonPressed: {
     borderRadius: 8,
   },
   statusBadgePaid: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: COLORS.iconBgGreen,
   },
   statusBadgeUnpaid: {
     backgroundColor: '#fee2e2',
@@ -1673,13 +1637,13 @@ payButtonPressed: {
     color: '#059669',
   },
   statusTextUnpaid: {
-    color: '#dc2626',
+    color: COLORS.danger,
   },
   memberCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
@@ -1698,7 +1662,7 @@ payButtonPressed: {
     alignItems: 'center',
   },
   memberAvatarText: {
-    color: '#fff',
+    color: COLORS.cardBg,
     fontSize: 14,
     
     fontFamily: Font.semiBold,
@@ -1706,41 +1670,41 @@ payButtonPressed: {
   memberName: {
     fontSize: 15,
     
-    color: '#1f2937',
+    color: COLORS.primaryText,
     fontFamily: Font.semiBold,
     marginBottom: 2,
   },
   memberUsername: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: COLORS.tertiaryText,
     fontFamily: Font.regular,
   },
   youIndicator: {
     fontSize: 13,
     fontWeight: '400',
-    color: '#6b7280',
+    color: COLORS.secondaryText,
     fontFamily: Font.regular,
   },
   creatorBadge: {
-    backgroundColor: '#10b981',
+    backgroundColor: COLORS.success,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   creatorText: {
     fontSize: 11,
-    color: '#fff',
+    color: COLORS.cardBg,
     fontFamily: Font.semiBold,
   },
   youBadge: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: COLORS.warning,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   youText: {
     fontSize: 11,
-    color: '#fff',
+    color: COLORS.cardBg,
     fontFamily: Font.semiBold,
   },
   drawerOverlay: {
@@ -1752,7 +1716,7 @@ payButtonPressed: {
   drawerContainer: {
     width: 350,
     height: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
     shadowOpacity: 0.5,
@@ -1774,12 +1738,12 @@ payButtonPressed: {
   },
   drawerClose: {
     fontSize: 28,
-    color: '#fff',
+    color: COLORS.cardBg,
     fontFamily: Font.regular,
   },
   drawerContent: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: COLORS.background,
   },
   drawerContentContainer: {
     paddingVertical: 8,
@@ -1795,7 +1759,7 @@ payButtonPressed: {
   roleTitle: {
     fontSize: 11,
     fontFamily: Font.semiBold,
-    color: '#6b7280',
+    color: COLORS.secondaryText,
     letterSpacing: 0.5,
   },
   memberItem: {
@@ -1829,12 +1793,12 @@ payButtonPressed: {
   },
   fabIcon: {
     fontSize: 32,
-    color: '#fff',
+    color: COLORS.cardBg,
     fontWeight: 'bold',
     fontFamily: Font.bold,
   },
   dangerZone: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     marginHorizontal: 16,
     marginTop: 24,
     padding: 16,
@@ -1845,18 +1809,18 @@ payButtonPressed: {
   dangerZoneTitle: {
     fontSize: 16,
      
-    color: '#dc2626',
+    color: COLORS.danger,
     marginBottom: 8,
     fontFamily: Font.bold,
   },
   dangerZoneDescription: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.secondaryText,
     marginBottom: 12,
     fontFamily: Font.regular,
   },
   deleteButton: {
-    backgroundColor: '#dc2626',
+    backgroundColor: COLORS.danger,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -1865,7 +1829,7 @@ payButtonPressed: {
   deleteButtonText: {
     fontSize: 15,
      
-    color: '#fff',
+    color: COLORS.cardBg,
     fontFamily: Font.semiBold,
   },
   deleteModalOverlay: {
@@ -1876,7 +1840,7 @@ payButtonPressed: {
     padding: 20,
   },
   deleteModalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     borderRadius: 15,
     padding: 16,
     width: '85%',
@@ -1884,7 +1848,7 @@ payButtonPressed: {
   },
   deleteModalTitle: {
     fontSize: 20,
-    color: '#333',
+    color: COLORS.primaryText,
     padding: 10,
     marginBottom: 16,
     justifyContent: 'center',
@@ -1892,7 +1856,7 @@ payButtonPressed: {
   },
   deleteModalWarning: {
     fontSize: 14,
-    color: '#dc2626',
+    color: COLORS.danger,
     backgroundColor: '#fee2e2',
     padding: 12,
     borderRadius: 8,
@@ -1902,22 +1866,22 @@ payButtonPressed: {
   },
   deleteModalInstruction: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.secondaryText,
     marginBottom: 5,
     lineHeight: 20,
     fontFamily: Font.regular,
   },
   deleteModalGroupName: {
      
-    color: '#333',
+    color: COLORS.primaryText,
   },
   deleteModalInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: '#333',
+    color: COLORS.primaryText,
     marginBottom: 20,
     fontFamily: Font.regular,
   },
@@ -1927,7 +1891,7 @@ payButtonPressed: {
   },
   deleteModalCancelButton: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: COLORS.background,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -1935,12 +1899,12 @@ payButtonPressed: {
   deleteModalCancelText: {
     fontSize: 15,
      
-    color: '#666',
+    color: COLORS.secondaryText,
     fontFamily: Font.semiBold,
   },
   deleteModalConfirmButton: {
     flex: 1,
-    backgroundColor: '#dc2626',
+    backgroundColor: COLORS.danger,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -1952,11 +1916,11 @@ payButtonPressed: {
   deleteModalConfirmText: {
     fontSize: 15,
      
-    color: '#fff',
+    color: COLORS.cardBg,
     fontFamily: Font.semiBold,
   },
   addMemberButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: COLORS.success,
     paddingVertical: 12,
     marginHorizontal: 16,
     borderRadius: 8,
@@ -1966,11 +1930,11 @@ payButtonPressed: {
   addMemberButtonText: {
     fontSize: 14,
     
-    color: '#fff',
+    color: COLORS.cardBg,
     fontFamily: Font.semiBold,
   },
   errorText: {
-    color: '#dc2626',
+    color: COLORS.danger,
     fontSize: 13,
     marginBottom: 12,
     fontFamily: Font.regular,
@@ -2021,7 +1985,7 @@ payButtonPressed: {
     paddingBottom: 40,
   },
   editModalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     borderRadius: 10,
     padding: 20,
     width: '100%',
@@ -2044,7 +2008,7 @@ payButtonPressed: {
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderStyle: 'dashed',
   },
   editPlaceholderEmoji: {
@@ -2054,7 +2018,7 @@ payButtonPressed: {
   },
   editPlaceholderText: {
     fontSize: 11,
-    color: '#666',
+    color: COLORS.secondaryText,
     textAlign: 'center',
     fontFamily: Font.regular,
   },
@@ -2068,13 +2032,13 @@ payButtonPressed: {
     marginTop: 10,
   },
   removeEditImageText: {
-    color: '#dc2626',
+    color: COLORS.danger,
     fontSize: 13,
     fontFamily: Font.semiBold,
   },
   editModalLabel: {
     fontSize: 14,
-    color: '#333',
+    color: COLORS.primaryText,
     marginBottom: 8,
     marginTop: 8,
     fontFamily: Font.semiBold,
@@ -2084,7 +2048,7 @@ payButtonPressed: {
     textAlignVertical: 'top',
   },
   editDeleteButton: {
-    backgroundColor: '#dc2626',
+    backgroundColor: COLORS.danger,
     marginTop: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -2093,11 +2057,11 @@ payButtonPressed: {
   },
   editDeleteButtonText: {
     fontSize: 15,
-    color: '#fff',
+    color: COLORS.cardBg,
     fontFamily: Font.semiBold,
   },
   paymentSummary: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: COLORS.background,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -2110,22 +2074,22 @@ payButtonPressed: {
   },
   paymentLabel: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.secondaryText,
     fontFamily: Font.regular,
   },
   paymentValue: {
     fontSize: 15,
-    color: '#333',
+    color: COLORS.primaryText,
     fontFamily: Font.semiBold,
   },
   paymentAmount: {
     fontSize: 18,
-    color: '#10b981',
+    color: COLORS.success,
     fontFamily: Font.bold,
   },
   paymentNote: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.secondaryText,
     backgroundColor: '#eff6ff',
     padding: 12,
     borderRadius: 8,
@@ -2134,79 +2098,76 @@ payButtonPressed: {
     fontFamily: Font.regular,
   },
   // Settlement Request Styles
-  settlementRequestHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5 ,
-    gap: 8,
-  },
   pendingBadge: {
-    backgroundColor: '#fbbf24',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    backgroundColor: COLORS.warning,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   pendingBadgeText: {
-    color: '#fff',
-    fontSize: 12,
+    color: COLORS.cardBg,
+    fontSize: 11,
     fontFamily: Font.bold,
   },
-  settlementRequestCard: {
-    backgroundColor: '#fff6e3ff',
+  settlementCard: {
+    backgroundColor: COLORS.cardBg,
     borderRadius: 12,
-    padding: 10,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.warning,
   },
-  settlementRequestInfo: {
-    marginBottom: 5,
+  settlementInfo: {
+    marginBottom: 12,
   },
-  settlementRequestTitle: {
-    fontSize: 16,
-    color: '#333',
+  settlementTitle: {
+    fontSize: 15,
+    color: COLORS.primaryText,
     fontFamily: Font.semiBold,
-    marginBottom: 3,
+    marginBottom: 6,
   },
-  settlementRequestAmount: {
+  settlementAmount: {
     fontSize: 24,
-    color: '#10b981',
+    color: COLORS.success,
     fontFamily: Font.bold,
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  settlementRequestDescription: {
+  settlementDescription: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.secondaryText,
     fontFamily: Font.regular,
     marginBottom: 4,
   },
-  settlementRequestDate: {
+  settlementDate: {
     fontSize: 12,
-    color: '#999',
+    color: COLORS.tertiaryText,
     fontFamily: Font.regular,
   },
-  settlementRequestActions: {
+  settlementActions: {
     flexDirection: 'row',
-    gap: 100,
+    gap: 12,
   },
   approveButton: {
     flex: 1,
-    backgroundColor: '#10b981',
+    backgroundColor: COLORS.success,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   approveButtonText: {
-    color: '#fff',
+    color: COLORS.cardBg,
     fontSize: 14,
     fontFamily: Font.semiBold,
   },
   rejectButton: {
     flex: 1,
-    backgroundColor: '#ef4444',
+    backgroundColor: COLORS.background,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   rejectButtonText: {
-    color: '#fff',
+    color: COLORS.secondaryText,
     fontSize: 14,
     fontFamily: Font.semiBold,
   },
@@ -2219,7 +2180,7 @@ payButtonPressed: {
     padding: 20,
   },
   celebrationCard: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.cardBg,
     borderRadius: 20,
     padding: 32,
     width: '90%',
@@ -2233,20 +2194,20 @@ payButtonPressed: {
   },
   celebrationTitle: {
     fontSize: 24,
-    color: '#333',
+    color: COLORS.primaryText,
     fontFamily: Font.bold,
     marginBottom: 16,
     textAlign: 'center',
   },
   celebrationAmount: {
     fontSize: 36,
-    color: '#10b981',
+    color: COLORS.success,
     fontFamily: Font.bold,
     marginBottom: 8,
   },
   celebrationMessage: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.secondaryText,
     fontFamily: Font.regular,
     marginBottom: 24,
     textAlign: 'center',
@@ -2257,19 +2218,19 @@ payButtonPressed: {
   },
   graphBar: {
     height: 40,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: COLORS.border,
     borderRadius: 8,
     overflow: 'hidden',
     marginBottom: 8,
   },
   graphFill: {
     height: '100%',
-    backgroundColor: '#10b981',
-    borderRadius: 8,
+    backgroundColor: COLORS.success,
+    borderRadius: 8,  
   },
   graphLabel: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.secondaryText,
     fontFamily: Font.semiBold,
     textAlign: 'center',
   },

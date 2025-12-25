@@ -40,7 +40,7 @@ export const Colors = {
     secondary: primary,
     dark: '#1a2038',
     card: '#344170',
-    border: '#3d4a73',
+    border: 'rgba(61, 74, 115, 1)',
     accent: '#7589c1',
   },
 };

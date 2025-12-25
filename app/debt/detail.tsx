@@ -197,112 +197,130 @@ export default function DebtDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Minimal Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+            <Path stroke="#6b7280" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Detail Transaksi</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Transaction Detail</Text>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* Transaction Info Card */}
-        <View style={styles.infoCard}>
-          {/* From/To Section */}
-          <View style={styles.infoItem}>
-            <Text style={styles.label}>From</Text>
-            <Text style={styles.value}>{debt.type === 'hutang' ? debt.name : 'Me'}</Text>
-          </View>
-
-          <View style={styles.infoItem}>
-            <Text style={styles.label}>To</Text>
-            <Text style={styles.value}>{debt.type === 'piutang' ? debt.name : 'Me'}</Text>
-          </View>
-
-          {/* Date Section */}
-          <View style={styles.infoItem}>
-            <Text style={styles.label}>Date</Text>
-            <Text style={styles.value}>{formatDate(debt.date)}, {new Date(debt.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</Text>
-          </View>
-
-          {/* Note Section */}
-          {debt.description && (
-            <View style={styles.infoItem}>
-              <Text style={styles.label}>Note</Text>
-              <View style={styles.noteBox}>
-                <Text style={styles.noteText}>{debt.description}</Text>
-              </View>
+        {/* Amount - Hero */}
+        <View style={styles.heroSection}>
+          <Text style={styles.amountLabel}>Amount</Text>
+          <Text style={styles.amountHero}>{formatCurrency(debt.amount)}</Text>
+          {debt.isPaid && (
+            <View style={styles.paidBadgeInline}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                <Path stroke="#10b981" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </Svg>
+              <Text style={styles.paidText}>Paid</Text>
             </View>
           )}
+        </View>
 
-          {/* Total Section */}
-          <View style={styles.totalSection}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalAmount}>{formatCurrency(debt.amount)}</Text>
+        {/* Transaction Flow */}
+        <View style={styles.flowSection}>
+          <View style={styles.flowContainer}>
+            <View style={styles.flowItem}>
+              <Text style={styles.flowLabel}>From</Text>
+              <Text style={styles.flowValue}>{debt.type === 'hutang' ? debt.name : 'Me'}</Text>
+            </View>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={styles.flowArrow}>
+              <Path stroke="#d1d5db" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </Svg>
+            <View style={[styles.flowItem, styles.flowItemRight]}>
+              <Text style={styles.flowLabel}>To</Text>
+              <Text style={styles.flowValue}>{debt.type === 'piutang' ? debt.name : 'Me'}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Status Badge */}
-        {debt.isPaid && (
-          <View style={styles.paidBadge}>
-            <Text style={styles.paidBadgeText}>✓ LUNAS</Text>
+        {/* Details */}
+        <View style={styles.detailsSection}>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Date</Text>
+            <Text style={styles.detailValue}>
+              {formatDate(debt.date)}, {new Date(debt.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+
+          {debt.description && (
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Note</Text>
+              <Text style={styles.detailValue}>{debt.description}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Action Area */}
+        {!debt.isPaid && user && (
+          <View style={styles.actionSection}>
+            {/* Scenario 1: User owes money (hutang) - not requested yet */}
+            {debt.type === 'hutang' && debt.status !== 'settlement_requested' && (
+              <TouchableOpacity 
+                style={styles.swipeButton} 
+                onPress={handleRequestSettlement}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.swipeButtonText}>Request Settlement</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Scenario 2: User owes money - waiting for approval */}
+            {debt.type === 'hutang' && debt.status === 'settlement_requested' && (
+              <View style={styles.waitingContainer}>
+                <View style={styles.waitingIndicator}>
+                  <View style={styles.pulseDot} />
+                  <Text style={styles.waitingText}>Waiting approval from {debt.name}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Scenario 3: User is owed money (piutang) - has settlement request */}
+            {debt.type === 'piutang' && debt.status === 'settlement_requested' && (
+              <View style={styles.approvalSection}>
+                <Text style={styles.requestText}>{debt.name} wants to settle this debt</Text>
+                <View style={styles.approvalButtons}>
+                  <TouchableOpacity 
+                    style={styles.rejectButtonNew} 
+                    onPress={handleRejectSettlement}
+                    activeOpacity={0.8}
+                  >
+                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                      <Path stroke="#111827" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </Svg>
+                    <Text style={styles.rejectButtonTextNew}>Reject</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.approveButtonNew} 
+                    onPress={handleApproveSettlement}
+                    activeOpacity={0.8}
+                  >
+                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                      <Path stroke="#ffffff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                    </Svg>
+                    <Text style={styles.approveButtonTextNew}>Approve</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Scenario 4: User is owed money - waiting for them to request */}
+            {debt.type === 'piutang' && debt.status !== 'settlement_requested' && (
+              <View style={styles.waitingContainer}>
+                <View style={styles.waitingIndicatorInactive}>
+                  <View style={styles.inactiveDot} />
+                  <Text style={styles.waitingTextInactive}>Waiting {debt.name} to request settlement</Text>
+                </View>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
-
-      {/* Action Buttons */}
-      {!debt.isPaid && user && (
-        <View style={styles.actionButtons}>
-          {/* Jika user punya hutang (type='hutang'), hanya tampilkan Request Settlement */}
-          {debt.type === 'hutang' && debt.status !== 'settlement_requested' && (
-            <TouchableOpacity 
-              style={[styles.confirmButton, styles.fullWidthButton]} 
-              onPress={handleRequestSettlement}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.confirmButtonText}>Request Settlement</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Jika sudah request settlement, tampilkan status pending */}
-          {debt.type === 'hutang' && debt.status === 'settlement_requested' && (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>Waiting approval from{debt.name}</Text>
-            </View>
-          )}
-
-          {/* Jika user pemberi hutang (type='piutang') dan ada settlement request, tampilkan tombol Approve */}
-          {debt.type === 'piutang' && debt.status === 'settlement_requested' && (
-            <>
-              <TouchableOpacity 
-                style={styles.rejectButton} 
-                onPress={handleRejectSettlement}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.rejectButtonText}>Reject</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.confirmButton} 
-                onPress={handleApproveSettlement}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.confirmButtonText}>Approve Settlement</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* Jika piutang tapi belum ada settlement request */}
-          {debt.type === 'piutang' && debt.status !== 'settlement_requested' && (
-            <View style={styles.infoBadge}>
-              <Text style={styles.infoBadgeText}>Waiting {debt.name} to request settlement...</Text>
-            </View>
-          )}
-        </View>
-      )}
     </View>
   );
 }
@@ -312,13 +330,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ffffff',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ffffff',
     padding: 20,
   },
   errorText: {
@@ -328,10 +346,10 @@ const styles = StyleSheet.create({
     fontFamily: Font.regular,
   },
   errorButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 8,
+    backgroundColor: '#111827',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 28,
   },
   errorButtonText: {
     color: '#fff',
@@ -340,183 +358,217 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f9fafb',
-    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    paddingHorizontal: 20,
     paddingTop: 50,
-    paddingBottom: 8,
+    paddingBottom: 16,
+  },
+  backButton: {
+    marginRight: 16,
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
     fontFamily: Font.semiBold,
-    color: '#1f2937',
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 10,
-  },
-  headerSpacer: {
-    width: 40,
+    color: '#111827',
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingVertical: 32,
   },
-  pageTitle: {
-    fontSize: 20,
-    fontFamily: Font.semiBold,
-    color: '#1f2937',
-    marginBottom: 24,
+  
+  // Hero Amount Section
+  heroSection: {
+    marginBottom: 32,
   },
-  infoCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  infoItem: {
-    marginBottom: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
+  amountLabel: {
     fontSize: 14,
     fontFamily: Font.regular,
     color: '#6b7280',
     marginBottom: 8,
   },
-  value: {
+  amountHero: {
+    fontSize: 48,
+    fontFamily: Font.bold,
+    color: '#111827',
+    marginBottom: 4,
+  },
+  paidBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  paidText: {
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+    color: '#10b981',
+  },
+
+  // Transaction Flow Section
+  flowSection: {
+    marginBottom: 32,
+    paddingBottom: 32,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  flowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  flowItem: {
+    flex: 1,
+  },
+  flowItemRight: {
+    alignItems: 'flex-end',
+  },
+  flowLabel: {
+    fontSize: 12,
+    fontFamily: Font.regular,
+    color: '#9ca3af',
+    marginBottom: 4,
+  },
+  flowValue: {
     fontSize: 16,
     fontFamily: Font.semiBold,
-    color: '#1f2937',
+    color: '#111827',
   },
-  noteSection: {
+  flowArrow: {
+    marginTop: 12,
+  },
+
+  // Details Section
+  detailsSection: {
+    marginBottom: 32,
+  },
+  detailItem: {
     marginBottom: 24,
   },
-  noteLabel: {
+  detailLabel: {
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 16,
+    fontFamily: Font.regular,
+    color: '#111827',
+    lineHeight: 24,
+  },
+
+  // Action Section
+  actionSection: {
+    paddingTop: 32,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+
+  // Waiting States
+  waitingContainer: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  waitingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#f59e0b',
+  },
+  waitingText: {
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+    color: '#f59e0b',
+  },
+  waitingIndicatorInactive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inactiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#d1d5db',
+  },
+  waitingTextInactive: {
     fontSize: 14,
     fontFamily: Font.regular,
     color: '#9ca3af',
-    marginBottom: 8,
   },
-  noteBox: {
-    backgroundColor: '#f3f4f6',
-    padding: 12,
-    borderRadius: 8,
+
+  // Approval Section
+  approvalSection: {
+    gap: 16,
   },
-  noteText: {
-    fontSize: 14,
-    fontFamily: Font.regular,
-    color: '#4b5563',
-    lineHeight: 20,
-  },
-  totalSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingTop: 20,
-    marginTop: 4,
-  },
-  totalLabel: {
+  requestText: {
     fontSize: 14,
     fontFamily: Font.semiBold,
-    color: '#6b7280',
-    marginBottom: 8,
+    color: '#f59e0b',
+    textAlign: 'center',
+    marginBottom: 16,
   },
-  totalAmount: {
-    fontSize: 28,
-    fontFamily: Font.bold,
-    color: '#1f2937',
-  },
-  paidBadge: {
-    backgroundColor: '#10b981',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  paidBadgeText: {
-    fontSize: 16,
-    fontFamily: Font.bold,
-    color: '#fff',
-  },
-  actionButtons: {
+  approvalButtons: {
     flexDirection: 'row',
     gap: 12,
-    padding: 16,
-    backgroundColor: '#f9fafb',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
-  rejectButton: {
+  rejectButtonNew: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 28,
+    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  rejectButtonText: {
+  rejectButtonTextNew: {
     fontSize: 16,
     fontFamily: Font.semiBold,
-    color: '#6b7280',
+    color: '#111827',
   },
-  confirmButton: {
+  approveButtonNew: {
     flex: 1,
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: '#10b981',
+    borderRadius: 28,
+    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  confirmButtonText: {
+  approveButtonTextNew: {
     fontSize: 16,
     fontFamily: Font.semiBold,
-    color: '#fff',
+    color: '#ffffff',
   },
-  pendingBadge: {
-    flex: 1,
-    backgroundColor: '#fef3c7',
-    borderRadius: 12,
+
+  // Swipe Button Style
+  swipeButton: {
+    backgroundColor: '#111827',
+    borderRadius: 28,
     paddingVertical: 16,
-    paddingHorizontal: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  pendingBadgeText: {
-    fontSize: 14,
+  swipeButtonText: {
+    fontSize: 16,
     fontFamily: Font.semiBold,
-    color: '#92400e',
-    textAlign: 'center',
-  },
-  infoBadge: {
-    flex: 1,
-    backgroundColor: '#dbeafe',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-  },
-  infoBadgeText: {
-    fontSize: 14,
-    fontFamily: Font.semiBold,
-    color: '#1e40af',
-    textAlign: 'center',
-  },
-  fullWidthButton: {
-    flex: 1,
+    color: '#ffffff',
   },
 });

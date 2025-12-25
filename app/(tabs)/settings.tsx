@@ -57,7 +57,7 @@ export default function SettingsScreen() {
         {
           icon: 'about',
           label: 'About',
-          onPress: () => {},
+          onPress: () => router.push('/about'),
         },
       ],
     },
