@@ -46,18 +46,18 @@ export default function SecurityScreen() {
     }
 
     if (!newPassword) {
-      newErrors.newPassword = 'New password tidak boleh kosong';
+      newErrors.newPassword = 'Are you sure to not fill this?';
       hasError = true;
     } else if (newPassword.length < 6) {
-      newErrors.newPassword = 'Password minimal 6 karakter';
+      newErrors.newPassword = 'Password must be at least 6 characters';
       hasError = true;
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Confirm password tidak boleh kosong';
+      newErrors.confirmPassword = 'Confirm password cannot be empty';
       hasError = true;
     } else if (newPassword !== confirmPassword) {
-      newErrors.confirmPassword = 'Password tidak cocok';
+      newErrors.confirmPassword = 'Password does not match';
       hasError = true;
     }
 
@@ -248,7 +248,7 @@ export default function SecurityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     padding: 10,
     paddingTop: 50,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#f5f5f5',
   },
   backButton: {
     width: 40,
@@ -292,8 +292,8 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    borderColor: '#a3aab3ff',
     borderRadius: 12,
     backgroundColor: '#fff',
     paddingHorizontal: 12,

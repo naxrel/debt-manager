@@ -96,36 +96,36 @@ export default function DebtDetailScreen() {
     if (!debt || !user) return;
 
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Setujui pelunasan dari ' + debt.name + '?');
+      const confirmed = window.confirm('Approve settlement from ' + debt.name + '?');
       if (confirmed) {
         const result = StaticDB.approveSettlement(debt.id, user.id);
         if (result.success) {
           refreshDebts();
-          alert('Pelunasan berhasil disetujui');
+          alert('Settlement approved successfully');
           router.back();
         } else {
-          alert(result.error || 'Gagal menyetujui');
+          alert(result.error || 'Failed to approve');
         }
       }
       return;
     }
 
     Alert.alert(
-      'Setujui Pelunasan',
-      'Setujui pelunasan dari ' + debt.name + '?',
+      'Approve Settlement',
+      'Approve settlement from ' + debt.name + '?',
       [
-        { text: 'Batal', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Setujui',
+          text: 'Approve',
           onPress: () => {
             const result = StaticDB.approveSettlement(debt.id, user.id);
             if (result.success) {
               refreshDebts();
-              Alert.alert('Sukses', 'Pelunasan berhasil disetujui', [
+              Alert.alert('Success', 'Settlement approved successfully', [
                 { text: 'OK', onPress: () => router.back() },
               ]);
             } else {
-              Alert.alert('Error', result.error || 'Gagal menyetujui');
+              Alert.alert('Error', result.error || 'Failed to approve');
             }
           },
         },
@@ -138,37 +138,37 @@ export default function DebtDetailScreen() {
     if (!debt || !user) return;
 
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Tolak permintaan pelunasan dari ' + debt.name + '?');
+      const confirmed = window.confirm('Reject settlement request from ' + debt.name + '?');
       if (confirmed) {
         const result = StaticDB.rejectSettlement(debt.id, user.id);
         if (result.success) {
           refreshDebts();
-          alert('Permintaan pelunasan ditolak');
+          alert('Settlement request rejected');
           router.back();
         } else {
-          alert(result.error || 'Gagal menolak');
+          alert(result.error || 'Failed to reject');
         }
       }
       return;
     }
 
     Alert.alert(
-      'Tolak Pelunasan',
-      'Tolak permintaan pelunasan dari ' + debt.name + '?',
+      'Reject Settlement',
+      'Reject settlement request from ' + debt.name + '?',
       [
-        { text: 'Batal', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Tolak',
+          text: 'Reject',
           style: 'destructive',
           onPress: () => {
             const result = StaticDB.rejectSettlement(debt.id, user.id);
             if (result.success) {
               refreshDebts();
-              Alert.alert('Sukses', 'Permintaan pelunasan ditolak', [
+              Alert.alert('Success', 'Settlement request rejected', [
                 { text: 'OK', onPress: () => router.back() },
               ]);
             } else {
-              Alert.alert('Error', result.error || 'Gagal menolak');
+              Alert.alert('Error', result.error || 'Failed to reject');
             }
           },
         },
@@ -187,9 +187,9 @@ export default function DebtDetailScreen() {
   if (!debt) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Transaksi tidak ditemukan</Text>
+        <Text style={styles.errorText}>Transaction not found</Text>
         <TouchableOpacity style={styles.errorButton} onPress={() => router.back()}>
-          <Text style={styles.errorButtonText}>Kembali</Text>
+          <Text style={styles.errorButtonText}>Back</Text>
         </TouchableOpacity>
       </View>
     );

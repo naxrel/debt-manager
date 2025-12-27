@@ -131,7 +131,7 @@ export default function HistoryScreen() {
                 item.data.status === 'confirmed' ? styles.confirmedStatus : styles.pendingStatus,
               ]}
             >
-              {item.data.status === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}
+              {item.data.status === 'confirmed' ? 'Confirmed' : 'Pending'}
             </Text>
           </View>
         </AnimatedTouchable>
