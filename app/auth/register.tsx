@@ -53,12 +53,20 @@ export default function RegisterScreen() {
       }
       return;
     }
-
+    
     if (password.length < 6) {
       if (Platform.OS === 'web') {
         window.alert('Error\n\nPassword minimal 6 karakter');
       } else {
         Alert.alert('Error', 'Password minimal 6 karakter');
+      }
+      return;
+    }
+    if (username.length < 5) {
+      if (Platform.OS === 'web') {
+        window.alert('Error\n\nUsername minimal 5 karakter');
+      } else {
+        Alert.alert('Error', 'Username minimal 5 karakter');
       }
       return;
     }
@@ -127,20 +135,20 @@ export default function RegisterScreen() {
                 placeholderTextColor={COLORS.inputPlaceholder}
               />
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Your username"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                editable={!isLoading}
-                placeholderTextColor={COLORS.inputPlaceholder}
-              />
-            </View>
-
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Username</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Your username"
+                  value={username}
+                  onChangeText={(text) =>
+                    setUsername(text.replace(/\s/g, ''))
+                  }
+                  autoCapitalize="none"
+                  editable={!isLoading}
+                  placeholderTextColor={COLORS.inputPlaceholder}
+                />
+              </View>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
               <TextInput
