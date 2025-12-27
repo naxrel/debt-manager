@@ -209,18 +209,22 @@ export default function GroupDetailScreen() {
 
   // Check if a debt has been settled (has recent settlement transaction)
   const isDebtSettled = useCallback((fromUserId: string, toUserId: string, amount: number) => {
-    // Check if there's a recent settlement transaction (within last 5 minutes)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // Check if there's a settlement transaction that matches this debt
     return transactions.some(t => {
-      const transDate = new Date(t.date);
       return t.fromUserId === fromUserId && 
              t.toUserId === toUserId && 
              Math.abs(t.amount - amount) < 1000 &&
              t.isPaid &&
-             transDate > fiveMinutesAgo &&
              t.description?.toLowerCase().includes('settlement');
     });
   }, [transactions]);
+
+  // Filter out settled debts from optimized debts
+  const unsettledDebts = useMemo(() => {
+    return optimizedDebts.filter(debt => 
+      !isDebtSettled(debt.from, debt.to, debt.amount)
+    );
+  }, [optimizedDebts, isDebtSettled]);
 
   // ─────────────────────────────────────────────────────────────────
   // EVENT HANDLERS
@@ -607,11 +611,11 @@ export default function GroupDetailScreen() {
       )}
 
       {/* All Settlements Summary */}
-      {optimizedDebts.length > 0 && (
+      {unsettledDebts.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>All Settlements</Text>
           <View style={styles.card}>
-            {optimizedDebts.map((d, i) => (
+            {unsettledDebts.map((d, i) => (
               <View
                 key={i}
                 style={[
@@ -619,7 +623,7 @@ export default function GroupDetailScreen() {
                   {
                     marginBottom: 8,
                     paddingBottom: 8,
-                    borderBottomWidth: i === optimizedDebts.length - 1 ? 0 : 1,
+                    borderBottomWidth: i === unsettledDebts.length - 1 ? 0 : 1,
                     borderBottomColor: THEME.colors.border
                   }
                 ]}
@@ -641,7 +645,7 @@ export default function GroupDetailScreen() {
         <Text style={styles.sectionTitle}>Transaction History</Text>
       </View>
     </View>
-  ), [pendingRequests, myOptimizedDebts, optimizedDebts, handleApproveSettlement, handleRejectSettlement, handlePayDebt]);
+  ), [pendingRequests, myOptimizedDebts, unsettledDebts, handleApproveSettlement, handleRejectSettlement, handlePayDebt]);
 
   const renderTransactionItem = useCallback(({ item }: { item: GroupTransaction }) => {
     const isOwes = user && item.fromUserId === user.id;
