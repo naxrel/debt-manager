@@ -4,16 +4,31 @@ import { DebtGroup, StaticDB } from '@/data/staticDatabase';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Platform,
+  StatusBar
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
+
+// --- DESIGN TOKENS ---
+const COLORS = {
+  background: '#FFFFFF', 
+  surface: '#FFFFFF',
+  primary: '#4F46E5',    
+  primarySoft: '#EEF2FF',
+  textMain: '#0F172A',   
+  textSec: '#64748B',    
+  textTertiary: '#94A3B8',
+  border: '#F1F5F9',     // Garis separator sangat halus
+  inputBg: '#F8FAFC',    // Input abu-abu sangat muda
+};
 
 export default function GroupScreen() {
   const { user } = useAuth();
@@ -23,9 +38,7 @@ export default function GroupScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      loadGroups();
-    }
+    if (user) loadGroups();
   }, [user]);
 
   const loadGroups = () => {
@@ -55,137 +68,107 @@ export default function GroupScreen() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  if (!user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.emptyText}>Make sure to register first</Text>
-      </View>
-    );
-  }
+  if (!user) return null;
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
-      >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>deBT Group</Text>
-          <Text style={styles.headerSubtitle}>
-           Manage your money wisely!
-          </Text>
-          
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                  <Circle cx="11" cy="11" r="7" stroke="#33363F" strokeWidth="2" />
-                  <Path
-                    stroke="#33363F"
-                    strokeLinecap="round"
-                    strokeWidth="2"
-                    d="M11 8a3 3 0 0 0-3 3M20 20l-3-3"
-                  />
-                </Svg>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      
+      {/* HEADER SECTION (Centered Title) */}
+      <View style={styles.header}>
+        <View style={styles.headerSpacer} /> 
+        <Text style={styles.headerTitle}>Groups</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      {/* SEARCH BAR (Added Top Spacing) */}
+      <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+               <Circle cx="11" cy="11" r="8" stroke={COLORS.textTertiary} strokeWidth="2" />
+               <Path d="M21 21L16.65 16.65" stroke={COLORS.textTertiary} strokeWidth="2" strokeLinecap="round" />
+            </Svg>
             <TextInput
               style={styles.searchInput}
-              placeholder="Find group..."
-              placeholderTextColor="#999"
+              placeholder="Search"
+              placeholderTextColor={COLORS.textTertiary}
               value={searchQuery}
               onChangeText={handleSearch}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => handleSearch('')} activeOpacity={0.7}>
-                <Text style={styles.clearIcon}>✕</Text>
+              <TouchableOpacity onPress={() => handleSearch('')} style={styles.clearBtn}>
+                <View style={styles.clearIconBg}>
+                    <Text style={styles.clearIcon}>✕</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
-        </View>
+      </View>
 
-        {/* Groups List */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Group</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>
-                {searchQuery ? `${filteredGroups.length}/${groups.length}` : `${groups.length} grup`}
-              </Text>
-            </View>
-          </View>
-
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={handleRefresh}
+            colors={[COLORS.primary]} 
+            tintColor={COLORS.primary}
+          />
+        }
+      >
+        {/* LIST SECTION */}
+        <View style={styles.listSection}>
           {filteredGroups.length === 0 ? (
             <View style={styles.emptyState}>
-              {searchQuery ? (
-                <Svg width={64} height={64} viewBox="0 0 24 24" fill="none">
-                  <Circle cx="11" cy="11" r="7" stroke="#33363F" strokeWidth="2" />
-                  <Path
-                    stroke="#33363F"
-                    strokeLinecap="round"
-                    strokeWidth="2"
-                    d="M11 8a3 3 0 0 0-3 3M20 20l-3-3"
-                  />
-                </Svg>
-              ) : (
-                <Text style={styles.emptyIcon}>👥</Text>
-              )}
-              <Text style={styles.emptyText}>
-                {searchQuery ? 'Oops, there are no results' : 'No debts, pweasee T_T'}
-              </Text>
-              <Text style={styles.emptySubtext}>
-                {searchQuery ? 'or maybe just create a new one' : 'or create your debts with your friends now!'}
+              <Text style={styles.emptyTitle}>
+                {searchQuery ? 'No groups found' : 'Start your debt journey now!'}
               </Text>
             </View>
           ) : (
-            filteredGroups.map(group => {
+            filteredGroups.map((group, index) => {
               const stats = StaticDB.getGroupStatistics(group.id);
+              const isLastItem = index === filteredGroups.length - 1;
+
               return (
                 <TouchableOpacity
                   key={group.id}
-                  style={styles.groupCard}
+                  style={styles.listItemContainer}
                   onPress={() => router.push(`/group/${group.id}`)}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.groupIcon}>
-                    {group.groupImage ? (
-                      <Image 
-                        source={{ uri: group.groupImage }} 
-                        style={styles.groupImage} 
-                      />
-                    ) : (
-                      <Text style={styles.groupEmoji}>👥</Text>
-                    )}
-                  </View>
-                  <View style={styles.groupInfo}>
-                    <View style={styles.groupNameRow}>
-                      <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
-                      {group.creatorId === user.id && (
-                        <View style={styles.creatorBadge}>
-                          <Text style={styles.creatorText}>Creator</Text>
+                  {/* Content Wrapper */}
+                  <View style={styles.listItemContent}>
+                    {/* Avatar: Circle */}
+                    <View style={styles.avatarContainer}>
+                      {group.groupImage ? (
+                        <Image source={{ uri: group.groupImage }} style={styles.avatarImage} />
+                      ) : (
+                        <View style={[styles.avatarPlaceholder, { backgroundColor: COLORS.primarySoft }]}>
+                          <Text style={styles.avatarEmoji}></Text>
                         </View>
                       )}
                     </View>
-                    {group.description && (
-                      <Text style={styles.groupDescription} numberOfLines={1}>
-                        {group.description}
-                      </Text>
-                    )}
-                    <Text style={styles.groupMemberCount}>
-                      {stats.memberCount} member{stats.memberCount > 1 ? 's' : ''}
-                    </Text>
+                    
+                    {/* Text Info */}
+                    <View style={styles.textContainer}>
+                      <View style={styles.itemTopRow}>
+                          <Text style={styles.itemTitle} numberOfLines={1}>{group.name}</Text>
+                          <Text style={styles.itemTime}>{stats.memberCount} Mbrs</Text>
+                      </View>
+                      
+                      <View style={styles.itemBottomRow}>
+                          <Text style={styles.itemSubtitle} numberOfLines={1}>
+                            {group.description || 'No description'}
+                          </Text>
+                      </View>
+                    </View>
                   </View>
-                  <Svg width={24} height={24} viewBox="0 0 1024 1024" fill="none">
-                    <Path fill="#2563eb" d="M338.752 104.704a64 64 0 000 90.496l316.8 316.8-316.8 316.8a64 64 0 0090.496 90.496l362.048-362.048a64 64 0 000-90.496L429.248 104.704a64 64 0 00-90.496 0z" />
-                  </Svg>
+
+                  {/* SEPARATOR LINE (Only show if not last item) */}
+                  {/* Logika: Hanya garisnya yang di-indent, bukan seluruh konten */}
+                  {!isLastItem && <View style={styles.separator} />}
                 </TouchableOpacity>
               );
             })
@@ -193,259 +176,183 @@ export default function GroupScreen() {
         </View>
       </ScrollView>
 
-      {/* Floating Create Button */}
+      {/* FAB BUTTON */}
       <TouchableOpacity
         style={styles.fabButton}
         onPress={() => router.push('/group/create')}
-        activeOpacity={0.7}
+        activeOpacity={0.9}
       >
-        <Text style={styles.fabIcon}>+</Text>
+        <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 5v14M5 12h14" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </Svg>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  container: { 
+    flex: 1, 
+    backgroundColor: COLORS.background 
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 120,
-  },
+  
+  // --- HEADER ---
   header: {
-    backgroundColor: '#ffffffff',
-    padding: 20,
-    paddingTop: 45,
-    paddingBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontFamily: Font.bold,
-    color: '#000000ff',
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    fontFamily: Font.regular,
-    color: '#000000ff',
-    marginBottom: 16,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 99,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  searchIcon: {
-    fontSize: 12,
-    fontFamily: Font.regular,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: Font.regular,
-    color: '#333',
-  },
-  clearIcon: {
-    fontSize: 18,
-    fontFamily: Font.regular,
-    color: '#999',
-    paddingHorizontal: 8,
-  },
-  optimizationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    margin: 16,
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    cursor: 'pointer' as any,
-  },
-  optimizationIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  optimizationEmoji: {
-    fontSize: 24,
-    fontFamily: Font.regular,
-  },
-  optimizationContent: {
-    flex: 1,
-  },
-  optimizationTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Font.semiBold,
-    color: '#333',
-    marginBottom: 4,
-  },
-  optimizationSubtitle: {
-    fontSize: 13,
-    fontFamily: Font.regular,
-    color: '#666',
-  },
-  section: {
-    padding: 16,
-  },
-  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 7,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    backgroundColor: COLORS.background,
+    // Tidak ada paddingBottom di sini, jarak diatur oleh margin Search Bar
   },
-  sectionTitle: {
-    fontSize: 18,
+  headerSpacer: { width: 40 },
+  headerTitle: {
+    fontSize: 24, 
     fontFamily: Font.bold,
-    color: '#333',
+    color: COLORS.textMain,
+    textAlign: 'center',
+    flex: 1,
   },
-  badge: {
-    backgroundColor: '#eff6ff',
+
+  // --- SEARCH BAR (Fixed Spacing) ---
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    marginTop: 30, // Memberikan jarak dari Header "Groups"
+    marginBottom: 4, 
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.inputBg,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    height: 44, 
     borderRadius: 12,
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: Font.semiBold,
-    color: '#2563eb',
-  },
-  emptyState: {
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-  },
-  emptyIcon: {
-    fontSize: 48,
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 15,
     fontFamily: Font.regular,
-    marginBottom: 16,
+    color: COLORS.textMain,
+    height: '100%',
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: Font.semiBold,
-    color: '#333',
-    marginBottom: 8,
+  clearBtn: { padding: 4 },
+  clearIconBg: {
+    width: 18, height: 18, borderRadius: 9, backgroundColor: COLORS.textTertiary, justifyContent: 'center', alignItems: 'center'
   },
-  emptySubtext: {
-    fontSize: 14,
-    fontFamily: Font.regular,
-    color: '#666',
-    textAlign: 'center',
+  clearIcon: { fontSize: 10, color: '#FFF', fontWeight: 'bold' },
+
+  // --- LIST AREA ---
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 100 },
+  listSection: { paddingHorizontal: 0 }, 
+
+  // --- LIST ITEM STYLING (Fixed Layout) ---
+  listItemContainer: {
+    // Container utama tidak boleh punya padding/margin yang aneh
+    backgroundColor: 'transparent',
   },
-  groupCard: {
+  listItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    cursor: 'pointer' as any,
+    paddingVertical: 12, 
+    paddingHorizontal: 16, // Padding standar kiri-kanan
   },
-  groupIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#eff6ff',
+  
+  // Avatar
+  avatarContainer: {
+    marginRight: 16,
+  },
+  avatarImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 26, // Lingkaran Penuh
+    backgroundColor: COLORS.inputBg,
+  },
+  avatarPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26, 
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
-    overflow: 'hidden',
   },
-  groupImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  avatarEmoji: {
+    fontSize: 20,
+    color: COLORS.primary,
   },
-  groupEmoji: {
-    fontSize: 28,
-    fontFamily: Font.regular,
-  },
-  groupInfo: {
+
+  // Texts
+  textContainer: {
     flex: 1,
-    marginRight: 12,
+    justifyContent: 'center',
   },
-  groupNameRow: {
+  itemTopRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
-    gap: 8,
   },
-  groupName: {
+  itemTitle: {
     fontSize: 16,
-    fontWeight: '600',
     fontFamily: Font.semiBold,
-    color: '#333',
+    color: COLORS.textMain,
     flex: 1,
+    marginRight: 8,
   },
-  groupDescription: {
-    fontSize: 13,
-    fontFamily: Font.regular,
-    color: '#666',
-    marginBottom: 4,
-  },
-  groupMemberCount: {
+  itemTime: {
     fontSize: 12,
+    color: COLORS.textTertiary,
     fontFamily: Font.regular,
-    color: '#999',
   },
-  creatorBadge: {
-    backgroundColor: '#10b981',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  itemBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  creatorText: {
-    fontSize: 10,
-    fontWeight: '600',
+  itemSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSec, 
+    fontFamily: Font.regular,
+    flex: 1,
+    marginRight: 16,
+  },
+  
+  // SEPARATOR LINE
+  separator: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    // Indentasi: Padding (16) + Avatar (52) + Jarak Avatar (16) = 84
+    marginLeft: 84, 
+  },
+  
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingTop: 80,
+    opacity: 0.5,
+  },
+  emptyTitle: {
+    fontSize: 16,
     fontFamily: Font.semiBold,
-    color: '#fff',
+    color: COLORS.textMain,
   },
+
+  // FAB
   fabButton: {
     position: 'absolute',
     right: 20,
-    bottom: 110,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#2563eb',
+    bottom: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28, 
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 5,
-    cursor: 'pointer' as any,
-  },
-  fabIcon: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: 'bold',
-    fontFamily: 'Biennale-Bold',
+    elevation: 6,
   },
 });

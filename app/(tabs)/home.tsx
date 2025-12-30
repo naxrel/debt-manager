@@ -6,28 +6,50 @@ import { Debt, StaticDB } from '@/data/staticDatabase';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Platform,
+  ScrollView
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
+
+// --- DESIGN TOKENS ---
+const COLORS = {
+  background: '#F8FAFC', // Slate 50
+  surface: '#FFFFFF',
+  primary: '#4F46E5',    // Indigo 600
+  primarySoft: '#EEF2FF',
+  textMain: '#0F172A',   // Slate 900
+  textSec: '#64748B',    // Slate 500
+  textTertiary: '#94A3B8',
+  success: '#10B981',    // Emerald 500
+  danger: '#EF4444',     // Red 500
+  border: '#E2E8F0',
+  inputBg: '#F1F5F9',
+};
+
+const SPACING = 20;
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
-  const { debts, isLoading: debtLoading, getStatistics, refreshDebts } = useDebt();
-  const { isDarkMode, toggleTheme } = useAppTheme();
+  const { debts, isLoading: debtLoading, refreshDebts } = useDebt();
+  const { isDarkMode } = useAppTheme(); // Theme logic retained but styling overridden for consistency
+  
   const [activeTab, setActiveTab] = useState<'receive' | 'toPay'>('receive');
   const [pendingCount, setPendingCount] = useState(0);
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'unpaid' | 'paid'>('unpaid');
 
+  // --- EFFECT & LOGIC PRESERVED ---
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/auth/login');
@@ -41,7 +63,6 @@ export default function HomeScreen() {
     }
   }, [user]);
 
-  // Refresh debts when screen is focused
   useFocusEffect(
     useCallback(() => {
       if (user) {
@@ -57,25 +78,14 @@ export default function HomeScreen() {
     setPendingCount(pending.length);
   };
 
-  if (authLoading || debtLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
-  }
+  // --- CALCULATION LOGIC PRESERVED ---
+  if (!user) return null;
 
-  if (!user) {
-    return null;
-  }
-
-  // Calculate personal balance (debts without groupId)
   const personalDebts = debts.filter(d => !d.isPaid && !d.groupId);
   const personalReceive = personalDebts.filter(d => d.type === 'piutang' && d.status === 'confirmed').reduce((sum, d) => sum + d.amount, 0);
   const personalPay = personalDebts.filter(d => d.type === 'hutang' && d.status === 'confirmed').reduce((sum, d) => sum + d.amount, 0);
   const personalBalance = personalReceive - personalPay;
   
-  // Calculate group balance from group transactions (include isPaid for receive side)
   const allGroupTransactions = StaticDB.getAllGroupTransactions();
   const groupReceiveTransactions = allGroupTransactions.filter(gt => gt.toUserId === user.id);
   const groupPayTransactions = allGroupTransactions.filter(gt => !gt.isPaid && gt.fromUserId === user.id);
@@ -83,20 +93,15 @@ export default function HomeScreen() {
   const groupPay = groupPayTransactions.reduce((sum, gt) => sum + gt.amount, 0);
   const groupBalance = groupReceive - groupPay;
   
-  // Total balance (personal + group)
   const balance = personalBalance + groupBalance;
   
-  // Filter debts by type for tabs (include settlement_requested agar tetap muncul di list)
   let filteredDebts = debts.filter(d => {
-    // Filter by tab type
     if (activeTab === 'receive' && d.type !== 'piutang') return false;
     if (activeTab === 'toPay' && d.type !== 'hutang') return false;
     
-    // Filter by status (paid/unpaid)
     if (filterStatus === 'unpaid' && d.isPaid) return false;
     if (filterStatus === 'paid' && !d.isPaid) return false;
     
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchName = d.name.toLowerCase().includes(query);
@@ -105,7 +110,6 @@ export default function HomeScreen() {
       if (!matchName && !matchAmount && !matchDescription) return false;
     }
     
-    // Include confirmed and settlement_requested
     return d.status === 'confirmed' || d.status === 'settlement_requested';
   });
   
@@ -133,7 +137,17 @@ export default function HomeScreen() {
     router.replace('/auth/login');
   };
 
+  if (authLoading || debtLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  // --- RENDER ITEM ---
   const renderDebtItem = ({ item }: { item: Debt }) => {
+    const isReceive = item.type === 'piutang';
     return (
       <TouchableOpacity
         style={styles.debtCard}
@@ -141,222 +155,242 @@ export default function HomeScreen() {
         onPress={() => router.push(`/debt/detail?id=${item.id}`)}
       >
         <View style={styles.debtRow}>
-          <View style={styles.debtAvatar}>
-            <Text style={styles.debtAvatarText}>
+          <View style={[styles.debtAvatar, { backgroundColor: isReceive ? COLORS.success + '20' : COLORS.danger + '20' }]}>
+            <Text style={[styles.debtAvatarText, { color: isReceive ? COLORS.success : COLORS.danger }]}>
               {item.name.charAt(0).toUpperCase()}
             </Text>
           </View>
+          
           <View style={styles.debtInfo}>
-            <Text style={styles.debtName}>{item.name}</Text>
-            <Text style={styles.debtDate}>{formatDate(item.date)}</Text>
+            <Text style={styles.debtName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.debtDate}>{formatDate(item.date)} • {item.description || 'No notes'}</Text>
           </View>
-          <Text
-            style={[
-              styles.debtAmount,
-              item.type === 'piutang' ? styles.positiveAmount : styles.negativeAmount,
-            ]}
-          >
-            {formatCurrency(item.amount)}
-          </Text>
+          
+          <View style={{alignItems: 'flex-end'}}>
+            <Text
+              style={[
+                styles.debtAmount,
+                isReceive ? styles.positiveAmount : styles.negativeAmount,
+              ]}
+            >
+              {isReceive ? '+' : '-'} {formatCurrency(item.amount)}
+            </Text>
+            {item.isPaid && (
+               <View style={styles.paidBadge}>
+                 <Text style={styles.paidBadgeText}>PAID</Text>
+               </View>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View style={[styles.container, isDarkMode && styles.containerDark]}>
-      <View style={[styles.header, isDarkMode && styles.headerDark]}>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      
+      {/* HEADER SECTION */}
+      <View style={styles.header}>
         <View>
-          <Text style={[styles.greeting, isDarkMode && styles.textDark]}>Hello,</Text>
-          <Text style={[styles.userName, isDarkMode && styles.textDark]}>{user.name}</Text>
+          <Text style={styles.greeting}>Welcome back,</Text>
+          <Text style={styles.userName}>{user.name}</Text>
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Svg width={24} height={24} viewBox="0 0 23 21" fill="none">
-            <Path d="M9.28062 6.46494V5.72152C9.28062 4.10317 9.28062 3.294 9.75458 2.73451C10.2285 2.17502 11.0267 2.04199 12.623 1.77594L14.2942 1.49741C17.5373 0.956891 19.1589 0.686633 20.2197 1.58533C21.2806 2.48403 21.2806 4.12794 21.2806 7.41577V13.2502C21.2806 16.5381 21.2806 18.182 20.2197 19.0807C19.1589 19.9794 17.5373 19.7091 14.2942 19.1686L12.623 18.8901C11.0267 18.624 10.2285 18.491 9.75458 17.9315C9.28062 17.372 9.28062 16.5628 9.28062 14.9445V14.399" stroke="#000" strokeWidth="2"/>
-            <Path d="M1.28062 10.333L0.499756 9.70831L-4.57838e-07 10.333L0.499756 10.9577L1.28062 10.333ZM10.2806 11.333C10.8329 11.333 11.2806 10.8853 11.2806 10.333C11.2806 9.78072 10.8329 9.33301 10.2806 9.33301V10.333V11.333ZM5.28062 5.33301L4.49976 4.70831L0.499756 9.70831L1.28062 10.333L2.06149 10.9577L6.06149 5.9577L5.28062 5.33301ZM1.28062 10.333L0.499756 10.9577L4.49976 15.9577L5.28062 15.333L6.06149 14.7083L2.06149 9.70831L1.28062 10.333ZM1.28062 10.333V11.333H10.2806V10.333V9.33301H1.28062V10.333Z" fill="#000"/>
+        <TouchableOpacity onPress={handleLogout} style={styles.iconButton}>
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+            <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke={COLORS.textMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </Svg>
         </TouchableOpacity>
-        </View>
       </View>
 
+      {/* BALANCE HERO CARD */}
       <TouchableOpacity 
-        style={[styles.statCard, styles.balanceCard]}
+        style={styles.balanceCard}
         onPress={() => setShowBalanceModal(true)}
-        activeOpacity={0.7}
+        activeOpacity={0.9}
       >
-        <Text style={styles.balanceLabel}>Your Balance</Text>
-        <Text
-          style={[
-            styles.balanceAmount,
-            balance >= 0 ? styles.positiveBalance : styles.negativeBalance,
-          ]}
-        >
-          {formatCurrency(balance)}
-        </Text>
-        <Text style={styles.balanceNote}>Tap for more information</Text>
+        <View>
+            <Text style={styles.balanceLabel}>Total Balance</Text>
+            <Text style={styles.balanceAmount}>
+            {formatCurrency(balance)}
+            </Text>
+            <View style={styles.balanceDetailRow}>
+                <Text style={styles.balanceDetailText}>
+                    Personal: {formatCurrency(personalBalance)}
+                </Text>
+                <View style={styles.balanceDot} />
+                <Text style={styles.balanceDetailText}>
+                    Group: {formatCurrency(groupBalance)}
+                </Text>
+            </View>
+        </View>
+        <View style={styles.balanceArrow}>
+            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                <Path d="M9 18l6-6-6-6" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </Svg>
+        </View>
       </TouchableOpacity>
 
-      {/* Balance Detail Modal */}
+      {/* MAIN CONTENT */}
+      <View style={styles.mainContent}>
+        
+        {/* Quick Action & Tabs Row */}
+        <View style={styles.controlRow}>
+            {/* Tabs Segment Control */}
+            <View style={styles.segmentContainer}>
+                <TouchableOpacity
+                    style={[styles.segmentBtn, activeTab === 'receive' && styles.segmentBtnActive]}
+                    onPress={() => setActiveTab('receive')}
+                >
+                    <Text style={[styles.segmentText, activeTab === 'receive' && styles.segmentTextActive]}>Receive</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.segmentBtn, activeTab === 'toPay' && styles.segmentBtnActive]}
+                    onPress={() => setActiveTab('toPay')}
+                >
+                    <Text style={[styles.segmentText, activeTab === 'toPay' && styles.segmentTextActive]}>To Pay</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Floating Style Add Button */}
+            <TouchableOpacity 
+                style={styles.addButton} 
+                onPress={() => router.push('/debt/add')}
+            >
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 5v14M5 12h14" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </Svg>
+            </TouchableOpacity>
+        </View>
+
+        {/* Filter Chips */}
+        <View style={styles.filterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8, paddingHorizontal: SPACING}}>
+                {['unpaid', 'paid', 'all'].map((status) => (
+                    <TouchableOpacity
+                        key={status}
+                        style={[
+                            styles.filterChip, 
+                            filterStatus === status && styles.filterChipActive,
+                            filterStatus === status && { backgroundColor: activeTab === 'receive' ? COLORS.success : COLORS.danger }
+                        ]}
+                        onPress={() => setFilterStatus(status as any)}
+                    >
+                        <Text style={[styles.filterText, filterStatus === status && styles.filterTextActive]}>
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+        </View>
+
+        {/* Search */}
+        <View style={styles.searchWrapper}>
+            <View style={styles.searchBar}>
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                    <Circle cx="11" cy="11" r="8" stroke={COLORS.textTertiary} strokeWidth="2" />
+                    <Path d="M21 21L16.65 16.65" stroke={COLORS.textTertiary} strokeWidth="2" strokeLinecap="round" />
+                </Svg>
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search transaction..."
+                    placeholderTextColor={COLORS.textTertiary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Text style={{color: COLORS.textTertiary, fontSize: 16}}>✕</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        </View>
+
+        {/* PENDING NOTIFICATION */}
+        {activeTab === 'receive' && pendingCount > 0 && (
+            <TouchableOpacity
+                style={styles.pendingBanner}
+                onPress={() => router.push('/debt/pending')}
+            >
+                <View style={styles.pendingIcon}>
+                    <Text>🔔</Text>
+                </View>
+                <View>
+                    <Text style={styles.pendingTitle}>{pendingCount} Pending Request</Text>
+                    <Text style={styles.pendingSub}>Tap to review settlement</Text>
+                </View>
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={{marginLeft: 'auto'}}>
+                    <Path d="M9 18l6-6-6-6" stroke={COLORS.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </Svg>
+            </TouchableOpacity>
+        )}
+
+        {/* LIST */}
+        <FlatList
+            data={displayDebts}
+            renderItem={renderDebtItem}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+                <View style={styles.emptyState}>
+                    <Text style={styles.emptyTitle}>
+                        {activeTab === 'receive' ? 'All Clear!' : 'Debt Free!'}
+                    </Text>
+                    <Text style={styles.emptySub}>
+                        {activeTab === 'receive' ? 'No one owes you money.' : 'You have no debts to pay.'}
+                    </Text>
+                </View>
+            }
+        />
+      </View>
+
+      {/* --- BALANCE MODAL (Refined) --- */}
       <Modal
         visible={showBalanceModal}
         transparent={true}
         animationType="fade"
         onRequestClose={() => setShowBalanceModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowBalanceModal(false)}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Balance Details</Text>
-              <TouchableOpacity onPress={() => setShowBalanceModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <Text style={styles.modalTitle}>Wallet Breakdown</Text>
+              <TouchableOpacity onPress={() => setShowBalanceModal(false)} style={styles.modalCloseBtn}>
+                <Text style={{fontSize: 16, fontWeight: 'bold', color: COLORS.textSec}}>✕</Text>
               </TouchableOpacity>
             </View>
             
             <View style={styles.modalBody}>
-              <Text style={styles.modalTotalLabel}>Total Balance</Text>
-              <Text style={[
-                styles.modalTotalAmount,
-                balance >= 0 ? styles.positiveBalance : styles.negativeBalance,
-              ]}>
-                {formatCurrency(balance)}
-              </Text>
-              
-              <View style={styles.modalDivider} />
-              
-              <View style={styles.modalRow}>
-                <Text style={styles.modalRowLabel}>Personal:</Text>
-                <Text style={[
-                  styles.modalRowAmount,
-                  personalBalance >= 0 ? styles.positiveBalance : styles.negativeBalance,
-                ]}>
-                  {formatCurrency(personalBalance)}
-                </Text>
-              </View>
-              
-              <View style={styles.modalRow}>
-                <Text style={styles.modalRowLabel}>Group:</Text>
-                <Text style={[
-                  styles.modalRowAmount,
-                  groupBalance >= 0 ? styles.positiveBalance : styles.negativeBalance,
-                ]}>
-                  {formatCurrency(groupBalance)}
-                </Text>
-              </View>
+                <View style={styles.totalBlock}>
+                    <Text style={styles.totalLabel}>Total Net Worth</Text>
+                    <Text style={[
+                        styles.totalValue,
+                        balance >= 0 ? {color: COLORS.success} : {color: COLORS.danger}
+                    ]}>
+                        {formatCurrency(balance)}
+                    </Text>
+                </View>
+
+                <View style={styles.breakdownRow}>
+                    <View style={styles.breakdownItem}>
+                        <Text style={styles.breakdownLabel}>Personal</Text>
+                        <Text style={styles.breakdownValue}>{formatCurrency(personalBalance)}</Text>
+                    </View>
+                    <View style={styles.breakdownDivider} />
+                    <View style={styles.breakdownItem}>
+                        <Text style={styles.breakdownLabel}>Groups</Text>
+                        <Text style={styles.breakdownValue}>{formatCurrency(groupBalance)}</Text>
+                    </View>
+                </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={styles.searchIcon}>
-          <Path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </Svg>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name, amount, or description..."
-          placeholderTextColor="#9ca3af"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-            <Text style={styles.clearButtonText}>✕</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      {/* Filter Tabs */}
-      <View style={styles.filterTabs}>
-        <TouchableOpacity
-          style={[styles.filterTab, filterStatus === 'unpaid' && styles.filterTabActive]}
-          onPress={() => setFilterStatus('unpaid')}
-        >
-          <Text style={[styles.filterTabText, filterStatus === 'unpaid' && styles.filterTabTextActive]}>
-            Unpaid
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, filterStatus === 'paid' && styles.filterTabActive]}
-          onPress={() => setFilterStatus('paid')}
-        >
-          <Text style={[styles.filterTabText, filterStatus === 'paid' && styles.filterTabTextActive]}>
-            Paid
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, filterStatus === 'all' && styles.filterTabActive]}
-          onPress={() => setFilterStatus('all')}
-        >
-          <Text style={[styles.filterTabText, filterStatus === 'all' && styles.filterTabTextActive]}>
-            All
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/debt/add')}
-        >
-          <Text style={styles.actionButtonIcon}>💳</Text>
-          <Text style={styles.actionButtonText}>Debt</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'receive' && styles.activeTab]}
-          onPress={() => setActiveTab('receive')}
-        >
-          <Text style={[styles.tabText, activeTab === 'receive' && styles.activeTabText]}>
-            Receive
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'toPay' && styles.activeTab]}
-          onPress={() => setActiveTab('toPay')}
-        >
-          <Text style={[styles.tabText, activeTab === 'toPay' && styles.activeTabText]}>
-            to Pay
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Debt List */}
-      <FlatList
-        data={displayDebts}
-        renderItem={renderDebtItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.debtList}
-        ListHeaderComponent={
-          activeTab === 'receive' && pendingCount > 0 ? (
-            <TouchableOpacity
-              style={styles.pendingNotification}
-              onPress={() => router.push('/debt/pending')}
-            >
-              <View style={styles.pendingIcon}>
-                <Text style={styles.pendingIconText}>⏰</Text>
-              </View>
-              <View style={styles.pendingContent}>
-                <Text style={styles.pendingTitle}>Transaction pending!</Text>
-                <Text style={styles.pendingSubtitle}>Tap to view this transaction</Text>
-              </View>
-            </TouchableOpacity>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              {activeTab === 'receive' ? 'No debts to receive' : 'No debts to pay'}
-            </Text>
-          </View>
-        }
-      />
     </View>
   );
 }
@@ -366,362 +400,405 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.background,
   },
-  containerDark: {
-    backgroundColor: '#111827',
-  },
+  
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 75,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: SPACING,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 20,
   },
-  headerDark: {
-    backgroundColor: '#1f2937',
+  greeting: {
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: COLORS.textSec,
   },
-  headerActions: {
+  userName: {
+    fontSize: 22,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  // Balance Card
+  balanceCard: {
+    marginHorizontal: SPACING,
+    backgroundColor: COLORS.primary,
+    borderRadius: 24,
+    padding: 24,
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+    marginBottom: 20,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontFamily: Font.regular,
+    marginBottom: 4,
+  },
+  balanceAmount: {
+    fontSize: 28,
+    color: '#FFF',
+    fontFamily: Font.bold,
+    marginBottom: 8,
+  },
+  balanceDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  balanceDetailText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    fontFamily: Font.regular,
+  },
+  balanceDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginHorizontal: 8,
+  },
+  balanceArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Content Area
+  mainContent: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  
+  // Controls (Tab + Add Btn)
+  controlRow: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING,
+    marginBottom: 16,
     alignItems: 'center',
     gap: 12,
   },
-  themeToggle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  themeIcon: {
-    fontSize: 20,
-  },
-  textDark: {
-    color: '#ffffff',
-  },
-  pendingNotification: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  pendingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  pendingIconText: {
-    fontSize: 20,
-  },
-  pendingContent: {
+  segmentContainer: {
     flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#E2E8F0', // Slightly darker slate
+    borderRadius: 40,
+    padding: 6,
+    height: 50,
   },
-  pendingTitle: {
-    fontSize: 15,
-    fontFamily: Font.semiBold,
-    color: '#111827',
-    marginBottom: 4,
+  segmentBtn: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 40,
   },
-  pendingSubtitle: {
-    fontSize: 13,
-    fontFamily: Font.regular,
-    color: '#9ca3af',
-  },
-  greeting: {
-    fontSize: 16,
-    fontFamily: Font.regular,
-    color: '#000000ff',
-  },
-  userName: {
-    fontSize: 24,
-    fontFamily: Font.bold,
-    color: '#000000ff',
-    marginTop: 1,
-  },
-  logoutButton: {
-    padding: 8,
-  },
-  statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+  segmentBtnActive: {
+    backgroundColor: COLORS.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  balanceCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    padding: 15,
-  },
-  balanceLabel: {
+  segmentText: {
     fontSize: 14,
-    fontFamily: Font.bold,
-    color: '#666',
-    marginBottom: 8,
-  },
-  balanceAmount: {
-    fontSize: 29,
-    fontFamily: Font.bold,
-    marginBottom: 8,
-  },
-  positiveBalance: {
-    color: '#059669',
-  },
-  negativeBalance: {
-    color: '#dc2626',
-  },
-  balanceNote: {
-    fontSize: 11,
     fontFamily: Font.regular,
-    color: '#999',
-    textAlign: 'right',
-    marginTop: undefined,
+    color: COLORS.textSec,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 40,
-    marginTop: 5,
-    marginBottom: 30,
+  segmentTextActive: {
+    color: COLORS.textMain,
+    fontFamily: Font.bold,
+  },
+  addButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: COLORS.textMain,
     justifyContent: 'center',
-  },
-  actionButton: {
-    backgroundColor: '#94ddffff',
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    borderRadius: 10,
     alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
+    shadowColor: COLORS.textMain,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  actionButtonIcon: {
-    fontSize: 20,
-  },
-  actionButtonText: {
-    color: '#000',
-    fontSize: 16,
-    fontFamily: Font.semiBold,
-  },
-  tabs: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    paddingHorizontal: 16,
+
+  // Filters
+  filterRow: {
     marginBottom: 16,
   },
-  tab: {
+  filterChip: {
+    paddingHorizontal: 16,
     paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  filterChipActive: {
+    borderColor: 'transparent',
+    // Background handled inline for dynamic color
+  },
+  filterText: {
+    fontSize: 13,
+    fontFamily: Font.regular,
+    color: COLORS.textSec,
+  },
+  filterTextActive: {
+    color: '#FFF',
+    fontFamily: Font.bold,
+  },
+
+  // Search
+  searchWrapper: {
+    paddingHorizontal: SPACING,
+    marginBottom: 16,
+  },
+  searchBar: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 16,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#000000ff',
-  },
-  tabText: {
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
     fontSize: 14,
     fontFamily: Font.regular,
-    color: '#9ca3af',
+    color: COLORS.textMain,
   },
-  activeTabText: {
-    color: '#000000ff',
-    fontFamily: Font.semiBold,
+
+  // Pending Banner
+  pendingBanner: {
+    marginHorizontal: SPACING,
+    marginBottom: 16,
+    backgroundColor: COLORS.primarySoft,
+    padding: 16,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30', // 30% opacity
   },
-  debtList: {
-    paddingHorizontal: 16,
-    paddingTop: 1,
-    paddingBottom: 120,
+  pendingIcon: {
+    marginRight: 12,
+  },
+  pendingTitle: {
+    fontSize: 14,
+    fontFamily: Font.bold,
+    color: COLORS.primary,
+  },
+  pendingSub: {
+    fontSize: 12,
+    fontFamily: Font.regular,
+    color: COLORS.textSec,
+  },
+
+  // List
+  listContainer: {
+    paddingHorizontal: SPACING,
+    paddingBottom: 100,
   },
   debtCard: {
-    backgroundColor: '#ffffffff',
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
     padding: 16,
-    borderRadius: 12,
     marginBottom: 12,
-  },
-  debtRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    // Soft shadow
+    shadowColor: COLORS.textMain,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(241, 245, 249, 1)',
+  },
+  debtRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   debtAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 16, // Squircle
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   debtAvatarText: {
-    color: '#fff',
     fontSize: 18,
     fontFamily: Font.bold,
   },
   debtInfo: {
     flex: 1,
+    marginRight: 8,
   },
   debtName: {
     fontSize: 16,
-    fontFamily: Font.semiBold,
-    color: '#111827',
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
     marginBottom: 4,
   },
   debtDate: {
     fontSize: 12,
     fontFamily: Font.regular,
-    color: '#9ca3af',
+    color: COLORS.textTertiary,
   },
   debtAmount: {
     fontSize: 16,
     fontFamily: Font.bold,
   },
   positiveAmount: {
-    color: '#10b981',
+    color: COLORS.success,
   },
   negativeAmount: {
-    color: '#ef4444',
+    color: COLORS.danger,
   },
+  paidBadge: {
+    backgroundColor: COLORS.inputBg,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  paidBadgeText: {
+    fontSize: 10,
+    fontFamily: Font.bold,
+    color: COLORS.textTertiary,
+  },
+
+  // Empty State
   emptyState: {
     alignItems: 'center',
-    padding: 60,
+    paddingTop: 60,
   },
-  emptyText: {
-    fontSize: 14,
-    fontFamily: Font.regular,
-    color: '#9ca3af',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    marginHorizontal: 20,
-    marginTop: 16,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#1f2937',
-    fontFamily: Font.regular,
-  },
-  clearButton: {
-    padding: 4,
-  },
-  clearButtonText: {
+  emptyTitle: {
     fontSize: 18,
-    color: '#9ca3af',
+    fontFamily: Font.bold,
+    color: COLORS.textTertiary,
+    marginTop: 8,
   },
-  filterTabs: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: 12,
-    gap: 8,
+  emptySub: {
+    fontSize: 14,
+    color: COLORS.textSec,
+    marginTop: 4,
   },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-  },
-  filterTabActive: {
-    backgroundColor: '#344170',
-  },
-  filterTabText: {
-    fontSize: 13,
-    color: '#6b7280',
-    fontFamily: Font.regular,
-  },
-  filterTabTextActive: {
-    color: '#ffffff',
-  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)', // Slate 900 dim
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: COLORS.surface,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 340,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    marginBottom: 24,
   },
   modalTitle: {
     fontSize: 18,
     fontFamily: Font.bold,
-    color: '#111827',
+    color: COLORS.textMain,
   },
-  modalClose: {
-    fontSize: 24,
-    color: '#9ca3af',
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalBody: {
-    padding: 20,
+    // Add any specific styling for modal body if needed
   },
-  modalTotalLabel: {
+  totalBlock: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  totalLabel: {
     fontSize: 14,
-    fontFamily: Font.regular,
-    color: '#666',
+    color: COLORS.textSec,
     marginBottom: 8,
   },
-  modalTotalAmount: {
-    fontSize: 32,
+  totalValue: {
+    fontSize: 36,
     fontFamily: Font.bold,
-    marginBottom: 20,
   },
-  modalDivider: {
-    height: 1,
-    backgroundColor: '#f3f4f6',
-    marginBottom: 20,
-  },
-  modalRow: {
+  breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 16,
+    padding: 16,
+  },
+  breakdownItem: {
+    flex: 1,
     alignItems: 'center',
-    marginBottom: 16,
   },
-  modalRowLabel: {
-    fontSize: 16,
-    fontFamily: Font.regular,
-    color: '#111827',
+  breakdownDivider: {
+    width: 1,
+    backgroundColor: COLORS.border,
   },
-  modalRowAmount: {
-    fontSize: 18,
+  breakdownLabel: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    marginBottom: 4,
     fontFamily: Font.bold,
+    textTransform: 'uppercase',
+  },
+  breakdownValue: {
+    fontSize: 16,
+    fontFamily: Font.semiBold,
+    color: COLORS.textMain,
   },
 });

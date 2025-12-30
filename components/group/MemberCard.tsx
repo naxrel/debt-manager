@@ -4,21 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Image,
-    Modal,
-    PanResponder,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  PanResponder,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MAX_HEIGHT = SCREEN_HEIGHT * 0.4; // 40% of screen height
+const MAX_HEIGHT = SCREEN_HEIGHT * 0.55; // Tinggi maksimal bottom sheet (55% layar)
 
 interface MemberCardProps {
   visible: boolean;
@@ -31,7 +31,7 @@ interface MemberCardProps {
     bankAccount?: string;
     bankName?: string;
     phoneNumber?: string;
-  };
+  } | null; // Member bisa null
   headerPaddingTop?: number;
 }
 
@@ -41,27 +41,34 @@ export default function MemberCard({
   member,
   headerPaddingTop = 50 
 }: MemberCardProps) {
+  // Animasi
   const translateY = useRef(new Animated.Value(MAX_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  
+  // State
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Pan responder for swipe down gesture
+  // Pan responder untuk gesture swipe down
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Hanya aktifkan pan jika gesture vertikal > 5
         return Math.abs(gestureState.dy) > 5;
       },
       onPanResponderMove: (_, gestureState) => {
+        // Hanya izinkan geser ke bawah (dy > 0)
         if (gestureState.dy > 0) {
           translateY.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100) {
+        // Jika digeser cukup jauh ke bawah (> 20% tinggi sheet), tutup sheet
+        if (gestureState.dy > MAX_HEIGHT * 0.2) {
           closeModal();
         } else {
+          // Jika tidak, kembalikan ke posisi semula (bounce back)
           Animated.spring(translateY, {
             toValue: 0,
             useNativeDriver: true,
@@ -73,10 +80,11 @@ export default function MemberCard({
     })
   ).current;
 
+  // Effect untuk membuka/menutup modal & load data
   useEffect(() => {
-    if (visible) {
+    if (visible && member) {
       openModal();
-      // Fetch payment methods from database
+      // Ambil metode pembayaran member
       const user = StaticDB.getUserById(member.id);
       if (user && user.paymentMethods) {
         setPaymentMethods(user.paymentMethods);
@@ -84,11 +92,16 @@ export default function MemberCard({
         setPaymentMethods([]);
       }
     } else {
-      closeModalInstant();
+      // Reset state jika ditutup
+      if (!visible) {
+         // Kita tidak langsung menutup di sini karena butuh animasi close dulu
+         // Logika close ada di fungsi closeModal()
+      }
     }
-  }, [visible, member.id]);
+  }, [visible, member]);
 
   const openModal = () => {
+    // Animasi masuk (Fade In Overlay + Slide Up Sheet)
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
@@ -105,6 +118,7 @@ export default function MemberCard({
   };
 
   const closeModal = () => {
+    // Animasi keluar
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 0,
@@ -117,23 +131,20 @@ export default function MemberCard({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onClose();
+      onClose(); // Callback ke parent setelah animasi selesai
     });
-  };
-
-  const closeModalInstant = () => {
-    translateY.setValue(MAX_HEIGHT);
-    opacity.setValue(0);
   };
 
   const handleCopyAccount = async (paymentMethod: PaymentMethod) => {
     await Clipboard.setStringAsync(paymentMethod.accountNumber);
     setCopiedId(paymentMethod.id);
+    // Reset icon copy setelah 2 detik
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Helper untuk icon bank/ewallet
   const getProviderIcon = (provider: string) => {
-    const icons: { [key: string]: any } = {
+    const icons: { [key: string]: string } = {
       'BCA': 'card',
       'Mandiri': 'card',
       'BNI': 'card',
@@ -143,21 +154,21 @@ export default function MemberCard({
       'DANA': 'wallet',
       'ShopeePay': 'wallet',
     };
-    return icons[provider] || 'card';
+    return icons[provider] || 'card'; // Default icon
   };
 
-  if (!visible) return null;
+  if (!visible || !member) return null;
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="none"
+      animationType="none" // Kita handle animasi sendiri
       statusBarTranslucent
-      onRequestClose={closeModal}
+      onRequestClose={closeModal} // Handle back button Android
     >
       <View style={styles.container}>
-        {/* Dark overlay */}
+        {/* Dark Overlay (Background) */}
         <TouchableWithoutFeedback onPress={closeModal}>
           <Animated.View 
             style={[
@@ -165,29 +176,28 @@ export default function MemberCard({
               {
                 opacity: opacity.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, 0.5],
+                  outputRange: [0, 0.5], // Opacity max 0.5
                 }),
               },
             ]} 
           />
         </TouchableWithoutFeedback>
 
-        {/* Bottom sheet */}
+        {/* Bottom Sheet Content */}
         <Animated.View
           style={[
             styles.sheet,
             {
-              maxHeight: MAX_HEIGHT,
               transform: [{ translateY }],
             },
           ]}
         >
-          {/* Drag handle */}
+          {/* Drag Handle Area (Swipeable) */}
           <View {...panResponder.panHandlers} style={styles.dragHandleArea}>
             <View style={styles.dragHandle} />
           </View>
 
-          {/* Header */}
+          {/* Sheet Header: Member Info */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.avatar}>
@@ -210,27 +220,16 @@ export default function MemberCard({
             </TouchableOpacity>
           </View>
 
-          {/* Divider */}
           <View style={styles.divider} />
 
-          {/* Content */}
+          {/* Sheet Content: Payment Methods */}
           <View style={styles.content}>
-            {/* Username */}
-            <View style={styles.infoSection}>
-              <View style={styles.infoHeader}>
-                <Ionicons name="person-outline" size={20} color="#2563eb" />
-                <Text style={styles.infoLabel}>Username</Text>
-              </View>
-              <Text style={styles.infoValue}>{member.username}</Text>
-            </View>
-
-            {/* Payment Methods */}
-            {paymentMethods.length > 0 && (
+            {paymentMethods.length > 0 ? (
               <View style={styles.infoSection}>
                 <View style={styles.infoHeader}>
-                  <Ionicons name="card-outline" size={20} color="#2563eb" />
                   <Text style={styles.infoLabel}>Payment Methods</Text>
                 </View>
+                {/* Horizontal Scroll untuk Payment Methods */}
                 <ScrollView 
                   horizontal 
                   showsHorizontalScrollIndicator={false}
@@ -242,7 +241,7 @@ export default function MemberCard({
                         <View style={styles.paymentIconContainer}>
                           <Ionicons 
                             name={getProviderIcon(payment.provider) as any} 
-                            size={18} 
+                            size={20} 
                             color="#2563eb" 
                           />
                         </View>
@@ -256,8 +255,12 @@ export default function MemberCard({
                             )}
                           </View>
                           <Text style={styles.paymentNumber}>{payment.accountNumber}</Text>
+                          <Text style={styles.paymentType}>
+                            {payment.type === 'bank' ? 'Bank Account' : 'E-Wallet'}
+                          </Text>
                         </View>
                       </View>
+                      
                       <TouchableOpacity 
                         style={styles.copyButton}
                         onPress={() => handleCopyAccount(payment)}
@@ -272,6 +275,12 @@ export default function MemberCard({
                   ))}
                 </ScrollView>
               </View>
+            ) : (
+              // Empty State jika tidak ada payment method
+              <View style={styles.emptyState}>
+                <Ionicons name="wallet-outline" size={48} color="#cbd5e1" />
+                <Text style={styles.emptyStateText}>No payment methods added</Text>
+              </View>
             )}
           </View>
         </Animated.View>
@@ -283,41 +292,41 @@ export default function MemberCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'flex-end', // Penting agar sheet muncul di bawah
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
   },
   sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 10,
+    paddingBottom: 30, // Padding bawah untuk area aman (iPhone X home indicator)
+    width: '100%',
   },
   dragHandleArea: {
     alignItems: 'center',
     paddingVertical: 12,
+    width: '100%',
   },
   dragHandle: {
     width: 40,
-    height: 4,
-    backgroundColor: '#cbd5e1',
-    borderRadius: 2,
+    height: 5,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -325,18 +334,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   avatarImage: {
-    width: 60,
-    height: 60,
+    width: 64,
+    height: 64,
   },
   headerInfo: {
     flex: 1,
@@ -362,11 +373,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
-    marginHorizontal: 20,
+    backgroundColor: '#f1f5f9',
+    marginHorizontal: 24,
   },
   content: {
-    padding: 20,
+    padding: 24,
   },
   infoSection: {
     marginBottom: 24,
@@ -374,43 +385,34 @@ const styles = StyleSheet.create({
   infoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
+    gap: 8,
   },
   infoLabel: {
-    fontSize: 14,
-    fontFamily: Font.semiBold,
-    color: '#475569',
-    marginLeft: 8,
-  },
-  infoValue: {
     fontSize: 16,
-    fontFamily: Font.regular,
+    fontFamily: Font.bold,
     color: '#1e293b',
-    marginLeft: 28,
-  },
-  infoSubValue: {
-    fontSize: 14,
-    fontFamily: Font.regular,
-    color: '#64748b',
-    marginLeft: 28,
-    marginTop: 4,
   },
   paymentScrollContent: {
-    paddingLeft: 28,
-    paddingRight: 20,
-    gap: 12,
-    marginTop: 8,
+    paddingRight: 24,
+    gap: 16,
   },
   paymentCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    width: 280,
+    width: 290,
+    // Soft shadow for card
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   paymentLeft: {
     flexDirection: 'row',
@@ -418,9 +420,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   paymentIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -436,59 +438,62 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   paymentProvider: {
-    fontSize: 14,
-    fontFamily: Font.semiBold,
+    fontSize: 15,
+    fontFamily: Font.bold,
     color: '#1e293b',
   },
   primaryBadge: {
     backgroundColor: '#dbeafe',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   primaryBadgeText: {
     fontSize: 10,
-    fontFamily: Font.semiBold,
+    fontFamily: Font.bold,
     color: '#2563eb',
     textTransform: 'uppercase',
   },
   paymentNumber: {
-    fontSize: 13,
-    fontFamily: Font.regular,
-    color: '#64748b',
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+    color: '#334155',
     letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  paymentType: {
+    fontSize: 12,
+    fontFamily: Font.regular,
+    color: '#94a3b8',
   },
   copyButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#fff',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    gap: 12,
+    borderWidth: 2,
+    borderColor: '#f1f5f9',
+    borderStyle: 'dashed',
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: '#94a3b8',
+  },
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 8,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: '#eff6ff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#dbeafe',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontFamily: Font.semiBold,
-    color: '#2563eb',
-    marginLeft: 8,
   },
 });

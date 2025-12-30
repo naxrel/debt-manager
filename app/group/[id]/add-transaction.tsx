@@ -1,679 +1,526 @@
 import { Font } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { StaticDB, User } from '@/data/staticDatabase';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
+  StatusBar
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { useAuth } from '../../../contexts/AuthContext';
-import { StaticDB, User } from '../../../data/staticDatabase';
+
+// --- DESIGN TOKENS ---
+const COLORS = {
+  bg: '#F8FAFC',
+  surface: '#FFFFFF',
+  primary: '#4F46E5',
+  primarySoft: '#EEF2FF',
+  textMain: '#0F172A',
+  textSec: '#64748B',
+  border: '#E2E8F0',
+  danger: '#EF4444',
+  success: '#10B981',
+  inputBg: '#F1F5F9',
+};
 
 export default function AddGroupTransaction() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+
+  // --- STATE ---
   const [fromUserId, setFromUserId] = useState('');
   const [toUserId, setToUserId] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showFromDropdown, setShowFromDropdown] = useState(false);
-  const [validationError, setValidationError] = useState('');
+  
+  // Selection Modals State
+  const [showFromModal, setShowFromModal] = useState(false);
+  const [showToModal, setShowToModal] = useState(false);
 
+  // --- DATA ---
   const group = id ? StaticDB.getGroupById(id) : null;
   const members = group?.memberIds
     .map(memberId => StaticDB.getUserById(memberId))
-    .filter(u => u !== undefined) as User[];
+    .filter((u): u is User => u !== undefined) || [];
 
-  // Real-time validation
-  React.useEffect(() => {
-    if (fromUserId && toUserId && fromUserId === toUserId) {
-      setValidationError('Sender and receiver cannot be the same person');
-    } else {
-      setValidationError('');
+  // Default "From" to current user
+  useEffect(() => {
+    if (user && !fromUserId) {
+        setFromUserId(user.id);
     }
-  }, [fromUserId, toUserId]);
+  }, [user]);
 
-  const getSelectedMember = (userId: string) => {
-    return members.find(m => m.id === userId);
-  };
+  // --- HELPERS ---
+  const getSelectedMember = (userId: string) => members.find(m => m.id === userId);
 
-  const handleFromSelect = (userId: string) => {
-    setFromUserId(userId);
-    setShowFromDropdown(false);
-  };
-
-  // Format amount with thousand separators
   const formatAmount = (value: string) => {
-    // Remove non-numeric characters
     const numericValue = value.replace(/[^0-9]/g, '');
     if (!numericValue) return '';
-    
-    // Add thousand separators
     return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   };
 
   const handleAmountChange = (text: string) => {
-    const formatted = formatAmount(text);
-    setAmount(formatted);
+    setAmount(formatAmount(text));
   };
 
   const handleQuickAmount = (value: number) => {
     setAmount(formatAmount(value.toString()));
   };
 
-  // Parse formatted amount to number
-  const getNumericAmount = () => {
-    return parseFloat(amount.replace(/\./g, '')) || 0;
-  };
+  const getNumericAmount = () => parseFloat(amount.replace(/\./g, '')) || 0;
 
   const handleSubmit = () => {
-    if (!group || !user) {
-      Alert.alert('Error', 'Data tidak valid');
-      return;
+    if (!group || !user || !fromUserId || !toUserId) {
+        Alert.alert('Incomplete Data', 'Please select sender and receiver.');
+        return;
     }
-
-    if (!fromUserId || !toUserId) {
-      Alert.alert('Error', 'Pilih pengirim dan penerima');
-      return;
-    }
-
     if (fromUserId === toUserId) {
-      Alert.alert('Error', 'Pengirim dan penerima tidak boleh sama');
-      return;
+        Alert.alert('Invalid Transaction', 'Sender and receiver cannot be the same person.');
+        return;
     }
-
     const numAmount = getNumericAmount();
     if (!numAmount || numAmount <= 0) {
-      Alert.alert('Error', 'Masukkan jumlah yang valid');
-      return;
+        Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+        return;
     }
-
     if (!description.trim()) {
-      Alert.alert('Error', 'Masukkan deskripsi transaksi');
-      return;
+        Alert.alert('Missing Note', 'Please add a description for this transaction.');
+        return;
     }
 
     setIsLoading(true);
-
     const result = StaticDB.addGroupTransaction({
       groupId: group.id,
       fromUserId,
       toUserId,
       amount: numAmount,
       description: description.trim(),
-      date: new Date().toISOString(), // Include timestamp for proper sorting
+      date: new Date().toISOString(),
       isPaid: false,
       createdBy: user.id,
     });
-
     setIsLoading(false);
 
     if (result.success) {
-      // Navigate back immediately to trigger refresh
       router.back();
     } else {
-      Alert.alert('Error', result.error || 'Gagal menambahkan transaksi');
+      Alert.alert('Error', result.error || 'Failed to create transaction');
     }
   };
 
-  if (!group || !user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.emptyText}>Data tidak ditemukan</Text>
-      </View>
-    );
-  }
+  if (!group || !user) return null;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <KeyboardAvoidingView 
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+      
+      {/* HEADER */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#007AFF" strokeWidth="2" d="m15 6-6 6 6 6" />
-          </Svg>
+            <Ionicons name="close" size={24} color={COLORS.textMain} />
         </TouchableOpacity>
-        <Text style={styles.title}>Add Transaction</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>New Expense</Text>
+        <View style={{width: 40}} /> 
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.groupInfo}>
-          <Text style={styles.groupName}>{group.name}</Text>
-          {group.description && (
-            <Text style={styles.groupDescription}>{group.description}</Text>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>From</Text>
-          <TouchableOpacity
-            style={styles.dropdownButton}
-            onPress={() => setShowFromDropdown(!showFromDropdown)}
-          >
-            {fromUserId ? (
-              <View style={styles.dropdownSelected}>
-                <View style={styles.avatarSmall}>
-                  <Text style={styles.avatarTextSmall}>
-                    {getSelectedMember(fromUserId)?.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.dropdownTextContainer}>
-                  <Text style={styles.dropdownSelectedText}>
-                    {getSelectedMember(fromUserId)?.name}
-                  </Text>
-                  <Text style={styles.dropdownSelectedUsername}>
-                    @{getSelectedMember(fromUserId)?.username}
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.dropdownPlaceholder}>Select sender</Text>
-            )}
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-              <Path
-                stroke="#666"
-                strokeWidth="2"
-                d={showFromDropdown ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"}
-              />
-            </Svg>
-          </TouchableOpacity>
-
-          {showFromDropdown && (
-            <View style={styles.dropdownList}>
-              <ScrollView
-                style={styles.dropdownScroll}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={false}
-              >
-                {members.map(member => (
-                  <TouchableOpacity
-                    key={member.id}
-                    style={[
-                      styles.dropdownItem,
-                      fromUserId === member.id && styles.dropdownItemSelected,
-                    ]}
-                    onPress={() => handleFromSelect(member.id)}
-                  >
-                    <View style={styles.avatarSmall}>
-                      <Text style={styles.avatarTextSmall}>
-                        {member.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.dropdownTextContainer}>
-                      <Text style={styles.dropdownItemText}>{member.name}</Text>
-                      <Text style={styles.dropdownItemUsername}>@{member.username}</Text>
-                    </View>
-                    {fromUserId === member.id && (
-                      <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                        <Path
-                          stroke="#007AFF"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </Svg>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        
+        {/* AMOUNT SECTION */}
+        <View style={styles.amountSection}>
+            <Text style={styles.labelCenter}>How much?</Text>
+            <View style={styles.amountWrapper}>
+                <Text style={styles.currencyPrefix}>Rp</Text>
+                <TextInput
+                    style={styles.amountInput}
+                    value={amount}
+                    onChangeText={handleAmountChange}
+                    placeholder="0"
+                    placeholderTextColor="#CBD5E1"
+                    keyboardType="numeric"
+                    autoFocus
+                />
             </View>
-          )}
-        </View>
-
-        {validationError ? (
-          <View style={styles.validationError}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-              <Path
-                stroke="#ef4444"
-                strokeWidth="2"
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </Svg>
-            <Text style={styles.validationErrorText}>{validationError}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.section}>
-          <Text style={styles.label}>To</Text>
-          <View style={styles.memberList}>
-            {members.map(member => (
-              <TouchableOpacity
-                key={member.id}
-                style={[
-                  styles.memberButton,
-                  toUserId === member.id && styles.memberButtonSelected,
-                ]}
-                onPress={() => setToUserId(member.id)}
-              >
-                <View style={styles.memberInfo}>
-                  <View
-                    style={[
-                      styles.avatar,
-                      toUserId === member.id && styles.avatarSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.avatarText,
-                        toUserId === member.id && styles.avatarTextSelected,
-                      ]}
+            
+            {/* Quick Amount Chips */}
+            <View style={styles.quickChipsContainer}>
+                {[50000, 100000, 200000].map((val) => (
+                    <TouchableOpacity 
+                        key={val} 
+                        style={styles.quickChip} 
+                        onPress={() => handleQuickAmount(val)}
                     >
-                      {member.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View>
-                    <Text style={styles.memberName}>{member.name}</Text>
-                    <Text style={styles.memberUsername}>@{member.username}</Text>
-                  </View>
-                </View>
-                {toUserId === member.id && (
-                  <View style={styles.checkmark}>
-                    <Text style={styles.checkmarkText}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Amount</Text>
-          <View style={styles.amountInputContainer}>
-            <Text style={styles.currencyPrefix}>Rp</Text>
-            <TextInput
-              style={styles.amountInput}
-              placeholder="0"
-              placeholderTextColor="#bbb"
-              value={amount}
-              onChangeText={handleAmountChange}
-              keyboardType="numeric"
-            />
-          </View>
-          
-          <View style={styles.quickAmountContainer}>
-            <Text style={styles.quickAmountLabel}>Quick amount:</Text>
-            <View style={styles.quickAmountButtons}>
-              {[50000, 100000, 250000, 500000].map((value) => (
-                <TouchableOpacity
-                  key={value}
-                  style={styles.quickAmountButton}
-                  onPress={() => handleQuickAmount(value)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.quickAmountButtonText}>
-                    {value >= 1000000 
-                      ? `${value / 1000000}M`
-                      : `${value / 1000}k`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                        <Text style={styles.quickChipText}>
+                            {val / 1000}k
+                        </Text>
+                    </TouchableOpacity>
+                ))}
             </View>
-          </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Notes</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Mr. Din chicken... etc"
-            placeholderTextColor="#999"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={3}
-          />
+        {/* DETAILS CARD */}
+        <View style={styles.card}>
+            
+            {/* FROM SELECTOR */}
+            <View style={styles.fieldRow}>
+                <View style={styles.iconBox}>
+                    <Ionicons name="arrow-up-circle" size={24} color={COLORS.danger} />
+                </View>
+                <View style={{flex: 1}}>
+                    <Text style={styles.fieldLabel}>Who paid?</Text>
+                    <TouchableOpacity 
+                        style={styles.selectorButton} 
+                        onPress={() => setShowFromModal(true)}
+                    >
+                        <Text style={styles.selectorText}>
+                            {getSelectedMember(fromUserId)?.name || 'Select Payer'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color={COLORS.textSec} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* TO SELECTOR */}
+            <View style={styles.fieldRow}>
+                <View style={styles.iconBox}>
+                    <Ionicons name="arrow-down-circle" size={24} color={COLORS.success} />
+                </View>
+                <View style={{flex: 1}}>
+                    <Text style={styles.fieldLabel}>For whom?</Text>
+                    <TouchableOpacity 
+                        style={styles.selectorButton} 
+                        onPress={() => setShowToModal(true)}
+                    >
+                        <Text style={styles.selectorText}>
+                            {getSelectedMember(toUserId)?.name || 'Select Receiver'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color={COLORS.textSec} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* NOTES INPUT */}
+            <View style={styles.fieldRow}>
+                <View style={styles.iconBox}>
+                    <Ionicons name="document-text-outline" size={24} color={COLORS.textMain} />
+                </View>
+                <View style={{flex: 1}}>
+                    <Text style={styles.fieldLabel}>Description</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="What is this for? (e.g. Dinner)"
+                        placeholderTextColor={COLORS.textSec}
+                        value={description}
+                        onChangeText={setDescription}
+                    />
+                </View>
+            </View>
         </View>
+
       </ScrollView>
 
-      <View style={styles.footer}>
+      {/* FOOTER BUTTON */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
         <TouchableOpacity
-          style={[
-            styles.submitButton,
-            (!fromUserId ||
-              !toUserId ||
-              !amount ||
-              !description.trim() ||
-              isLoading) &&
-              styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={
-            !fromUserId ||
-            !toUserId ||
-            !amount ||
-            !description.trim() ||
-            isLoading
-          }
+            style={[
+                styles.submitButton, 
+                (!amount || !toUserId || !description) && styles.submitButtonDisabled
+            ]}
+            onPress={handleSubmit}
+            disabled={!amount || !toUserId || !description || isLoading}
         >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Done</Text>
-          )}
+            {isLoading ? (
+                <ActivityIndicator color="#FFF" />
+            ) : (
+                <Text style={styles.submitButtonText}>Create Transaction</Text>
+            )}
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+
+      {/* --- MEMBER SELECTION MODALS --- */}
+      
+      {/* FROM MODAL */}
+      <Modal visible={showFromModal} transparent animationType="slide">
+        <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowFromModal(false)}>
+            <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Who Paid?</Text>
+                </View>
+                <ScrollView>
+                    {members.map(m => (
+                        <TouchableOpacity 
+                            key={m.id} 
+                            style={[styles.memberItem, fromUserId === m.id && styles.memberItemSelected]}
+                            onPress={() => { setFromUserId(m.id); setShowFromModal(false); }}
+                        >
+                            <Text style={[styles.memberItemText, fromUserId === m.id && styles.memberItemTextSelected]}>
+                                {m.name} {m.id === user.id ? '(You)' : ''}
+                            </Text>
+                            {fromUserId === m.id && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* TO MODAL */}
+      <Modal visible={showToModal} transparent animationType="slide">
+        <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowToModal(false)}>
+            <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>For Whom?</Text>
+                </View>
+                <ScrollView>
+                    {members.map(m => (
+                        <TouchableOpacity 
+                            key={m.id} 
+                            style={[
+                                styles.memberItem, 
+                                toUserId === m.id && styles.memberItemSelected,
+                                fromUserId === m.id && {opacity: 0.5} // Disable selecting same user
+                            ]}
+                            onPress={() => { 
+                                if (fromUserId !== m.id) {
+                                    setToUserId(m.id); 
+                                    setShowToModal(false); 
+                                }
+                            }}
+                            disabled={fromUserId === m.id}
+                        >
+                            <Text style={[styles.memberItemText, toUserId === m.id && styles.memberItemTextSelected]}>
+                                {m.name} {m.id === user.id ? '(You)' : ''}
+                            </Text>
+                            {toUserId === m.id && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        </TouchableOpacity>
+      </Modal>
+
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  
+  // Header
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingBottom: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 18,
-    fontFamily: Font.semiBold,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  groupInfo: {
-    backgroundColor: '#eff6ff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  groupName: {
-    fontSize: 18,
-    color: '#1e40af',
-    marginBottom: 4,
-    fontFamily: Font.semiBold,
-  },
-  groupDescription: {
-    fontSize: 14,
-    color: '#60a5fa',
-    fontFamily: Font.regular,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 12,
-    color: '#333',
-    fontFamily: Font.semiBold,
-  },
-  memberList: {
-    gap: 8,
-  },
-  memberButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  memberButtonSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#F0F7FF',
-  },
-  memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
+    padding: 8,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    backgroundColor: COLORS.surface,
   },
-  avatarSelected: {
-    backgroundColor: '#007AFF',
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: Font.semiBold,
-  },
-  avatarTextSelected: {
-    color: '#fff',
-  },
-  memberName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    fontFamily: Font.semiBold,
-  },
-  memberUsername: {
-    fontSize: 13,
-    color: '#666',
-    fontFamily: Font.regular,
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmarkText: {
-    color: '#fff',
-    fontSize: 16,
+  headerTitle: {
+    fontSize: 18,
     fontFamily: Font.bold,
+    color: COLORS.textMain,
   },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    padding: 15,
-    fontSize: 16,
+
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 20 },
+
+  // Amount Section
+  amountSection: {
+    alignItems: 'center',
+    marginBottom: 30,
+    marginTop: 20,
+  },
+  labelCenter: {
+    fontSize: 14,
+    color: COLORS.textSec,
+    marginBottom: 10,
     fontFamily: Font.regular,
   },
-  amountInputContainer: {
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    borderRadius: 16,
-    padding: 20,
+  amountWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    justifyContent: 'center',
   },
   currencyPrefix: {
-    fontSize: 28,
-    fontFamily: Font.bold,
-    color: '#007AFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.textSec,
     marginRight: 8,
+    marginBottom: 4, // Alignment adjustment
   },
   amountInput: {
-    flex: 1,
-    fontSize: 32,
+    fontSize: 48,
     fontFamily: Font.bold,
-    color: '#333',
+    color: COLORS.textMain,
     padding: 0,
-  },
-  quickAmountContainer: {
-    marginTop: 16,
-  },
-  quickAmountLabel: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 8,
-    fontFamily: Font.regular,
-  },
-  quickAmountButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  quickAmountButton: {
-    backgroundColor: '#E8F4FF',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  quickAmountButtonText: {
-    fontSize: 14,
-    fontFamily: Font.semiBold,
-    color: '#007AFF',
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  footer: {
-    padding: 20,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: Font.semiBold,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
+    minWidth: 100,
     textAlign: 'center',
-    marginTop: 40,
-    fontFamily: Font.regular,
   },
-  dropdownButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    padding: 15,
+  quickChipsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 10,
+    marginTop: 20,
   },
-  dropdownPlaceholder: {
-    color: '#999',
-    fontSize: 16,
-    fontFamily: Font.regular,
+  quickChip: {
+    backgroundColor: COLORS.primarySoft,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
-  dropdownSelected: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+  quickChipText: {
+    color: COLORS.primary,
+    fontFamily: Font.bold,
+    fontSize: 14,
   },
-  dropdownTextContainer: {
-    flex: 1,
+
+  // Details Card
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: COLORS.textMain,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  dropdownSelectedText: {
-    fontSize: 16,
-    color: '#333',
-    fontFamily: Font.semiBold,
-  },
-  dropdownSelectedUsername: {
-    fontSize: 13,
-    color: '#666',
-    fontFamily: Font.regular,
-  },
-  dropdownList: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    maxHeight: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  dropdownScroll: {
-    maxHeight: 200,
-  },
-  dropdownItem: {
+  fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingVertical: 12,
   },
-  dropdownItemSelected: {
-    backgroundColor: '#F0F7FF',
-  },
-  dropdownItemText: {
-    fontSize: 16,
-    color: '#333',
-    fontFamily: Font.semiBold,
-  },
-  dropdownItemUsername: {
-    fontSize: 13,
-    color: '#666',
-    fontFamily: Font.regular,
-  },
-  avatarSmall: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#007AFF',
+  iconBox: {
+    width: 40,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
   },
-  avatarTextSmall: {
-    color: '#fff',
-    fontSize: 14,
-    fontFamily: Font.semiBold,
+  fieldLabel: {
+    fontSize: 12,
+    color: COLORS.textSec,
+    fontFamily: Font.regular,
+    marginBottom: 4,
   },
-  validationError: {
+  selectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fee2e2',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  validationErrorText: {
-    fontSize: 14,
-    color: '#ef4444',
+  selectorText: {
+    fontSize: 16,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+  },
+  input: {
+    fontSize: 16,
     fontFamily: Font.regular,
+    color: COLORS.textMain,
+    padding: 0,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginLeft: 52, // Align with text start
+    marginVertical: 4,
+  },
+
+  // Footer
+  footer: {
+    padding: 20,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  submitButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  submitButtonDisabled: {
+    backgroundColor: COLORS.textSec,
+    shadowOpacity: 0,
+  },
+  submitButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: Font.bold,
+  },
+
+  // Modal Styles
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
+    maxHeight: '60%',
+  },
+  modalHeader: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.inputBg,
+  },
+  memberItemSelected: {
+    backgroundColor: COLORS.primarySoft,
+  },
+  memberItemText: {
+    fontSize: 16,
+    color: COLORS.textMain,
+    fontFamily: Font.regular,
+  },
+  memberItemTextSelected: {
+    color: COLORS.primary,
+    fontFamily: Font.bold,
   },
 });

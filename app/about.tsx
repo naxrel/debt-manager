@@ -75,7 +75,7 @@ export default function AboutScreen() {
           style={[styles.section, styles.lastSection]}
           entering={FadeInUp.delay(600).duration(600).springify()}
         >
-          <Text style={styles.sectionTitle}>Hubungi Kami</Text>
+          <Text style={styles.sectionTitle}>Contact us</Text>
           <View style={styles.card}>
             <ContactItem text="support@debt.app" index={0} />
             <View style={styles.divider} />

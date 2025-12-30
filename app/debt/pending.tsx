@@ -13,8 +13,27 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  StatusBar
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
+
+// --- DESIGN TOKENS ---
+const COLORS = {
+  background: '#FFFFFF',
+  surface: '#FFFFFF',
+  primary: '#4F46E5',    // Indigo 600
+  textMain: '#0F172A',   // Slate 900
+  textSec: '#64748B',    // Slate 500
+  textTer: '#94A3B8',
+  border: '#E2E8F0',
+  success: '#10B981',
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  inputBg: '#F8FAFC',
+};
+
+const SPACING = 20;
 
 export default function PendingApprovalsScreen() {
   const router = useRouter();
@@ -43,49 +62,32 @@ export default function PendingApprovalsScreen() {
   const handleApprove = (debtId: string) => {
     if (!user) return;
 
-    // Web-compatible confirmation
+    // Web handling simplified
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Apakah Anda yakin menyetujui transaksi ini?');
-      if (confirmed) {
-        const result = StaticDB.approveDebt(debtId, user.id);
-        if (result.success) {
-          const remainingPending = StaticDB.getPendingDebtsForUser(user.id);
-          if (remainingPending.length === 0) {
-            alert('Transaksi berhasil di-approve');
-            router.back();
-          } else {
-            alert('Transaksi berhasil di-approve');
-            loadPendingDebts();
-          }
-        } else {
-          alert(result.error || 'Gagal approve transaksi');
+        const confirmed = window.confirm('Approve this transaction?');
+        if (confirmed) {
+            const result = StaticDB.approveDebt(debtId, user.id);
+            if (result.success) loadPendingDebts();
         }
-      }
-      return;
+        return;
     }
 
     Alert.alert(
-      'Konfirmasi Approve',
-      'Apakah Anda yakin menyetujui transaksi ini?',
+      'Confirm Approval',
+      'Are you sure you want to approve this transaction?',
       [
-        { text: 'Batal', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Setuju',
+          text: 'Approve',
           onPress: () => {
             const result = StaticDB.approveDebt(debtId, user.id);
             if (result.success) {
-              const remainingPending = StaticDB.getPendingDebtsForUser(user.id);
-              
-              if (remainingPending.length === 0) {
-                Alert.alert('Sukses', 'Transaksi berhasil di-approve', [
-                  { text: 'OK', onPress: () => router.back() }
-                ]);
-              } else {
-                Alert.alert('Sukses', 'Transaksi berhasil di-approve');
-                loadPendingDebts();
-              }
+                // Remove item from list locally for instant feedback
+                setPendingDebts(prev => prev.filter(d => d.id !== debtId));
+                // Reload to be sure
+                setTimeout(loadPendingDebts, 500); 
             } else {
-              Alert.alert('Error', result.error || 'Gagal approve transaksi');
+              Alert.alert('Error', result.error || 'Failed to approve');
             }
           },
         },
@@ -93,101 +95,33 @@ export default function PendingApprovalsScreen() {
     );
   };
 
-  const handleReject = (debtId: string) => {
-    setSelectedDebtId(debtId);
-    
-    // Web handling
-    if (Platform.OS === 'web') {
-      const reason = window.prompt('Masukkan alasan penolakan:');
-      if (reason && user) {
-        const result = StaticDB.rejectDebt(debtId, user.id, reason);
-        if (result.success) {
-          const remainingPending = StaticDB.getPendingDebtsForUser(user.id);
-          if (remainingPending.length === 0) {
-            alert('Transaksi berhasil ditolak');
-            router.back();
-          } else {
-            alert('Transaksi berhasil ditolak');
-            loadPendingDebts();
-          }
-        } else {
-          alert(result.error || 'Gagal reject transaksi');
-        }
+  const handleRejectPress = (debtId: string) => {
+      // Toggle reject mode
+      if (selectedDebtId === debtId) {
+          setSelectedDebtId(null);
+          setRejectReason('');
+      } else {
+          setSelectedDebtId(debtId);
+          setRejectReason('');
       }
-      return;
-    }
-    
-    if (Platform.OS === 'ios') {
-      Alert.prompt(
-        'Alasan Reject',
-        'Masukkan alasan penolakan:',
-        [
-          { text: 'Batal', style: 'cancel' },
-          {
-            text: 'Reject',
-            style: 'destructive',
-            onPress: (reason?: string) => {
-              if (!user || !reason) return;
-              const result = StaticDB.rejectDebt(debtId, user.id, reason);
-              if (result.success) {
-                // Check if this is the last pending debt
-                const remainingPending = StaticDB.getPendingDebtsForUser(user.id);
-                
-                if (remainingPending.length === 0) {
-                  // Last one - show success and close
-                  Alert.alert('Sukses', 'Transaksi berhasil ditolak', [
-                    { text: 'OK', onPress: () => router.back() }
-                  ]);
-                } else {
-                  // Still have more - just reload
-                  Alert.alert('Sukses', 'Transaksi berhasil ditolak');
-                  loadPendingDebts();
-                }
-              } else {
-                Alert.alert('Error', result.error || 'Gagal reject transaksi');
-              }
-            },
-          },
-        ],
-        'plain-text'
-      );
-    } else {
-      // Android: Show custom modal
-      Alert.alert(
-        'Alasan Reject',
-        'Silakan masukkan alasan penolakan di bawah transaksi, lalu tekan tombol Reject',
-        [{ text: 'OK' }]
-      );
-    }
   };
 
   const confirmReject = (debtId: string) => {
     if (!user) return;
     
     if (!rejectReason.trim()) {
-      Alert.alert('Error', 'Alasan reject harus diisi');
+      Alert.alert('Required', 'Please provide a reason for rejection.');
       return;
     }
 
     const result = StaticDB.rejectDebt(debtId, user.id, rejectReason);
     if (result.success) {
-      // Check if this is the last pending debt
-      const remainingPending = StaticDB.getPendingDebtsForUser(user.id);
-      
-      if (remainingPending.length === 0) {
-        // Last one - show success and close
-        Alert.alert('Sukses', 'Transaksi berhasil ditolak', [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
-      } else {
-        // Still have more - just reload
-        Alert.alert('Sukses', 'Transaksi berhasil ditolak');
+        setPendingDebts(prev => prev.filter(d => d.id !== debtId));
         setRejectReason('');
         setSelectedDebtId(null);
-        loadPendingDebts();
-      }
+        setTimeout(loadPendingDebts, 500);
     } else {
-      Alert.alert('Error', result.error || 'Gagal reject transaksi');
+      Alert.alert('Error', result.error || 'Failed to reject');
     }
   };
 
@@ -208,139 +142,139 @@ export default function PendingApprovalsScreen() {
     });
   };
 
-  const renderDebtItem = ({ item }: { item: any }) => {
+  const renderDebtItem = ({ item, index }: { item: any; index: number }) => {
     const initiator = StaticDB.getUserById(item.initiatedBy);
-    const isRejectMode = selectedDebtId === item.id && Platform.OS === 'android';
+    const isRejectMode = selectedDebtId === item.id;
 
     return (
-      <View style={styles.debtCard}>
-        <View style={styles.debtHeader}>
-          <View>
-            <Text style={styles.debtName}>
-              {item.name} (@{initiator?.username})
-            </Text>
-            <Text style={styles.debtMeta}>{formatDate(item.date)}</Text>
-          </View>
-          <View style={styles.debtBadge}>
-            <Text
-              style={[
-                styles.debtType,
-                item.type === 'hutang' ? styles.hutangBadge : styles.piutangBadge,
-              ]}
-            >
-              {item.type === 'hutang' ? 'Hutang' : 'Piutang'}
-            </Text>
-          </View>
+      <Animated.View 
+        entering={FadeInDown.delay(index * 100).springify()}
+        layout={Layout.springify()}
+        style={styles.card}
+      >
+        {/* Header: Badge & Date */}
+        <View style={styles.cardTop}>
+            <View style={[
+                styles.badge, 
+                item.type === 'hutang' ? styles.badgeError : styles.badgeSuccess
+            ]}>
+                <Text style={[
+                    styles.badgeText,
+                    item.type === 'hutang' ? styles.textError : styles.textSuccess
+                ]}>
+                    {item.type === 'hutang' ? 'CONFIRM DEBT' : 'CONFIRM PAYMENT'}
+                </Text>
+            </View>
+            <Text style={styles.dateText}>{formatDate(item.date)}</Text>
         </View>
 
-        <Text style={styles.debtAmount}>{formatCurrency(item.amount)}</Text>
-        
-        {item.description && (
-          <Text style={styles.debtDescription}>{item.description}</Text>
-        )}
-
-        <View style={styles.debtInfo}>
-          <Text style={styles.debtInfoLabel}>
-            {item.type === 'hutang' 
-              ? `📤 ${initiator?.name} mengatakan mereka berhutang ke Anda`
-              : `📥 ${initiator?.name} mengatakan Anda berhutang ke mereka`}
-          </Text>
+        {/* Main Content */}
+        <View style={styles.content}>
+            <Text style={styles.initiatorText}>
+                <Text style={{fontFamily: Font.bold, color: COLORS.textMain}}>@{initiator?.username}</Text> claims:
+            </Text>
+            
+            <Text style={styles.amountText}>{formatCurrency(item.amount)}</Text>
+            
+            <View style={styles.noteContainer}>
+                <Text style={styles.noteLabel}>Note:</Text>
+                <Text style={styles.noteText}>{item.description || 'No description provided.'}</Text>
+            </View>
         </View>
 
+        {/* Reject Reason Input (Visible only in Reject Mode) */}
         {isRejectMode && (
-          <View style={styles.rejectInputContainer}>
-            <TextInput
-              style={styles.rejectInput}
-              placeholder="Alasan penolakan..."
-              value={rejectReason}
-              onChangeText={setRejectReason}
-              multiline
-            />
-          </View>
+            <Animated.View entering={FadeInDown.duration(200)} style={styles.rejectInputBox}>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Reason for rejection (e.g. Wrong amount)"
+                    value={rejectReason}
+                    onChangeText={setRejectReason}
+                    multiline
+                    autoFocus
+                />
+            </Animated.View>
         )}
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.approveButton]}
-            onPress={() => handleApprove(item.id)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.approveButtonText}>✓ Approve</Text>
-          </TouchableOpacity>
-
-          {isRejectMode ? (
-            <>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.rejectButton]}
-                onPress={() => confirmReject(item.id)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.rejectButtonText}>Konfirmasi Reject</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.cancelButton]}
-                onPress={() => {
-                  setSelectedDebtId(null);
-                  setRejectReason('');
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelButtonText}>Batal</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.rejectButton]}
-              onPress={() => handleReject(item.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.rejectButtonText}>✗ Reject</Text>
-            </TouchableOpacity>
-          )}
+        {/* Action Buttons */}
+        <View style={styles.actionRow}>
+            {isRejectMode ? (
+                // Confirm Reject Actions
+                <>
+                    <TouchableOpacity 
+                        style={[styles.button, styles.btnGhost]} 
+                        onPress={() => handleRejectPress(item.id)}
+                    >
+                        <Text style={styles.btnTextGhost}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.button, styles.btnDanger]} 
+                        onPress={() => confirmReject(item.id)}
+                    >
+                        <Text style={styles.btnTextWhite}>Confirm Reject</Text>
+                    </TouchableOpacity>
+                </>
+            ) : (
+                // Normal Actions
+                <>
+                    <TouchableOpacity 
+                        style={[styles.button, styles.btnOutline]} 
+                        onPress={() => handleRejectPress(item.id)}
+                    >
+                        <Text style={styles.btnTextDanger}>Reject</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.button, styles.btnPrimary]} 
+                        onPress={() => handleApprove(item.id)}
+                    >
+                        <Text style={styles.btnTextWhite}>Approve</Text>
+                    </TouchableOpacity>
+                </>
+            )}
         </View>
-      </View>
+
+      </Animated.View>
     );
   };
 
-  if (!user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.emptyText}>Silakan login terlebih dahulu</Text>
-      </View>
-    );
-  }
+  if (!user) return null;
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          onPress={() => router.back()} 
-          style={styles.backButton}
-          activeOpacity={0.7}
+            onPress={() => router.back()} 
+            style={styles.backButton}
+            hitSlop={10}
         >
           <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+            <Path stroke={COLORS.textMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pending Approval</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Pending Approvals</Text>
+        <View style={{width: 40}} /> 
       </View>
 
       <FlatList
         data={pendingDebts}
         renderItem={renderDebtItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={handleRefresh} 
+            tintColor={COLORS.primary}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>✅</Text>
-            <Text style={styles.emptyText}>Tidak ada transaksi pending</Text>
-            <Text style={styles.emptySubtext}>
-              Semua transaksi sudah di-approve atau reject
-            </Text>
+            <Text style={{fontSize: 48, marginBottom: 16}}>👍</Text>
+            <Text style={styles.emptyTitle}>All Caught Up!</Text>
+            <Text style={styles.emptySub}>No pending transactions to review.</Text>
           </View>
         }
       />
@@ -351,180 +285,196 @@ export default function PendingApprovalsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 8,
-    paddingTop: 50,
-    borderBottomWidth: 0,
-    borderBottomColor: '#f3f4f6',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 20,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.inputBg,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 10,
-    cursor: 'pointer' as any,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
-    fontFamily: Font.semiBold,
-    color: '#1f2937',
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 16,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
   },
-  headerSpacer: {
-    width: 40,
+
+  // List
+  listContent: {
+    padding: SPACING,
+    paddingBottom: 100,
   },
-  listContainer: {
-    padding: 16,
-  },
-  debtCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    // Modern Shadow
+    shadowColor: COLORS.textMain,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 3,
   },
-  debtHeader: {
+  cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  debtName: {
-    fontSize: 18,
-    color: '#333',
-    marginBottom: 4,
-    fontFamily: Font.semiBold,
-  },
-  debtMeta: {
-    fontSize: 13,
-    color: '#999',
-    fontFamily: Font.regular,
-  },
-  debtBadge: {
-    alignItems: 'flex-end',
-  },
-  debtType: {
-    fontSize: 12,
+  badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    overflow: 'hidden',
-    fontFamily: Font.semiBold,
   },
-  hutangBadge: {
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-  },
-  piutangBadge: {
-    backgroundColor: '#d1fae5',
-    color: '#059669',
-  },
-  debtAmount: {
-    fontSize: 24,
-    color: '#344170',
-    marginBottom: 8,
+  badgeError: { backgroundColor: '#FEE2E2' }, // Red-100
+  badgeSuccess: { backgroundColor: '#D1FAE5' }, // Emerald-100
+  badgeText: {
+    fontSize: 10,
     fontFamily: Font.bold,
+    letterSpacing: 0.5,
   },
-  debtDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
+  textError: { color: COLORS.danger },
+  textSuccess: { color: COLORS.success },
+  dateText: {
+    fontSize: 12,
     fontFamily: Font.regular,
+    color: COLORS.textTer,
   },
-  debtInfo: {
-    backgroundColor: '#eff6ff',
-    padding: 12,
-    borderRadius: 8,
+  
+  // Content
+  content: {
     marginBottom: 16,
   },
-  debtInfoLabel: {
-    fontSize: 13,
-    color: '#1e40af',
-    lineHeight: 18,
+  initiatorText: {
+    fontSize: 14,
+    color: COLORS.textSec,
     fontFamily: Font.regular,
+    marginBottom: 4,
   },
-  rejectInputContainer: {
+  amountText: {
+    fontSize: 28,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
     marginBottom: 12,
   },
-  rejectInput: {
-    backgroundColor: '#f9fafb',
+  noteContainer: {
+    backgroundColor: COLORS.inputBg,
+    padding: 12,
+    borderRadius: 12,
+  },
+  noteLabel: {
+    fontSize: 11,
+    fontFamily: Font.bold,
+    color: COLORS.textTer,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+  noteText: {
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: COLORS.textMain,
+    lineHeight: 20,
+  },
+
+  // Reject Input
+  rejectInputBox: {
+    marginBottom: 16,
+  },
+  input: {
+    backgroundColor: '#FEF2F2', // Light Red BG for warning
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
+    borderColor: COLORS.danger,
+    borderRadius: 12,
     padding: 12,
     fontSize: 14,
+    fontFamily: Font.regular,
+    color: COLORS.textMain,
     minHeight: 80,
     textAlignVertical: 'top',
-    fontFamily: Font.regular,
   },
-  actionButtons: {
+
+  // Actions
+  actionRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
   },
-  actionButton: {
+  button: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
     alignItems: 'center',
-    cursor: 'pointer' as any,
   },
-  approveButton: {
-    backgroundColor: '#059669',
+  btnPrimary: {
+    backgroundColor: COLORS.success,
+    shadowColor: COLORS.success,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  approveButtonText: {
-    color: '#fff',
+  btnOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+  },
+  btnDanger: {
+    backgroundColor: COLORS.danger,
+  },
+  btnGhost: {
+    backgroundColor: COLORS.inputBg,
+  },
+  
+  // Text Styles
+  btnTextWhite: {
+    color: '#FFF',
+    fontFamily: Font.bold,
     fontSize: 14,
-    fontFamily: Font.semiBold,
   },
-  rejectButton: {
-    backgroundColor: '#dc2626',
-  },
-  rejectButtonText: {
-    color: '#fff',
+  btnTextDanger: {
+    color: COLORS.danger,
+    fontFamily: Font.bold,
     fontSize: 14,
-    fontFamily: Font.semiBold,
   },
-  cancelButton: {
-    backgroundColor: '#6b7280',
-  },
-  cancelButtonText: {
-    color: '#fff',
+  btnTextGhost: {
+    color: COLORS.textSec,
+    fontFamily: Font.bold,
     fontSize: 14,
-    fontFamily: Font.semiBold,
   },
+
+  // Empty State
   emptyState: {
     alignItems: 'center',
-    padding: 40,
-    marginTop: 40,
+    paddingTop: 60,
+    opacity: 0.7,
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-    fontFamily: Font.regular,
-  },
-  emptyText: {
+  emptyTitle: {
     fontSize: 18,
-    color: '#333',
-    marginBottom: 8,
-    fontFamily: Font.semiBold,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+    marginBottom: 4,
   },
-  emptySubtext: {
+  emptySub: {
     fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    color: COLORS.textSec,
     fontFamily: Font.regular,
   },
 });

@@ -1,10 +1,14 @@
 import React from 'react';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+// Definisi nama icon yang valid agar Autocomplete bekerja saat dipanggil
+export type IconName = 'home' | 'hutang' | 'history' | 'profile' | 'settings' | 'people'; // Tambahkan 'people' jika perlu untuk group
+
 interface TabIconProps {
-  name: 'home' | 'hutang' | 'history' | 'profile' | 'settings';
+  name: IconName;
   color: string;
   size?: number;
+  focused?: boolean; // Opsional: Siapkan props ini jika nanti butuh state aktif/nonaktif
 }
 
 export function TabIcon({ name, color, size = 24 }: TabIconProps) {
@@ -29,7 +33,8 @@ export function TabIcon({ name, color, size = 24 }: TabIconProps) {
         </Svg>
       );
 
-    case 'hutang':
+    case 'hutang': // Bisa juga dipakai untuk 'Groups'
+    case 'people': // Alias agar kode lain yang panggil 'people' tetap jalan
       return (
         <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
           <Path
@@ -66,41 +71,16 @@ export function TabIcon({ name, color, size = 24 }: TabIconProps) {
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          <Path
-            d="M9 9H15"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <Path
-            d="M9 13H15"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <Path
-            d="M9 17H13"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <Path d="M9 9H15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M9 13H15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M9 17H13" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       );
 
     case 'profile':
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-          <Circle
-            cx="12"
-            cy="7"
-            r="4"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
+          <Circle cx="12" cy="7" r="4" stroke={color} strokeWidth="2" strokeLinecap="round" />
           <Path
             d="M5.33788 18.3206C5.99897 15.5269 8.77173 14 11.6426 14H12.3574C15.2283 14 18.001 15.5269 18.6621 18.3206C18.79 18.8611 18.8917 19.4268 18.9489 20.0016C19.0036 20.5512 18.5523 21 18 21H6C5.44772 21 4.99642 20.5512 5.0511 20.0016C5.1083 19.4268 5.20997 18.8611 5.33788 18.3206Z"
             stroke={color}

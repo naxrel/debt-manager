@@ -5,15 +5,34 @@ import { Debt, GroupTransaction, StaticDB } from '@/data/staticDatabase';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  StatusBar,
+  Platform
 } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
+
+// --- DESIGN TOKENS ---
+const COLORS = {
+  background: '#FFFFFF',
+  surface: '#FFFFFF',
+  primary: '#4F46E5',    // Indigo 600
+  primarySoft: '#EEF2FF',
+  textMain: '#0F172A',   // Slate 900
+  textSec: '#64748B',    // Slate 500
+  textTertiary: '#94A3B8',
+  border: '#F1F5F9',
+  success: '#10B981',
+  danger: '#EF4444',
+  inputBg: '#F8FAFC',
+};
+
+const SPACING = 20;
 
 type TransactionItem = 
   | { type: 'personal'; data: Debt }
@@ -42,7 +61,7 @@ export default function HistoryScreen() {
       refreshDebts();
       loadGroupTransactions();
     }
-  }, [user]); // Remove refreshDebts and loadGroupTransactions from dependencies to prevent infinite loop
+  }, [user]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -76,177 +95,171 @@ export default function HistoryScreen() {
       };
     });
 
+    let items = [];
     switch (activeTab) {
       case 'personal':
-        return personalTransactions;
+        items = personalTransactions;
+        break;
       case 'group':
-        return groupTransactionItems;
+        items = groupTransactionItems;
+        break;
       default:
-        return [...personalTransactions, ...groupTransactionItems].sort((a, b) => {
-          return new Date(b.data.date).getTime() - new Date(a.data.date).getTime();
-        });
+        items = [...personalTransactions, ...groupTransactionItems];
     }
+    
+    return items.sort((a, b) => {
+      return new Date(b.data.date).getTime() - new Date(a.data.date).getTime();
+    });
   };
 
   const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
   const renderTransactionItem = ({ item, index }: { item: TransactionItem; index: number }) => {
-    if (item.type === 'personal') {
-      return (
-        <AnimatedTouchable
-          entering={FadeInDown.delay(index * 50).duration(300).easing(Easing.out(Easing.ease))}
-          style={styles.debtCard}
-          onPress={() => router.push(`/debt/detail?id=${item.data.id}`)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.cardHeader}>
-            <View style={styles.typeBadge}>
-              <Text style={styles.typeBadgeText}>
-                {item.data.type === 'hutang' ? 'Hutang' : 'Piutang'}
-              </Text>
-            </View>
-            <Text style={styles.dateText}>{formatDate(item.data.date)}</Text>
-          </View>
-          <View style={styles.cardContent}>
-            <View style={styles.cardLeft}>
-              <Text style={styles.debtName}>{item.data.name}</Text>
-              {item.data.description ? (
-                <Text style={styles.debtDescription}>{item.data.description}</Text>
-              ) : null}
-            </View>
-            <Text
-              style={[
-                styles.debtAmount,
-                item.data.type === 'hutang' ? styles.negativeAmount : styles.positiveAmount,
-              ]}
-            >
-              {item.data.type === 'hutang' ? '-' : '+'}
-              {formatCurrency(item.data.amount)}
-            </Text>
-          </View>
-          <View style={styles.statusContainer}>
-            <Text
-              style={[
-                styles.statusText,
-                item.data.status === 'confirmed' ? styles.confirmedStatus : styles.pendingStatus,
-              ]}
-            >
-              {item.data.status === 'confirmed' ? 'Confirmed' : 'Pending'}
-            </Text>
-          </View>
-        </AnimatedTouchable>
-      );
+    const isPersonal = item.type === 'personal';
+    let isIncome = false; // Income = Uang Masuk (Positif)
+    let title = '';
+    let subtitle = '';
+    let amount = 0;
+    
+    // Logic Penentuan Tampilan
+    if (isPersonal) {
+        // Personal Debt
+        // Piutang = Kita meminjamkan (Uang keluar dulu, nanti masuk) -> Context History: Piutang = Positive Asset
+        // Hutang = Kita pinjam (Uang masuk, tapi jadi beban) -> Context History: Hutang = Negative Asset
+        // Sederhananya: 
+        // Type 'piutang' (Orang utang ke kita) -> Green
+        // Type 'hutang' (Kita utang orang) -> Red
+        isIncome = item.data.type === 'piutang'; 
+        title = item.data.name;
+        subtitle = isPersonal ? (item.data.description || 'Personal Debt') : '';
+        amount = item.data.amount;
     } else {
-      const fromUser = StaticDB.getUserById(item.data.fromUserId);
-      const toUser = StaticDB.getUserById(item.data.toUserId);
-      const isUserPaying = user && item.data.fromUserId === user.id;
-
-      return (
-        <AnimatedTouchable
-          entering={FadeInDown.delay(index * 50).duration(300).easing(Easing.out(Easing.ease))}
-          style={styles.debtCard}
-          onPress={() => router.push(`/group/${item.data.groupId}`)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.cardHeader}>
-            <View style={[styles.typeBadge, styles.groupBadge]}>
-              <Text style={styles.typeBadgeText}>Group</Text>
-            </View>
-            <Text style={styles.dateText}>{formatDate(item.data.date)}</Text>
-          </View>
-          <View style={styles.cardContent}>
-            <View style={styles.cardLeft}>
-              <Text style={styles.debtName}>{item.groupName}</Text>
-              <Text style={styles.debtDescription}>
-                {fromUser?.name} → {toUser?.name}
-              </Text>
-              {item.data.description ? (
-                <Text style={styles.debtDescription}>{item.data.description}</Text>
-              ) : null}
-            </View>
-            <Text
-              style={[
-                styles.debtAmount,
-                isUserPaying ? styles.negativeAmount : styles.positiveAmount,
-              ]}
-            >
-              {isUserPaying ? '-' : '+'}
-              {formatCurrency(item.data.amount)}
-            </Text>
-          </View>
-        </AnimatedTouchable>
-      );
+        // Group Transaction
+        const fromUser = StaticDB.getUserById(item.data.fromUserId);
+        // const toUser = StaticDB.getUserById(item.data.toUserId);
+        const isUserPaying = user && item.data.fromUserId === user.id; // Kita yang bayar
+        
+        isIncome = !isUserPaying; // Kalau bukan kita yang bayar, anggap expense (atau logic bisa disesuaikan)
+        // Di context group expense:
+        // Kalau kita bayar (Expense) -> Red
+        // Kalau orang lain bayar buat kita (Benefit?) -> Green? 
+        // Usually history shows CASH FLOW.
+        // Let's simplify: 
+        // If I paid -> Red (Money out)
+        // If someone paid me -> Green (Money in)
+        
+        isIncome = !isUserPaying; 
+        title = item.groupName;
+        subtitle = `${fromUser?.name} paid`;
+        amount = item.data.amount;
     }
+
+    return (
+      <AnimatedTouchable
+        entering={FadeInDown.delay(index * 50).duration(300).easing(Easing.out(Easing.ease))}
+        style={styles.transactionItem}
+        onPress={() => {
+            if (isPersonal) {
+                router.push(`/debt/detail?id=${item.data.id}`);
+            } else {
+                router.push(`/group/${item.data.groupId}`);
+            }
+        }}
+        activeOpacity={0.7}
+      >
+        {/* Left Icon with Background */}
+        <View style={[
+            styles.iconContainer, 
+            { backgroundColor: isIncome ? COLORS.success + '15' : COLORS.danger + '15' }
+        ]}>
+             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                {isIncome ? (
+                    <Path d="M12 19V5M5 12l7-7 7 7" stroke={COLORS.success} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                ) : (
+                    <Path d="M12 5v14M5 12l7 7 7-7" stroke={COLORS.danger} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                )}
+             </Svg>
+        </View>
+
+        {/* Content */}
+        <View style={styles.itemContent}>
+            <View style={styles.textWrapper}>
+                <Text style={styles.itemTitle} numberOfLines={1}>{title}</Text>
+                <Text style={styles.itemSubtitle} numberOfLines={1}>
+                    {formatDate(item.data.date)} • {subtitle}
+                </Text>
+            </View>
+            
+            <View style={styles.amountWrapper}>
+                <Text style={[
+                    styles.itemAmount,
+                    { color: isIncome ? COLORS.success : COLORS.danger }
+                ]}>
+                    {isIncome ? '+' : '-'} {formatCurrency(amount)}
+                </Text>
+                
+                {/* Status Badge Small */}
+                {isPersonal && item.data.status === 'pending' && (
+                    <View style={styles.pendingDot} />
+                )}
+            </View>
+        </View>
+      </AnimatedTouchable>
+    );
   };
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   const filteredTransactions = getFilteredTransactions();
 
-  // Animated FAB
-  const Fab = ({ onPress }: { onPress: () => void }) => (
-    <AnimatedTouchable
-      style={styles.fab}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <Text style={styles.fabText}>+</Text>
-    </AnimatedTouchable>
-  );
-
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+            <Path stroke={COLORS.textMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>History Transaction</Text>
+        <Text style={styles.headerTitle}>History</Text>
         <View style={{ width: 40 }} />
       </View>
 
+      {/* TABS (Pill Shaped) */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'all' && styles.activeTab]}
+          style={[styles.tabPill, activeTab === 'all' && styles.activeTabPill]}
           onPress={() => setActiveTab('all')}
-          activeOpacity={0.7}
         >
-          <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
-            All ({debts.length + groupTransactions.length})
-          </Text>
+          <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>All</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'personal' && styles.activeTab]}
+          style={[styles.tabPill, activeTab === 'personal' && styles.activeTabPill]}
           onPress={() => setActiveTab('personal')}
-          activeOpacity={0.7}
         >
-          <Text style={[styles.tabText, activeTab === 'personal' && styles.activeTabText]}>
-            Personal ({debts.length})
-          </Text>
+          <Text style={[styles.tabText, activeTab === 'personal' && styles.activeTabText]}>Personal</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'group' && styles.activeTab]}
+          style={[styles.tabPill, activeTab === 'group' && styles.activeTabPill]}
           onPress={() => setActiveTab('group')}
-          activeOpacity={0.7}
         >
-          <Text style={[styles.tabText, activeTab === 'group' && styles.activeTabText]}>
-            Grup ({groupTransactions.length})
-          </Text>
+          <Text style={[styles.tabText, activeTab === 'group' && styles.activeTabText]}>Groups</Text>
         </TouchableOpacity>
       </View>
 
+      {/* LIST */}
       {filteredTransactions.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No transactions yet</Text>
+          <Text style={styles.emptyTitle}>No History</Text>
+          <Text style={styles.emptyText}>You haven't made any transactions yet.</Text>
         </View>
       ) : (
         <FlatList
@@ -256,9 +269,20 @@ export default function HistoryScreen() {
             item.type === 'personal' ? `personal-${item.data.id}` : `group-${item.data.id}`
           }
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
         />
       )}
-      <Fab onPress={() => router.push('/debt/add')} />
+
+      {/* FAB (Floating Action Button) */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push('/debt/add')}
+        activeOpacity={0.9}
+      >
+        <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+           <Path d="M12 5v14M5 12h14" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </Svg>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -266,188 +290,166 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 20,
-    paddingTop: 60,
+    paddingHorizontal: SPACING,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 20,
+    backgroundColor: COLORS.background,
   },
   backButton: {
     width: 40,
-    height: 30,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: COLORS.inputBg,
   },
   headerTitle: {
     fontSize: 18,
     fontFamily: Font.bold,
-    color: '#000000',
+    color: COLORS.textMain,
   },
+  
+  // Tabs
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: SPACING,
+    marginBottom: 20,
+    gap: 12,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-    cursor: 'pointer' as any,
+  tabPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: COLORS.inputBg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  activeTab: {
-    borderBottomColor: '#2563eb',
+  activeTabPill: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   tabText: {
     fontSize: 14,
     fontFamily: Font.semiBold,
-    color: '#666',
+    color: COLORS.textSec,
   },
   activeTabText: {
-    color: '#2563eb',
+    color: '#FFFFFF',
   },
+
+  // List Item
   listContent: {
-    padding: 16,
-    paddingBottom: 120,
+    paddingHorizontal: SPACING,
+    paddingBottom: 100,
   },
-  debtCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+  transactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    // Animation: scale on press/hover (web)
-    transitionProperty: 'transform, box-shadow',
-    transitionDuration: '200ms',
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    // Optional Shadow
+    // shadowColor: COLORS.textMain,
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.03,
+    // shadowRadius: 8,
+    // elevation: 1,
   },
-  cardHeader: {
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16, // Squircle
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  itemContent: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#eff6ff',
-  },
-  groupBadge: {
-    backgroundColor: '#f0fdf4',
-  },
-  typeBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: Font.semiBold,
-    color: '#2563eb',
-  },
-  dateText: {
-    fontSize: 12,
-    fontFamily: Font.regular,
-    color: '#9ca3af',
-  },
-  cardContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  cardLeft: {
+  textWrapper: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
   },
-  debtName: {
+  itemTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Font.semiBold,
-    color: '#1f2937',
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
     marginBottom: 4,
   },
-  debtDescription: {
-    fontSize: 13,
+  itemSubtitle: {
+    fontSize: 12,
     fontFamily: Font.regular,
-    color: '#6b7280',
+    color: COLORS.textSec,
   },
-  debtAmount: {
-    fontSize: 18,
+  amountWrapper: {
+    alignItems: 'flex-end',
+  },
+  itemAmount: {
+    fontSize: 16,
     fontFamily: Font.bold,
   },
-  positiveAmount: {
-    color: '#10b981',
+  pendingDot: {
+    marginTop: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F59E0B', // Amber/Orange for pending
   },
-  negativeAmount: {
-    color: '#ef4444',
-  },
-  statusContainer: {
-    alignItems: 'flex-start',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: Font.semiBold,
-  },
-  confirmedStatus: {
-    color: '#10b981',
-  },
-  pendingStatus: {
-    color: '#f59e0b',
-  },
+
+  // Empty State
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    opacity: 0.7,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+    marginBottom: 8,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: Font.regular,
-    color: '#9ca3af',
-    marginBottom: 16,
+    color: COLORS.textSec,
   },
-  addButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
+
+  // FAB
   fab: {
     position: 'absolute',
-    right: 24,
-    bottom: 32,
-    backgroundColor: '#2563eb',
+    right: SPACING,
+    bottom: 30,
+    backgroundColor: COLORS.primary,
     width: 56,
     height: 56,
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563eb',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-    // Animation
-    transitionProperty: 'transform, box-shadow',
-    transitionDuration: '200ms',
-  },
-  fabText: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: 'bold',
+    shadowRadius: 16,
+    elevation: 8,
   },
 });

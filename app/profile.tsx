@@ -14,9 +14,26 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  StatusBar
 } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Path, Circle, G } from 'react-native-svg';
+
+// --- DESIGN TOKENS ---
+const COLORS = {
+  background: '#F8FAFC', // Slate 50
+  surface: '#FFFFFF',
+  primary: '#4F46E5',    // Indigo 600
+  primarySoft: '#EEF2FF',
+  textMain: '#0F172A',   // Slate 900
+  textSec: '#64748B',    // Slate 500
+  textTertiary: '#94A3B8',
+  inputBg: '#F1F5F9',
+  border: '#E2E8F0',
+  danger: '#EF4444',
+};
+
+const SPACING = 20;
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -25,6 +42,7 @@ export default function ProfileScreen() {
   const [name, setName] = useState(user?.name || '');
   const [profileImage, setProfileImage] = useState<string | null>(user?.profileImage || null);
 
+  // --- LOGIC PRESERVED ---
   const handleSave = async () => {
     if (!user) return;
 
@@ -40,7 +58,7 @@ export default function ProfileScreen() {
 
     if (result) {
       await refreshUser();
-      Alert.alert('Berhasil', 'Profile berhasil diperbarui', [
+      Alert.alert('Success', 'Profile updated successfully', [
         {
           text: 'OK',
           onPress: () => {
@@ -49,15 +67,17 @@ export default function ProfileScreen() {
         },
       ]);
     } else {
-      Alert.alert('Error', 'Gagal memperbarui profile');
+      Alert.alert('Error', 'Failed to update profile');
     }
   };
 
   const handlePickImage = async () => {
+    if (!isEditing) return; // Prevent picking if not editing
+
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Akses ke galeri diperlukan untuk mengganti foto profile');
+      Alert.alert('Permission Denied', 'Gallery access is required to change profile photo');
       return;
     }
 
@@ -80,13 +100,22 @@ export default function ProfileScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
+      {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={styles.backButton}
+            hitSlop={10}
+        >
           <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+            <Path stroke={COLORS.textMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
+        
+        <Text style={styles.headerTitle}>My Profile</Text>
+        
         <TouchableOpacity
           onPress={() => {
             if (isEditing) {
@@ -95,80 +124,108 @@ export default function ProfileScreen() {
               setIsEditing(true);
             }
           }}
-          style={styles.editButton}
+          style={[
+              styles.actionButton,
+              isEditing ? styles.actionButtonSave : styles.actionButtonEdit
+          ]}
         >
-          <Text style={styles.editButtonText}>{isEditing ? 'Save' : 'Edit'}</Text>
+          <Text style={[
+              styles.actionButtonText,
+              isEditing ? { color: '#FFF' } : { color: COLORS.primary }
+          ]}>
+            {isEditing ? 'Save' : 'Edit'}
+          </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          {/* Profile Image */}
-          <View style={styles.imageSection}>
+          
+          {/* HERO SECTION: IMAGE */}
+          <View style={styles.heroSection}>
             <TouchableOpacity
               style={styles.imageContainer}
-              onPress={isEditing ? handlePickImage : undefined}
+              onPress={handlePickImage}
+              activeOpacity={isEditing ? 0.8 : 1}
               disabled={!isEditing}
             >
-              {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.profileImage} />
-              ) : (
-                <View style={styles.imagePlaceholder}>
-                  <Text style={styles.imagePlaceholderText}>
-                    {user.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
+              <View style={[styles.imageWrapper, isEditing && styles.imageWrapperEditing]}>
+                {profileImage ? (
+                    <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                ) : (
+                    <View style={styles.imagePlaceholder}>
+                    <Text style={styles.imagePlaceholderText}>
+                        {user.name.charAt(0).toUpperCase()}
+                    </Text>
+                    </View>
+                )}
+              </View>
+
+              {/* Camera Icon Overlay (Only Visible in Edit Mode) */}
               {isEditing && (
-                <View style={styles.editImageOverlay}>
-                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      stroke="#ffffff"
-                      strokeWidth="2"
-                      d="M3 9.854C3 8.83 3.83 8 4.854 8c.702 0 1.344-.397 1.658-1.025l.821-1.642c.11-.22.165-.33.228-.425a2 2 0 0 1 1.447-.895C9.122 4 9.245 4 9.491 4h5.018c.246 0 .37 0 .482.013a2 2 0 0 1 1.448.895c.063.095.118.205.228.425l.82 1.642A1.85 1.85 0 0 0 19.147 8C20.17 8 21 8.83 21 9.854v5.003c0 2.005 0 3.007-.46 3.74a3 3 0 0 1-.944.943c-.732.46-1.734.46-3.739.46H8.143c-2.005 0-3.007 0-3.74-.46a3 3 0 0 1-.943-.944C3 17.864 3 16.862 3 14.857z"
-                    />
-                    <Path
-                      stroke="#ffffff"
-                      strokeWidth="2"
-                      d="M3 9.854C3 8.83 3.83 8 4.854 8c.702 0 1.344-.397 1.658-1.025l.821-1.642c.11-.22.165-.33.228-.425a2 2 0 0 1 1.447-.895C9.122 4 9.245 4 9.491 4h5.018c.246 0 .37 0 .482.013a2 2 0 0 1 1.448.895c.063.095.118.205.228.425l.82 1.642A1.85 1.85 0 0 0 19.147 8C20.17 8 21 8.83 21 9.854v5.003c0 2.005 0 3.007-.46 3.74a3 3 0 0 1-.944.943c-.732.46-1.734.46-3.739.46H8.143c-2.005 0-3.007 0-3.74-.46a3 3 0 0 1-.943-.944C3 17.864 3 16.862 3 14.857z"
-                    />
-                    <Circle cx="12" cy="13" r="3" stroke="#ffffff" strokeWidth="2" />
+                <View style={styles.cameraBadge}>
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                    <Path stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <Circle cx="12" cy="13" r="4" stroke="#FFF" strokeWidth="2" />
                   </Svg>
                 </View>
               )}
             </TouchableOpacity>
+            
+            {!isEditing && (
+                <View style={{alignItems: 'center', marginTop: 16}}>
+                    <Text style={styles.heroName}>{user.name}</Text>
+                    <Text style={styles.heroUsername}>@{user.username}</Text>
+                </View>
+            )}
           </View>
 
-          {/* Profile Info */}
-          <View style={styles.infoSection}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Full Name</Text>
+          {/* FORM SECTION */}
+          <View style={styles.formCard}>
+            
+            {/* Field: Full Name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
               {isEditing ? (
                 <TextInput
                   style={styles.input}
                   value={name}
                   onChangeText={setName}
                   placeholder="Enter your name"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={COLORS.textTertiary}
                 />
               ) : (
-                <Text style={styles.infoValue}>{user.name}</Text>
+                <View style={styles.readOnlyContainer}>
+                    <Text style={styles.readOnlyText}>{user.name}</Text>
+                </View>
               )}
             </View>
 
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Username</Text>
-              <Text style={styles.infoValue}>@{user.username}</Text>
-              <Text style={styles.infoHint}>Username cannot be changed</Text>
+            {/* Field: Username (Locked) */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Username</Text>
+              <View style={[styles.readOnlyContainer, styles.lockedContainer]}>
+                <Text style={[styles.readOnlyText, styles.lockedText]}>@{user.username}</Text>
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                    <Path stroke={COLORS.textTertiary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2m14 0V9a7 7 0 0 0-14 0v2" />
+                </Svg>
+              </View>
             </View>
 
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{user.email}</Text>
-              <Text style={styles.infoHint}>Email cannot be changed</Text>
+            {/* Field: Email (Locked) */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <View style={[styles.readOnlyContainer, styles.lockedContainer]}>
+                <Text style={[styles.readOnlyText, styles.lockedText]}>{user.email}</Text>
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                    <Path stroke={COLORS.textTertiary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2m14 0V9a7 7 0 0 0-14 0v2" />
+                </Svg>
+              </View>
             </View>
+
           </View>
 
+          {/* CANCEL BUTTON */}
           {isEditing && (
             <TouchableOpacity
               style={styles.cancelButton}
@@ -179,7 +236,7 @@ export default function ProfileScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>Cancel Changes</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -191,65 +248,106 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: COLORS.background,
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 8,
-    paddingTop: 50,
-    borderBottomWidth: 0,
-    borderBottomColor: '#f3f4f6',
+    paddingHorizontal: SPACING,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 20,
+    backgroundColor: COLORS.background,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surface,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 18,
     fontFamily: Font.bold,
-    color: '#1f2937',
-    flex: 1,
-    textAlign: 'center',
-    paddingLeft: 18,
+    color: COLORS.textMain,
   },
-  editButton: {
+  actionButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  editButtonText: {
-    fontSize: 16,
-    fontFamily: Font.semiBold,
-    color: '#2563eb',
+  actionButtonEdit: {
+    backgroundColor: COLORS.primarySoft,
   },
+  actionButtonSave: {
+    backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontFamily: Font.bold,
+  },
+
+  // Scroll Content
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
+    padding: SPACING,
   },
-  imageSection: {
+
+  // Hero Image
+  heroSection: {
     alignItems: 'center',
-    marginVertical: 32,
+    marginBottom: 32,
+    marginTop: 10,
   },
   imageContainer: {
     position: 'relative',
   },
-  profileImage: {
+  imageWrapper: {
     width: 120,
     height: 120,
     borderRadius: 60,
+    // FIX: Mengganti padding dengan borderWidth untuk menghilangkan border kotak
+    borderWidth: 4, 
+    borderColor: COLORS.surface,
+    backgroundColor: COLORS.surface,
+    shadowColor: COLORS.textMain,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'visible', // Pastikan shadow tetap terlihat
+  },
+  imageWrapperEditing: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60, // Sesuaikan dengan parent
   },
   imagePlaceholder: {
-    width: 120,
-    height: 120,
+    width: '100%',
+    height: '100%',
     borderRadius: 60,
-    backgroundColor: '#2563eb',
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -258,61 +356,101 @@ const styles = StyleSheet.create({
     fontFamily: Font.bold,
     color: '#ffffff',
   },
-  editImageOverlay: {
+  cameraBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(104, 103, 103, 0.9)',
+    backgroundColor: COLORS.textMain,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: COLORS.background,
   },
-  infoSection: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+  heroName: {
+    fontSize: 24,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+    marginBottom: 4,
   },
-  infoItem: {
-    marginBottom: 24,
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontFamily: Font.semiBold,
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  infoValue: {
+  heroUsername: {
     fontSize: 16,
     fontFamily: Font.regular,
-    color: '#1f2937',
+    color: COLORS.textSec,
   },
-  infoHint: {
-    fontSize: 12,
-    fontFamily: Font.regular,
-    color: '#9ca3af',
-    marginTop: 4,
+
+  // Form
+  formCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: COLORS.textMain,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 13,
+    fontFamily: Font.bold,
+    color: COLORS.textSec,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
     fontSize: 16,
     fontFamily: Font.regular,
-    color: '#1f2937',
+    color: COLORS.textMain,
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: COLORS.border,
   },
-  cancelButton: {
-    backgroundColor: '#f3f4f6',
-    padding: 16,
-    borderRadius: 12,
+  readOnlyContainer: {
+    paddingVertical: 14,
+    paddingHorizontal: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 16,
+  },
+  readOnlyText: {
+    fontSize: 18,
+    fontFamily: Font.regular,
+    color: COLORS.textMain,
+  },
+  lockedContainer: {
+    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
+    paddingVertical: 10,
+  },
+  lockedText: {
+    fontSize: 16,
+    color: COLORS.textTertiary,
+  },
+
+  // Buttons
+  cancelButton: {
+    marginTop: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontFamily: Font.semiBold,
-    color: '#6b7280',
+    fontSize: 15,
+    fontFamily: Font.bold,
+    color: COLORS.danger,
   },
 });

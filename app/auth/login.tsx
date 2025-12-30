@@ -80,6 +80,10 @@ export default function LoginScreen() {
     router.push('/auth/register');
   };
 
+  const goToOnboarding = () => {
+    router.push('/onboarding');
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -91,6 +95,16 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
+          {/* Back to Onboarding Button */}
+          <TouchableOpacity 
+            onPress={goToOnboarding}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#64748b" />
+            <Text style={styles.backButtonText}>Back to Onboarding</Text>
+          </TouchableOpacity>
+
           {/* Header Section */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
@@ -277,6 +291,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     paddingTop: 60,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  backButtonText: {
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: '#64748b',
+    marginLeft: 6,
   },
   header: {
     alignItems: 'center',

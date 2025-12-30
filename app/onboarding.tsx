@@ -1,48 +1,52 @@
- import { Font } from '@/constants/theme';
+import { Font } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
+
+// --- MODERN COLORS ---
+// Menggunakan palet warna yang lebih vibrant dan modern
+const PAGE_COLORS = [
+  ['#4F46E5', '#818CF8'], // Indigo (Modern Blue)
+  ['#059669', '#34D399'], // Emerald (Modern Green)
+  ['#D946EF', '#F472B6'], // Fuchsia (Modern Pink)
+];
 
 interface OnboardingPage {
   title: string;
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
-  colors: string[];
 }
 
 const PAGES: OnboardingPage[] = [
   {
     title: 'Welcome to deBT',
-    description: 'deBT brings your money together — from cash to crypto to cross-border transfers.',
-    icon: 'flash',
-    colors: ['#1a1a2e', '#16213e', '#0f3460'],
+    description: 'Bawa semua urusan uangmu jadi satu. Dari cash, crypto, sampai transfer antar negara, semua beres di sini.',
+    icon: 'wallet-outline', // Icon yang lebih relevan
   },
   {
     title: 'Grup & Kolaborasi',
-    description: 'Kelola utang piutang dalam grup dengan mudah. Lacak siapa yang berhutang kepada siapa.',
-    icon: 'people',
-    colors: ['#667eea', '#764ba2'],
+    description: 'Nggak usah pusing nagih utang temen. Bikin grup, catet bareng, dan liat siapa yang belum bayar dengan transparan.',
+    icon: 'people-outline',
   },
   {
-    title: 'Optimasi Pembayaran',
-    description: 'Hitung pembayaran optimal secara otomatis. Hemat waktu dan tenaga dalam menyelesaikan utang.',
-    icon: 'calculator',
-    colors: ['#f093fb', '#f5576c'],
+    title: 'Bayar Lebih Pinter',
+    description: 'Biar sistem yang mikir cara bayar paling efisien. Hemat waktu, hemat tenaga, utang lunas lebih cepet.',
+    icon: 'trending-up-outline',
   },
 ];
 
@@ -55,7 +59,7 @@ export default function OnboardingScreen() {
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
     {
-      useNativeDriver: false,
+      useNativeDriver: false, // width interploation doesn't support native driver
       listener: (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
         const page = Math.round(offsetX / width);
@@ -64,14 +68,9 @@ export default function OnboardingScreen() {
     }
   );
 
-  const handleGetStarted = async () => {
+  const completeOnboarding = async (path: '/auth/register' | '/auth/login') => {
     await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-    router.push('/auth/register');
-  };
-
-  const handleSignIn = async () => {
-    await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-    router.push('/auth/login');
+    router.push(path);
   };
 
   const handleNext = () => {
@@ -81,13 +80,41 @@ export default function OnboardingScreen() {
         animated: true,
       });
     } else {
-      handleGetStarted();
+      completeOnboarding('/auth/register');
     }
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      {/* BACKGROUND GRADIENT ANIMATION */}
+      {/* Kita tumpuk gradien absolute di belakang agar transisi warna smooth saat scroll */}
+      {PAGES.map((_, index) => {
+        const inputRange = [
+          (index - 1) * width,
+          index * width,
+          (index + 1) * width,
+        ];
+        const opacity = scrollX.interpolate({
+          inputRange,
+          outputRange: [0, 1, 0],
+          extrapolate: 'clamp',
+        });
+        return (
+          <Animated.View
+            key={`bg-${index}`}
+            style={[StyleSheet.absoluteFill, { opacity }]}
+          >
+            <LinearGradient
+              colors={PAGE_COLORS[index]}
+              style={{ flex: 1 }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          </Animated.View>
+        );
+      })}
 
       <ScrollView
         ref={scrollViewRef}
@@ -97,6 +124,7 @@ export default function OnboardingScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
         bounces={false}
+        contentContainerStyle={{ flexGrow: 1 }}
       >
         {PAGES.map((page, index) => {
           const inputRange = [
@@ -107,202 +135,108 @@ export default function OnboardingScreen() {
 
           const scale = scrollX.interpolate({
             inputRange,
-            outputRange: [0.8, 1, 0.8],
-            extrapolate: 'clamp',
-          });
-
-          const opacity = scrollX.interpolate({
-            inputRange,
             outputRange: [0.3, 1, 0.3],
             extrapolate: 'clamp',
           });
 
           const translateY = scrollX.interpolate({
             inputRange,
-            outputRange: [50, 0, 50],
+            outputRange: [100, 0, 100],
+            extrapolate: 'clamp',
+          });
+
+          const textOpacity = scrollX.interpolate({
+            inputRange,
+            outputRange: [0, 1, 0],
             extrapolate: 'clamp',
           });
 
           return (
             <View key={index} style={[styles.page, { width }]}>
-              <LinearGradient
-                colors={page.colors}
-                style={styles.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                {/* Icon Section with Parallax */}
-                <View style={styles.iconSection}>
-                  <Animated.View
-                    style={[
-                      styles.iconContainer,
-                      {
-                        transform: [{ scale }, { translateY }],
-                        opacity,
-                      },
-                    ]}
-                  >
-                    <View style={styles.iconWrapper}>
-                      <Ionicons name={page.icon} size={80} color="#fff" />
-                    </View>
-
-                    {/* Orbiting Elements (only for first page) */}
-                    {index === 0 && (
-                      <>
-                        <Animated.View
-                          style={[
-                            styles.orbitingIcon,
-                            styles.orbitTop,
-                            { opacity },
-                          ]}
-                        >
-                          <Ionicons name="trending-up" size={24} color="#4ade80" />
-                        </Animated.View>
-                        <Animated.View
-                          style={[
-                            styles.orbitingIcon,
-                            styles.orbitRight,
-                            { opacity },
-                          ]}
-                        >
-                          <Ionicons name="sunny" size={24} color="#fbbf24" />
-                        </Animated.View>
-                        <Animated.View
-                          style={[
-                            styles.orbitingIcon,
-                            styles.orbitBottom,
-                            { opacity },
-                          ]}
-                        >
-                          <Ionicons name="earth" size={24} color="#60a5fa" />
-                        </Animated.View>
-                        <Animated.View
-                          style={[
-                            styles.orbitingIcon,
-                            styles.orbitLeft,
-                            { opacity },
-                          ]}
-                        >
-                          <Ionicons name="moon" size={24} color="#94a3b8" />
-                        </Animated.View>
-                      </>
-                    )}
-
-                    {/* Card visual for last page */}
-                    {index === 2 && (
-                      <Animated.View
-                        style={[
-                          styles.cardVisual,
-                          { opacity },
-                        ]}
-                      >
-                        <View style={styles.card}>
-                          <Text style={styles.cardTitle}>PAY BILLS</Text>
-                          <View style={styles.cardIcons}>
-                            <View style={styles.cardIcon}>
-                              <Ionicons name="logo-bitcoin" size={20} color="#fff" />
-                            </View>
-                            <View style={[styles.cardIcon, styles.cardIconSecond]}>
-                              <Ionicons name="cash" size={20} color="#fff" />
-                            </View>
-                          </View>
-                          <Text style={styles.cardSubtitle}>Crypto    Cash</Text>
-                        </View>
-                      </Animated.View>
-                    )}
-                  </Animated.View>
-                </View>
-
-                {/* Text Content */}
+              {/* CONTENT CONTAINER */}
+              <View style={styles.contentContainer}>
+                
+                {/* ANIMATED ICON */}
                 <Animated.View
                   style={[
-                    styles.textSection,
-                    { opacity },
+                    styles.iconCircle,
+                    {
+                      transform: [{ scale }, { translateY }],
+                    },
                   ]}
                 >
+                  <Ionicons name={page.icon} size={80} color="#fff" />
+                  
+                  {/* Decorative Rings */}
+                  <View style={[styles.ring, { width: 160, height: 160, opacity: 0.3 }]} />
+                  <View style={[styles.ring, { width: 200, height: 200, opacity: 0.15 }]} />
+                </Animated.View>
+
+                {/* TEXT CONTENT */}
+                <Animated.View style={{ opacity: textOpacity, alignItems: 'center', paddingHorizontal: 32 }}>
                   <Text style={styles.title}>{page.title}</Text>
                   <Text style={styles.description}>{page.description}</Text>
                 </Animated.View>
 
-                {/* Decorative Stars */}
-                {index === 0 && (
-                  <View style={styles.starsContainer}>
-                    {[...Array(20)].map((_, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.star,
-                          {
-                            top: `${Math.random() * 100}%`,
-                            left: `${Math.random() * 100}%`,
-                            opacity: Math.random() * 0.5 + 0.2,
-                          },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                )}
-              </LinearGradient>
+              </View>
             </View>
           );
         })}
       </ScrollView>
 
-      {/* Page Indicators */}
-      <View style={styles.indicatorContainer}>
-        {PAGES.map((_, index) => {
-          const inputRange = [
-            (index - 1) * width,
-            index * width,
-            (index + 1) * width,
-          ];
+      {/* FOOTER CONTROLS */}
+      <View style={styles.footer}>
+        
+        {/* PAGE INDICATORS */}
+        <View style={styles.indicatorContainer}>
+          {PAGES.map((_, index) => {
+            const inputRange = [
+              (index - 1) * width,
+              index * width,
+              (index + 1) * width,
+            ];
+            const dotWidth = scrollX.interpolate({
+              inputRange,
+              outputRange: [8, 24, 8],
+              extrapolate: 'clamp',
+            });
+            const opacity = scrollX.interpolate({
+              inputRange,
+              outputRange: [0.4, 1, 0.4],
+              extrapolate: 'clamp',
+            });
+            return (
+              <Animated.View
+                key={index}
+                style={[styles.indicator, { width: dotWidth, opacity }]}
+              />
+            );
+          })}
+        </View>
 
-          const dotWidth = scrollX.interpolate({
-            inputRange,
-            outputRange: [8, 24, 8],
-            extrapolate: 'clamp',
-          });
+        {/* BUTTONS */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleNext}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.primaryButtonText}>
+              {currentPage === PAGES.length - 1 ? 'Get Started' : 'Next'}
+            </Text>
+            {currentPage !== PAGES.length - 1 && (
+               <Ionicons name="arrow-forward" size={20} color={PAGE_COLORS[currentPage][0]} style={{marginLeft: 8}} />
+            )}
+          </TouchableOpacity>
 
-          const opacity = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.3, 1, 0.3],
-            extrapolate: 'clamp',
-          });
-
-          return (
-            <Animated.View
-              key={index}
-              style={[
-                styles.indicator,
-                {
-                  width: dotWidth,
-                  opacity,
-                },
-              ]}
-            />
-          );
-        })}
-      </View>
-
-      {/* CTA Buttons */}
-      <View style={styles.ctaContainer}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={handleNext}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.primaryButtonText}>
-            {currentPage === PAGES.length - 1 ? 'Get Started' : 'Next'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleSignIn}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.secondaryButtonText}>Sign In</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => completeOnboarding('/auth/login')}
+            activeOpacity={0.7}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>I already have an account</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -311,145 +245,73 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000', // Fallback color
   },
   page: {
     height,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  gradient: {
-    flex: 1,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  iconSection: {
+  contentContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingBottom: 100, // Memberi ruang untuk footer
   },
-  iconContainer: {
-    width: 200,
-    height: 200,
+  
+  // ICON STYLES
+  iconCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
+    marginBottom: 60,
+    // Glassmorphism effect simulation
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  iconWrapper: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  orbitingIcon: {
+  ring: {
     position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#fff',
   },
-  orbitTop: {
-    top: -20,
-    left: 76,
-  },
-  orbitRight: {
-    top: 76,
-    right: -20,
-  },
-  orbitBottom: {
-    bottom: -20,
-    left: 76,
-  },
-  orbitLeft: {
-    top: 76,
-    left: -20,
-  },
-  cardVisual: {
-    position: 'absolute',
-    top: 180,
-    width: 200,
-  },
-  card: {
-    backgroundColor: '#60a5fa',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  cardTitle: {
-    fontSize: 12,
-    color: '#fff',
-    fontFamily: Font.bold,
-    marginBottom: 16,
-  },
-  cardIcons: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  cardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardIconSecond: {
-    marginLeft: 8,
-  },
-  cardSubtitle: {
-    fontSize: 11,
-    color: '#fff',
-    fontFamily: Font.regular,
-  },
-  starsContainer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
-  star: {
-    position: 'absolute',
-    width: 2,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: '#fff',
-  },
-  textSection: {
-    paddingHorizontal: 40,
-    paddingBottom: 40,
-    alignItems: 'center',
-  },
+
+  // TEXT STYLES
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 32,
     fontFamily: Font.bold,
+    color: '#fff',
     textAlign: 'center',
     marginBottom: 16,
+    letterSpacing: -0.5, // Modern tight tracking
   },
   description: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 16,
     fontFamily: Font.regular,
+    color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24, // Legible line height
+    maxWidth: '90%',
+  },
+
+  // FOOTER STYLES
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 32,
+    paddingBottom: Platform.OS === 'ios' ? 48 : 32,
+    // Gradient overlay for readability (optional)
   },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
+    marginBottom: 32,
     gap: 8,
   },
   indicator: {
@@ -457,39 +319,34 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#fff',
   },
-  ctaContainer: {
-    paddingHorizontal: 32,
-    paddingBottom: 40,
+  buttonContainer: {
+    gap: 16,
   },
   primaryButton: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 20, // Rounded corners
+    height: 56,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 5,
   },
   primaryButtonText: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#1a1a2e',
+    fontSize: 16,
     fontFamily: Font.bold,
+    color: '#1a1a2e', // Dark text on white button
   },
   secondaryButton: {
-    backgroundColor: 'transparent',
-    borderRadius: 16,
-    paddingVertical: 18,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 8,
   },
   secondaryButtonText: {
-    fontSize: 16,
-    color: '#fff',
+    fontSize: 14,
     fontFamily: Font.semiBold,
+    color: 'rgba(255,255,255,0.7)',
   },
 });

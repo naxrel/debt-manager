@@ -15,12 +15,27 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  StatusBar
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 
-// --- BAGIAN INI DIMODIFIKASI UNTUK UI APPLE-LIKE & FIX LAYOUT ---
+// --- DESIGN SYSTEM & COLORS (Modern Form) ---
+const COLORS = {
+  background: '#F8FAFC', // Slate 50
+  surface: '#FFFFFF',
+  primary: '#4F46E5',    // Indigo 600
+  textMain: '#0F172A',   // Slate 900
+  textSec: '#64748B',    // Slate 500
+  textTertiary: '#94A3B8',
+  border: '#E2E8F0',
+  inputBg: '#F1F5F9',    // Slate 100
+  danger: '#EF4444',     // Red 500
+  success: '#10B981',    // Emerald 500
+};
 
+// --- CUSTOM CALENDAR (KODE LAMA ANDA - DIKEMBALIKAN PERSIS) ---
 interface CalendarProps {
   selectedDate: dayjs.Dayjs;
   onSelectDate: (date: dayjs.Dayjs) => void;
@@ -75,7 +90,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
     }
     
     // 3. FIX UTAMA: Tambahkan empty cells di akhir agar grid tetap rapi
-    // Menghitung berapa sisa kotak yang dibutuhkan agar totalnya kelipatan 7
     const totalSlots = days.length;
     const remainder = totalSlots % 7;
     if (remainder !== 0) {
@@ -91,7 +105,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
   const renderWeeks = () => {
     const days = generateCalendarDays();
     const weeks = [];
-    
     for (let i = 0; i < days.length; i += 7) {
       weeks.push(
         <View key={i} style={styles.calendarWeek}>
@@ -99,7 +112,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
         </View>
       );
     }
-    
     return weeks;
   };
 
@@ -139,8 +151,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
   );
 };
 
-// --- LOGIC UTAMA (TIDAK BERUBAH BANYAK, HANYA PEMANGGILAN) ---
-
+// --- MAIN SCREEN ---
 export default function AddDebtScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -153,25 +164,21 @@ export default function AddDebtScreen() {
   const [date, setDate] = useState(dayjs());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // ... (Kode logic handleSubmit, formatNumber, dll sama persis seperti sebelumnya) ...
-  // Saya persingkat bagian logic ini agar fokus ke solusi UI, 
-  // Pastikan Anda menyalin logic handleSubmit, formatNumber, handleAmountChange dari kode lama Anda ke sini.
-  
+  // --- Logic Handlers ---
   const handleSubmit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     if (!user) {
-      if (Platform.OS === 'web') alert('User tidak ditemukan');
-      else Alert.alert('Error', 'User tidak ditemukan');
+      Alert.alert('Error', 'User not found');
       return;
     }
     if (!username || !amount) {
-      if (Platform.OS === 'web') alert('Username dan jumlah harus diisi');
-      else Alert.alert('Error', 'Username dan jumlah harus diisi');
+      Alert.alert('Missing Info', 'Please fill in username and amount');
       return;
     }
     const amountNumber = parseFloat(amount.replace(/[^0-9]/g, ''));
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      if (Platform.OS === 'web') alert('Jumlah harus berupa angka yang valid');
-      else Alert.alert('Error', 'Jumlah harus berupa angka yang valid');
+      Alert.alert('Invalid Amount', 'Please enter a valid number');
       return;
     }
 
@@ -179,14 +186,12 @@ export default function AddDebtScreen() {
     const otherUser = StaticDB.getUserByUsername(cleanUsername);
     
     if (!otherUser) {
-      if (Platform.OS === 'web') alert(`Username @${cleanUsername} belum terdaftar.`);
-      else Alert.alert('Error', `Username @${cleanUsername} belum terdaftar.`);
+      Alert.alert('User Not Found', `Username @${cleanUsername} is not registered.`);
       return;
     }
 
     if (otherUser.id === user.id) {
-       if (Platform.OS === 'web') alert('Tidak bisa transaksi dengan diri sendiri');
-       else Alert.alert('Error', 'Tidak bisa transaksi dengan diri sendiri');
+       Alert.alert('Error', 'You cannot create a transaction with yourself.');
        return;
     }
 
@@ -203,15 +208,12 @@ export default function AddDebtScreen() {
         initiatedBy: user.id,
       });
 
-      if (Platform.OS === 'web') {
-        alert(`Transaksi berhasil dibuat`);
-        router.back();
-      } else {
-        Alert.alert('Sukses', `Transaksi berhasil dibuat`, [{ text: 'OK', onPress: () => router.back() }]);
-      }
+      Alert.alert('Success', `Transaction created successfully!`, [{ 
+          text: 'OK', 
+          onPress: () => router.back() 
+      }]);
     } catch (error) {
-       if (Platform.OS === 'web') alert('Gagal');
-       else Alert.alert('Error', 'Gagal');
+       Alert.alert('Error', 'Failed to create transaction');
     }
   };
 
@@ -224,105 +226,161 @@ export default function AddDebtScreen() {
     setAmount(formatNumber(text));
   };
 
-  const formatDate = (date: dayjs.Dayjs) => {
-    return date.format('DD/MM/YYYY');
-  };
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
+      
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={styles.backButton}
+            hitSlop={10}
+        >
           <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#1f2937" strokeWidth="2" d="m15 6-6 6 6 6" />
+            <Path stroke={COLORS.textMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tambah Transaksi</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>New Transaction</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView keyboardShouldPersistTaps="handled" style={styles.scrollView}>
-        <View style={styles.content}>
-          {/* Type Toggle */}
-          <View style={styles.toggleContainer}>
+      <ScrollView 
+        keyboardShouldPersistTaps="handled" 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Modern Segmented Control */}
+        <View style={styles.segmentContainer}>
             <TouchableOpacity
-              style={[styles.toggleButton, styles.toggleButtonLeft, type === 'hutang' && styles.toggleButtonActive]}
-              onPress={() => setType('hutang')}
-              activeOpacity={0.8}
+                style={[
+                    styles.segmentButton, 
+                    type === 'hutang' && styles.segmentButtonActive,
+                    type === 'hutang' && { backgroundColor: COLORS.danger + '15', borderColor: COLORS.danger }
+                ]}
+                onPress={() => {
+                    Haptics.selectionAsync();
+                    setType('hutang');
+                }}
+                activeOpacity={0.8}
             >
-              <Text style={[styles.toggleButtonText, type === 'hutang' && styles.toggleButtonTextActive]}>- Debt</Text>
+                <View style={[styles.dotIndicator, { backgroundColor: type === 'hutang' ? COLORS.danger : COLORS.textSec }]} />
+                <Text style={[
+                    styles.segmentText, 
+                    type === 'hutang' && { color: COLORS.danger, fontFamily: Font.bold }
+                ]}>
+                    I Owe (Debt)
+                </Text>
             </TouchableOpacity>
+
+            <View style={{width: 12}} />
+
             <TouchableOpacity
-              style={[styles.toggleButton, styles.toggleButtonRight, type === 'piutang' && styles.toggleButtonActive]}
-              onPress={() => setType('piutang')}
-              activeOpacity={0.8}
+                style={[
+                    styles.segmentButton, 
+                    type === 'piutang' && styles.segmentButtonActive,
+                    type === 'piutang' && { backgroundColor: COLORS.success + '15', borderColor: COLORS.success }
+                ]}
+                onPress={() => {
+                    Haptics.selectionAsync();
+                    setType('piutang');
+                }}
+                activeOpacity={0.8}
             >
-              <Text style={[styles.toggleButtonText, type === 'piutang' && styles.toggleButtonTextActive]}>+ Receive</Text>
+                <View style={[styles.dotIndicator, { backgroundColor: type === 'piutang' ? COLORS.success : COLORS.textSec }]} />
+                <Text style={[
+                    styles.segmentText, 
+                    type === 'piutang' && { color: COLORS.success, fontFamily: Font.bold }
+                ]}>
+                    Owes Me (Receive)
+                </Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Form Inputs */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>To / From</Text>
-            <TextInput
-              style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Amount*</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0"
-              placeholderTextColor="#9ca3af"
-              value={amount}
-              onChangeText={handleAmountChange}
-              keyboardType="numeric"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Date*</Text>
-            <TouchableOpacity
-              style={styles.dateInput}
-              onPress={() => setShowDatePicker(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.dateInputText}>{formatDate(date)}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Note (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder=""
-              placeholderTextColor="#9ca3af"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              maxLength={200}
-            />
-            <Text style={styles.charCount}>{description.length}/200</Text>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSubmit} activeOpacity={0.8}>
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()} activeOpacity={0.8}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
         </View>
+
+        <View style={styles.formCard}>
+            {/* Input: Username */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Who is this for?</Text>
+                <View style={styles.inputWrapper}>
+                    <Text style={styles.inputPrefix}>@</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={username}
+                        onChangeText={setUsername}
+                        placeholder="username"
+                        placeholderTextColor={COLORS.textTertiary}
+                        autoCapitalize="none"
+                    />
+                </View>
+            </View>
+
+            {/* Input: Amount */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>How much?</Text>
+                <View style={styles.inputWrapper}>
+                    <Text style={styles.inputPrefix}>Rp</Text>
+                    <TextInput
+                        style={[styles.input, styles.amountInput]}
+                        placeholder="0"
+                        placeholderTextColor={COLORS.textTertiary}
+                        value={amount}
+                        onChangeText={handleAmountChange}
+                        keyboardType="numeric"
+                    />
+                </View>
+            </View>
+
+            {/* Input: Date */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>When?</Text>
+                <TouchableOpacity
+                    style={styles.dateInputButton}
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                >
+                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={{marginRight: 10}}>
+                        <Path stroke={COLORS.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </Svg>
+                    <Text style={styles.dateInputText}>{date.format('DD MMMM YYYY')}</Text>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" style={{marginLeft: 'auto'}}>
+                        <Path stroke={COLORS.textTertiary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                    </Svg>
+                </TouchableOpacity>
+            </View>
+
+            {/* Input: Note */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Notes (Optional)</Text>
+                <TextInput
+                    style={[styles.inputWrapper, styles.textArea]}
+                    placeholder="What is this for? (e.g. Lunch, Taxi)"
+                    placeholderTextColor={COLORS.textTertiary}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    maxLength={200}
+                />
+                <Text style={styles.charCount}>{description.length}/200</Text>
+            </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSubmit} activeOpacity={0.8}>
+                <Text style={styles.saveButtonText}>Create Transaction</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()} activeOpacity={0.8}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+        </View>
+
       </ScrollView>
 
-      {/* --- MODAL STYLE UPDATE --- */}
+      {/* --- DATE PICKER MODAL (KODE LAMA - DIKEMBALIKAN PERSIS) --- */}
       <Modal
         visible={showDatePicker}
         transparent={true}
@@ -337,7 +395,7 @@ export default function AddDebtScreen() {
           <TouchableOpacity 
             activeOpacity={1} 
             onPress={(e) => e.stopPropagation()}
-            style={styles.modalContentWrapper} // Wrapper baru untuk web centering
+            style={styles.modalContentWrapper} 
           >
             <View style={styles.datePickerModal}>
               <View style={styles.modalHeaderBar} />
@@ -345,7 +403,7 @@ export default function AddDebtScreen() {
               
               <CustomCalendar
                 selectedDate={date}
-                onSelectDate={setDate}
+                onSelectDate={(newDate) => setDate(newDate)}
               />
               
               <TouchableOpacity
@@ -366,164 +424,195 @@ export default function AddDebtScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 8,
-    paddingTop: 50,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 20,
+    backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: COLORS.border,
   },
   backButton: { 
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'flex-start',
-    paddingLeft: 10,
   },
   headerTitle: {
-    fontSize: 16,
-    fontFamily: Font.semiBold,
-    color: '#1f2937',
+    fontSize: 18,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
     flex: 1,
-    textAlign: 'left',
-  },
-  placeholder: {
-    width: 40,
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 16,
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
   },
-  toggleContainer: {
+  
+  // --- SEGMENT CONTROL (MODERN) ---
+  segmentContainer: {
     flexDirection: 'row',
-    backgroundColor: '#3f4451',
-    borderRadius: 100,
-    padding: 0,
     marginBottom: 24,
-    height: 50,
-    alignSelf: 'center',
-    width: '80%',
   },
-  toggleButton: {
+  segmentButton: {
     flex: 1,
-    paddingVertical: 0,
-    paddingHorizontal: 0,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 100,
-    margin: 0,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  toggleButtonLeft: {
-    borderTopLeftRadius: 100,
-    borderBottomLeftRadius: 100,
+  segmentButtonActive: {
+    borderWidth: 1,
+    shadowOpacity: 0.1,
   },
-  toggleButtonRight: {
-    borderTopRightRadius: 100,
-    borderBottomRightRadius: 100,
+  dotIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
-  toggleButtonActive: {
-    backgroundColor: '#282b30',
-  },
-  toggleButtonText: {
-    fontSize: 20,
+  segmentText: {
+    fontSize: 14,
     fontFamily: Font.semiBold,
-    color: '#9ca3af',
+    color: COLORS.textSec,
   },
-  toggleButtonTextActive: {
-    color: '#e7e7e7',
+
+  // --- FORM INPUTS (MODERN) ---
+  formCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: COLORS.textMain,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 13,
-    fontFamily: Font.regular,
-    color: '#6b7280',
+    fontSize: 14,
+    fontFamily: Font.semiBold,
+    color: COLORS.textMain,
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: '#fff',
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 14,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 14,
-    fontSize: 15,
-    fontFamily: Font.regular,
-    color: '#1f2937',
+    borderColor: 'transparent',
   },
-  dateInput: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 14,
+  inputPrefix: {
+    fontSize: 16,
+    fontFamily: Font.semiBold,
+    color: COLORS.textTertiary,
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: Font.semiBold,
+    color: COLORS.textMain,
+  },
+  amountInput: {
+    fontSize: 18,
+    color: COLORS.primary,
+  },
+  dateInputButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   dateInputText: {
-    fontSize: 15,
-    fontFamily: Font.regular,
-    color: '#1f2937',
+    fontSize: 16,
+    fontFamily: Font.semiBold,
+    color: COLORS.textMain,
   },
   textArea: {
+    paddingVertical: 12,
     height: 100,
     textAlignVertical: 'top',
+    fontSize: 15,
+    fontFamily: Font.regular,
+    color: COLORS.textMain,
   },
   charCount: {
     fontSize: 12,
     fontFamily: Font.regular,
-    color: '#9ca3af',
+    color: COLORS.textTertiary,
     textAlign: 'right',
-    marginTop: 4,
+    marginTop: 6,
   },
+
+  // --- BUTTONS ---
   buttonContainer: {
-    flexDirection: 'row',
     gap: 12,
-    marginTop: 12,
   },
   saveButton: {
-    flex: 1,
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    paddingVertical: 18,
     alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
   },
   saveButtonText: {
-    color: '#fff',
+    color: '#FFF',
     fontSize: 16,
-    fontFamily: Font.semiBold,
+    fontFamily: Font.bold,
   },
   cancelButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   cancelButtonText: {
-    color: '#6b7280',
+    color: COLORS.textSec,
     fontSize: 16,
     fontFamily: Font.semiBold,
   },
 
-  // --- MODAL STYLES (UPDATED) ---
+  // --- MODAL STYLES (KODE LAMA - DIKEMBALIKAN PERSIS) ---
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Slightly darker for focus
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContentWrapper: {
     width: '100%',
-    alignItems: 'center', // Penting untuk Web
+    alignItems: 'center',
   },
   datePickerModal: {
     backgroundColor: '#ffffff',
@@ -565,7 +654,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 
-  // --- CALENDAR STYLES (APPLE LOOK) ---
+  // --- CALENDAR STYLES (KODE LAMA - DIKEMBALIKAN PERSIS) ---
   calendarContainer: {
     marginBottom: 0,
   },
@@ -596,7 +685,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 13,
     fontFamily: Font.semiBold,
-    color: '#8E8E93', // iOS Gray text
+    color: '#8E8E93',
     textTransform: 'uppercase',
   },
   calendarGrid: {
@@ -612,13 +701,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // New container inside day for perfect circle
   dayContainer: {
-    width: 36, // Fixed size for perfect circle
+    width: 36,
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 18, // Half of width
+    borderRadius: 18,
   },
   dayContainerSelected: {
     backgroundColor: '#007AFF',
@@ -627,7 +715,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
   },
   calendarDayText: {
-    fontSize: 17, // Larger standard iOS size
+    fontSize: 17,
     fontFamily: Font.regular,
     color: '#000000',
   },

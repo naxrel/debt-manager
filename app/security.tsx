@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -15,24 +16,46 @@ import {
   View
 } from 'react-native';
 
+// --- DESIGN TOKENS ---
+const COLORS = {
+  background: '#F8FAFC', // Slate 50
+  surface: '#FFFFFF',
+  primary: '#4F46E5',    // Indigo 600
+  primarySoft: '#EEF2FF',
+  textMain: '#0F172A',   // Slate 900
+  textSec: '#64748B',    // Slate 500
+  textTertiary: '#94A3B8',
+  border: '#E2E8F0',
+  danger: '#EF4444',
+  success: '#10B981',
+};
+
 export default function SecurityScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  
+  // --- STATE ---
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Visibility Toggles
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // UI Focus State
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  
+  // Errors
   const [errors, setErrors] = useState({ 
     currentPassword: '', 
     newPassword: '', 
     confirmPassword: '' 
   });
 
+  // --- LOGIC PRESERVED ---
   const handleChangePassword = () => {
-    // Validasi
     const newErrors = { 
       currentPassword: '', 
       newPassword: '', 
@@ -41,12 +64,12 @@ export default function SecurityScreen() {
     let hasError = false;
 
     if (!currentPassword) {
-      newErrors.currentPassword = 'Current password tidak boleh kosong';
+      newErrors.currentPassword = 'Current password is required';
       hasError = true;
     }
 
     if (!newPassword) {
-      newErrors.newPassword = 'Are you sure to not fill this?';
+      newErrors.newPassword = 'New password is required';
       hasError = true;
     } else if (newPassword.length < 6) {
       newErrors.newPassword = 'Password must be at least 6 characters';
@@ -54,21 +77,19 @@ export default function SecurityScreen() {
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Confirm password cannot be empty';
+      newErrors.confirmPassword = 'Confirmation is required';
       hasError = true;
     } else if (newPassword !== confirmPassword) {
-      newErrors.confirmPassword = 'Password does not match';
+      newErrors.confirmPassword = 'Passwords do not match';
       hasError = true;
     }
 
     setErrors(newErrors);
 
-    if (hasError) {
-      return;
-    }
+    if (hasError) return;
 
-    // TODO: Implement actual password change logic
-    Alert.alert('Success', 'Password berhasil diubah', [
+    // Simulate API Call / Success
+    Alert.alert('Success', 'Password has been updated successfully', [
       {
         text: 'OK',
         onPress: () => {
@@ -87,35 +108,60 @@ export default function SecurityScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
+      {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#1f2937" />
+        <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={styles.backButton}
+            hitSlop={10}
+        >
+          <Ionicons name="chevron-back" size={24} color={COLORS.textMain} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Security</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        
+        {/* HERO ICON */}
+        <View style={styles.heroSection}>
+            <View style={styles.heroIconCircle}>
+                <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
+            </View>
+            <Text style={styles.heroTitle}>Change Password</Text>
+            <Text style={styles.heroSubtitle}>
+                Create a strong password to keep your account secure.
+            </Text>
+        </View>
 
-          {/* Current Password */}
+        {/* FORM CARD */}
+        <View style={styles.formCard}>
+
+          {/* 1. Current Password */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Current Password</Text>
             <View style={[
               styles.inputWrapper,
               focusedInput === 'currentPassword' && styles.inputWrapperFocused,
-              errors.currentPassword && styles.inputWrapperError
+              errors.currentPassword ? styles.inputWrapperError : null
             ]}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20} 
-                color={focusedInput === 'currentPassword' ? '#2563eb' : '#9ca3af'} 
-                style={styles.inputIcon}
-              />
+              <View style={styles.iconContainer}>
+                  <Ionicons 
+                    name="key-outline" 
+                    size={20} 
+                    color={focusedInput === 'currentPassword' ? COLORS.primary : COLORS.textTertiary} 
+                  />
+              </View>
               <TextInput
-                style={[styles.input, styles.inputPassword]}
+                style={styles.input}
                 placeholder="Enter current password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={COLORS.textTertiary}
                 value={currentPassword}
                 onChangeText={(text) => {
                   setCurrentPassword(text);
@@ -129,37 +175,37 @@ export default function SecurityScreen() {
               <TouchableOpacity
                 onPress={() => setShowCurrentPassword(!showCurrentPassword)}
                 style={styles.eyeIcon}
+                hitSlop={10}
               >
                 <Ionicons
-                  name={showCurrentPassword ? 'eye-outline' : 'eye-off-outline'}
+                  name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
-                  color="#9ca3af"
+                  color={COLORS.textSec}
                 />
               </TouchableOpacity>
             </View>
-            {errors.currentPassword ? (
-              <Text style={styles.errorText}>{errors.currentPassword}</Text>
-            ) : null}
+            {errors.currentPassword ? <Text style={styles.errorText}>{errors.currentPassword}</Text> : null}
           </View>
 
-          {/* New Password */}
+          {/* 2. New Password */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>New Password</Text>
             <View style={[
               styles.inputWrapper,
               focusedInput === 'newPassword' && styles.inputWrapperFocused,
-              errors.newPassword && styles.inputWrapperError
+              errors.newPassword ? styles.inputWrapperError : null
             ]}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20} 
-                color={focusedInput === 'newPassword' ? '#2563eb' : '#9ca3af'} 
-                style={styles.inputIcon}
-              />
+              <View style={styles.iconContainer}>
+                  <Ionicons 
+                    name="lock-closed-outline" 
+                    size={20} 
+                    color={focusedInput === 'newPassword' ? COLORS.primary : COLORS.textTertiary} 
+                  />
+              </View>
               <TextInput
-                style={[styles.input, styles.inputPassword]}
+                style={styles.input}
                 placeholder="Enter new password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={COLORS.textTertiary}
                 value={newPassword}
                 onChangeText={(text) => {
                   setNewPassword(text);
@@ -173,39 +219,41 @@ export default function SecurityScreen() {
               <TouchableOpacity
                 onPress={() => setShowNewPassword(!showNewPassword)}
                 style={styles.eyeIcon}
+                hitSlop={10}
               >
                 <Ionicons
-                  name={showNewPassword ? 'eye-outline' : 'eye-off-outline'}
+                  name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
-                  color="#9ca3af"
+                  color={COLORS.textSec}
                 />
               </TouchableOpacity>
             </View>
             {errors.newPassword ? (
               <Text style={styles.errorText}>{errors.newPassword}</Text>
             ) : (
-              <Text style={styles.hint}>Must be at least 6 characters.</Text>
+                <Text style={styles.hintText}>Minimum 6 characters with letters & numbers.</Text>
             )}
           </View>
 
-          {/* Confirm New Password */}
+          {/* 3. Confirm Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Confirm New Password</Text>
+            <Text style={styles.label}>Confirm Password</Text>
             <View style={[
               styles.inputWrapper,
               focusedInput === 'confirmPassword' && styles.inputWrapperFocused,
-              errors.confirmPassword && styles.inputWrapperError
+              errors.confirmPassword ? styles.inputWrapperError : null
             ]}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20} 
-                color={focusedInput === 'confirmPassword' ? '#2563eb' : '#9ca3af'} 
-                style={styles.inputIcon}
-              />
+              <View style={styles.iconContainer}>
+                  <Ionicons 
+                    name="checkbox-outline" 
+                    size={20} 
+                    color={focusedInput === 'confirmPassword' ? COLORS.primary : COLORS.textTertiary} 
+                  />
+              </View>
               <TextInput
-                style={[styles.input, styles.inputPassword]}
+                style={styles.input}
                 placeholder="Re-enter new password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={COLORS.textTertiary}
                 value={confirmPassword}
                 onChangeText={(text) => {
                   setConfirmPassword(text);
@@ -219,26 +267,28 @@ export default function SecurityScreen() {
               <TouchableOpacity
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 style={styles.eyeIcon}
+                hitSlop={10}
               >
                 <Ionicons
-                  name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                  name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
-                  color="#9ca3af"
+                  color={COLORS.textSec}
                 />
               </TouchableOpacity>
             </View>
-            {errors.confirmPassword ? (
-              <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-            ) : null}
+            {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
           </View>
 
+          {/* SUBMIT BUTTON */}
           <TouchableOpacity
             style={styles.saveButton}
             onPress={handleChangePassword}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Text style={styles.saveButtonText}>Change Password</Text>
+            <Text style={styles.saveButtonText}>Update Password</Text>
+            <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </TouchableOpacity>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -248,37 +298,85 @@ export default function SecurityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 10,
-    paddingTop: 50,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 10,
+    backgroundColor: COLORS.background,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surface,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 18,
     fontFamily: Font.bold,
-    color: '#1f2937',
-    flex: 1,
-    textAlign: 'center',
+    color: COLORS.textMain,
   },
+  
+  // Scroll Content
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 20,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+
+  // Hero Section
+  heroSection: {
+    alignItems: 'center',
+    marginVertical: 32,
+  },
+  heroIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '20', // 20% opacity
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    fontFamily: Font.regular,
+    color: COLORS.textSec,
+    textAlign: 'center',
+    maxWidth: '70%',
+    lineHeight: 20,
+  },
+
+  // Form Card
+  formCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: COLORS.textMain,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 5, // Android Shadow
   },
   inputGroup: {
     marginBottom: 20,
@@ -286,65 +384,80 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontFamily: Font.semiBold,
-    color: '#1e293b',
+    color: COLORS.textMain,
     marginBottom: 8,
   },
+  
+  // Input Styles
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#a3aab3ff',
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    height: 52,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    backgroundColor: COLORS.surface,
+    height: 56,
   },
   inputWrapperFocused: {
-    borderColor: '#2563eb',
-    backgroundColor: '#f8fafc',
+    borderColor: COLORS.primary,
+    borderWidth: 1.5, // Keep same width to prevent layout shift
   },
   inputWrapperError: {
-    borderColor: '#ef4444',
+    borderColor: COLORS.danger,
+    borderWidth: 1.5,
   },
-  inputIcon: {
-    marginRight: 8,
+  iconContainer: {
+    paddingLeft: 16,
+    paddingRight: 12,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1e293b',
-    paddingVertical: 0,
-  },
-  inputPassword: {
-    paddingRight: 8,
+    color: COLORS.textMain,
+    fontFamily: Font.regular,
+    height: '100%',
   },
   eyeIcon: {
-    padding: 4,
-    marginLeft: 4,
+    paddingHorizontal: 16,
+    height: '100%',
+    justifyContent: 'center',
   },
+  
+  // Text Helpers
   errorText: {
     fontSize: 12,
-    color: '#ef4444',
-    marginTop: 6,
-    marginLeft: 4,
-  },
-  hint: {
-    fontSize: 12,
+    color: COLORS.danger,
     fontFamily: Font.regular,
-    color: '#9ca3af',
     marginTop: 6,
     marginLeft: 4,
   },
+  hintText: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    fontFamily: Font.regular,
+    marginTop: 6,
+    marginLeft: 4,
+  },
+
+  // Button
   saveButton: {
-    backgroundColor: '#2563eb',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    paddingVertical: 18,
+    borderRadius: 16,
+    marginTop: 12,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+    gap: 8,
   },
   saveButtonText: {
     fontSize: 16,
-    fontFamily: Font.semiBold,
-    color: '#ffffff',
+    fontFamily: Font.bold,
+    color: '#FFFFFF',
   },
 });

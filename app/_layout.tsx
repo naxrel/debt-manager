@@ -60,6 +60,7 @@ export default function RootLayout() {
             <Stack.Screen name="profile" options={{ headerShown: false }} />
             <Stack.Screen name="security" options={{ headerShown: false }} />
             <Stack.Screen name="account-savings" options={{ headerShown: false }} />
+            <Stack.Screen name="group/[id]/info" options={{ headerShown: false }} />
           </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>
