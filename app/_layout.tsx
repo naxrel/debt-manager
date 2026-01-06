@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+// Pastikan path import ini sesuai dengan lokasi file Anda
 import { AuthProvider } from '@/contexts/AuthContext';
 import { DebtProvider } from '@/contexts/DebtContext';
 import { AppThemeProvider } from '@/contexts/ThemeContext';
@@ -14,18 +15,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 // Keep splash screen visible while loading fonts
 SplashScreen.preventAutoHideAsync();
 
-// export const unstable_settings = {
-//   anchor: '(tabs)',
-// };
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   const [loaded, error] = useFonts({
-  'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
-  'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
-  'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
-});
+    'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+    'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
+    'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+  });
 
   useEffect(() => {
     if (loaded || error) {
@@ -42,27 +39,56 @@ export default function RootLayout() {
       <AuthProvider>
         <DebtProvider>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-            <Stack.Screen name="auth/register" options={{ headerShown: false }} />
-            <Stack.Screen name="debt/add" options={{ headerShown: false }} />
-            <Stack.Screen name="debt/detail" options={{ headerShown: false }} />
-            <Stack.Screen name="debt/pending" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="group/create" options={{ headerShown: false }} />
-            <Stack.Screen name="group/[id]/add-transaction" options={{ headerShown: false }} />
-            <Stack.Screen name="history" options={{ headerShown: false }} />
-            <Stack.Screen name="about" options={{ headerShown: false }} />
-            <Stack.Screen name="profile" options={{ headerShown: false }} />
-            <Stack.Screen name="security" options={{ headerShown: false }} />
-            <Stack.Screen name="account-savings" options={{ headerShown: false }} />
-            <Stack.Screen name="group/[id]/info" options={{ headerShown: false }} />
-          </Stack>
-            <StatusBar style="auto" />
+            {/* 1. WRAP APLIKASI DENGAN TOAST PROVIDER DI SINI */}
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  // 2. ANIMASI DEFAULT UNTUK SEMUA PAGE (Native Slide)
+                  animation: 'slide_from_right', 
+                }}
+              >
+                <Stack.Screen name="index" />
+                <Stack.Screen name="onboarding" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="auth/login" />
+                <Stack.Screen name="auth/register" />
+                
+                {/* Debt Screens */}
+                <Stack.Screen name="debt/add" />
+                <Stack.Screen name="debt/detail" />
+                <Stack.Screen name="debt/pending" />
+                
+                {/* Group Screens */}
+                <Stack.Screen name="group/[id]" />
+                <Stack.Screen name="group/create" />
+                <Stack.Screen name="group/[id]/add-transaction" />
+                
+                {/* 3. GROUP INFO SEBAGAI MODAL (Slide from Bottom) */}
+                <Stack.Screen 
+                  name="group/[id]/info" 
+                  options={{ 
+                    presentation: 'modal', 
+                    animation: 'slide_from_bottom' 
+                  }} 
+                />
+
+                {/* Other Screens */}
+                <Stack.Screen name="history" />
+                <Stack.Screen name="about" />
+                <Stack.Screen name="profile" />
+                <Stack.Screen name="security" />
+                <Stack.Screen name="account-savings" />
+                
+                {/* Modal Global */}
+                <Stack.Screen 
+                  name="modal" 
+                  options={{ 
+                    presentation: 'modal', 
+                    title: 'Modal' 
+                  }} 
+                />
+              </Stack>
+              <StatusBar style="auto" />
           </ThemeProvider>
         </DebtProvider>
       </AuthProvider>

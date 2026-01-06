@@ -85,6 +85,7 @@ export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  
 
   // ─────────────────────────────────────────────────────────────────
   // STATE MANAGEMENT

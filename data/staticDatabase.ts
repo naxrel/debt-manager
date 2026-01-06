@@ -352,7 +352,7 @@ export const STATIC_GROUPS: DebtGroup[] = [
     name: 'Tim Project A',
     description: 'Grup untuk project development',
     creatorId: '1',
-    memberIds: ['1', '2', '3'],
+    memberIds: ['1', '2', '3', '4'],
     createdAt: '2025-11-01',
     isActive: true,
   },

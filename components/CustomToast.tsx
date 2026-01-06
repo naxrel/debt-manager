@@ -1,16 +1,38 @@
 import { Font } from '@/constants/theme';
 import React, { useEffect, useRef } from 'react';
 import {
-    Animated,
-    Dimensions,
-    PanResponder,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  PanResponder,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
+
+// Modern Color Palette (Dribbble Style)
+const COLORS = {
+  success: {
+    bgLight: 'rgba(236, 253, 245, 0.95)', // Very light emerald with opacity
+    border: 'rgba(167, 243, 208, 0.6)', // Soft emerald border
+    title: '#065F46', // Dark emerald for title
+    subtitle: '#047857', // Emerald for content
+    accent: '#34D399', // Emerald accent
+  },
+  error: {
+    bgLight: 'rgba(255, 241, 242, 0.95)', // Very light rose with opacity
+    border: 'rgba(253, 164, 175, 0.6)', // Soft rose border
+    title: '#9F1239', // Dark rose for title
+    subtitle: '#BE123C', // Rose for content
+    accent: '#FB7185', // Rose accent
+  },
+  shadow: {
+    color: '#171717', // Neutral-900
+    opacity: 0.06,
+  },
+};
 
 interface ToastProps {
   visible: boolean;
@@ -29,6 +51,7 @@ export const CustomToast: React.FC<ToastProps> = ({
 }) => {
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current; // Start slightly smaller
 
   const panResponder = useRef(
     PanResponder.create({
@@ -41,12 +64,14 @@ export const CustomToast: React.FC<ToastProps> = ({
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy < -50) {
+        if (gestureState.dy < -30) { // Easier dismiss threshold
           hideToast();
         } else {
           Animated.spring(translateY, {
             toValue: 0,
             useNativeDriver: true,
+            tension: 80, // Snappier spring
+            friction: 10,
           }).start();
         }
       },
@@ -67,13 +92,19 @@ export const CustomToast: React.FC<ToastProps> = ({
     Animated.parallel([
       Animated.spring(translateY, {
         toValue: 0,
-        tension: 50,
+        tension: 60,
         friction: 8,
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 300,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        tension: 60,
+        friction: 8,
         useNativeDriver: true,
       }),
     ]).start();
@@ -82,13 +113,18 @@ export const CustomToast: React.FC<ToastProps> = ({
   const hideToast = () => {
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: -100,
-        duration: 250,
+        toValue: -80,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 250,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 0.9,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start(() => onHide());
@@ -96,8 +132,7 @@ export const CustomToast: React.FC<ToastProps> = ({
 
   if (!visible) return null;
 
-  const icon = type === 'success' ? '✓' : '✕';
-  const backgroundColor = type === 'success' ? '#10B981' : '#EF4444';
+  const colorScheme = COLORS[type];
 
   return (
     <Animated.View
@@ -105,21 +140,32 @@ export const CustomToast: React.FC<ToastProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor,
+          backgroundColor: colorScheme.bgLight,
+          borderColor: colorScheme.border,
           opacity,
-          transform: [{ translateY }],
+          transform: [{ translateY }, { scale }],
         },
       ]}
     >
+      {/* Swipe Indicator - Minimalist Pill */}
+      <View style={styles.indicatorContainer}>
+        <View style={[styles.swipeIndicator, { backgroundColor: colorScheme.accent }]} />
+      </View>
+
       <TouchableOpacity 
         style={styles.content} 
         onPress={hideToast}
-        activeOpacity={0.9}
+        activeOpacity={0.8}
       >
-        <Text style={styles.icon}>{icon}</Text>
-        <Text style={styles.message}>{message}</Text>
+        <View style={styles.textWrapper}>
+          <Text style={[styles.title, { color: colorScheme.title }]}>
+            {type === 'success' ? 'Success' : 'Error'}
+          </Text>
+          <Text style={[styles.message, { color: colorScheme.subtitle }]} numberOfLines={2}>
+            {message}
+          </Text>
+        </View>
       </TouchableOpacity>
-      <View style={styles.swipeIndicator} />
     </Animated.View>
   );
 };
@@ -127,41 +173,59 @@ export const CustomToast: React.FC<ToastProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 50,
-    left: 16,
-    right: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    top: 40, // More breathing room from top
+    alignSelf: 'center',
+    width: 'auto', // Pill shape adapts to content
+    maxWidth: width - 48, // Prevent edge-to-edge
+    minWidth: 140, // Minimum width for short messages
+    borderRadius: 35, // Fully rounded pill shape
+    borderWidth: 1,
+    paddingBottom: 1, // Fine-tuning padding
+    
+    // Modern Soft Shadow
+    shadowColor: COLORS.shadow.color,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: COLORS.shadow.opacity,
+    shadowRadius: 16,
+    elevation: 4,
+    
     zIndex: 9999,
+    overflow: 'hidden', // Clip content to rounded corners
   },
-  content: {
-    flexDirection: 'row',
+  indicatorContainer: {
     alignItems: 'center',
-    padding: 16,
-  },
-  icon: {
-    fontSize: 24,
-    color: '#fff',
-    marginRight: 12,
-    fontFamily: Font.bold,
-  },
-  message: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 15,
-    fontFamily: Font.regular,
-    lineHeight: 20,
+    paddingTop: 2,
+    paddingBottom: 1,
   },
   swipeIndicator: {
-    width: 40,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 8,
+    width: 24,
+    height: 3,
+    borderRadius: 1.5,
+    opacity: 0.5,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 7,
+    paddingTop: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 13,
+    fontFamily: Font.bold || 'System', // Fallback font
+    marginBottom: 1.5, // Spacing between title and message
+    letterSpacing: 0.2,
+    textAlign: 'center',
+  },
+  message: {
+    fontSize: 12,
+    fontFamily: Font.regular || 'System', // Fallback font
+    textAlign: 'center',
+    lineHeight: 15, // Better readability
+    opacity: 0.9,
   },
 });

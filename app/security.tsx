@@ -131,10 +131,6 @@ export default function SecurityScreen() {
         
         {/* HERO ICON */}
         <View style={styles.heroSection}>
-            <View style={styles.heroIconCircle}>
-                <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
-            </View>
-            <Text style={styles.heroTitle}>Change Password</Text>
             <Text style={styles.heroSubtitle}>
                 Create a strong password to keep your account secure.
             </Text>
@@ -340,23 +336,6 @@ const styles = StyleSheet.create({
   heroSection: {
     alignItems: 'center',
     marginVertical: 32,
-  },
-  heroIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primarySoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '20', // 20% opacity
-  },
-  heroTitle: {
-    fontSize: 22,
-    fontFamily: Font.bold,
-    color: COLORS.textMain,
-    marginBottom: 8,
   },
   heroSubtitle: {
     fontSize: 14,

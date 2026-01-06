@@ -1,3 +1,4 @@
+import LogOutIcon from '@/components/logout-icon';
 import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
@@ -196,11 +197,12 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>Welcome back,</Text>
           <Text style={styles.userName}>{user.name}</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.iconButton}>
-          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke={COLORS.textMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </Svg>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleLogout}
+            style={styles.iconButton}
+          >
+            <LogOutIcon size={24} color={COLORS.textMain} />
+          </TouchableOpacity>
       </View>
 
       {/* BALANCE HERO CARD */}
@@ -540,7 +542,7 @@ const styles = StyleSheet.create({
   addButton: {
     width: 50,
     height: 50,
-    borderRadius: 16,
+    borderRadius: 30 ,
     backgroundColor: COLORS.textMain,
     justifyContent: 'center',
     alignItems: 'center',

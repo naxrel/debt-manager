@@ -1,18 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { BlurView } from 'expo-blur'; // Penting untuk efek modern
 import React, { useCallback, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Image,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Platform,
+  KeyboardAvoidingView
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,29 +25,71 @@ import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { DebtGroup, StaticDB } from '@/data/staticDatabase';
 
-// =====================================================================
-// DESIGN TOKENS (MATCHING PREVIOUS THEME)
-// =====================================================================
-const THEME = {
-  colors: {
-    bg: '#F9FAFB',        // Slate 50
-    surface: '#FFFFFF',
-    textMain: '#1F2937',  // Slate 900
-    textSec: '#6B7280',   // Slate 500
-    textTer: '#9CA3AF',
-    primary: '#2563EB',   // Indigo 600
-    danger: '#DC2626',
-    border: '#E5E7EB',
-    iconBg: '#F3F4F6',
-    overlay: 'rgba(0,0,0,0.5)',
-  },
-  radius: { card: 16, button: 12, input: 12, modal: 20 },
-  spacing: 20,
+// --- 1. MODERN DESIGN TOKENS ---
+const COLORS = {
+  bg: '#F8FAFC',        // Slate 50 (Ultra Light Grey for Background)
+  surface: '#FFFFFF',   // Pure White
+  primary: '#6366F1',   // Indigo 500
+  primarySoft: '#E0E7FF', // Indigo 100
+  textMain: '#1E293B',  // Slate 800
+  textSec: '#64748B',   // Slate 500
+  danger: '#EF4444',    // Red 500
+  dangerSoft: '#FEE2E2',// Red 100
+  border: '#E2E8F0',    // Slate 200
+  inputBg: '#F1F5F9',   // Slate 100
+  shadow: '#6366F1',
 };
 
-// =====================================================================
-// MAIN COMPONENT
-// =====================================================================
+const METRICS = {
+  radius: 24,           // Super rounded
+  padding: 24,          // Extreme whitespace
+  avatarSize: 110,
+};
+
+// --- 2. REUSABLE UI COMPONENTS (CLEAN CODE) ---
+
+// Styled Modal Wrapper (Glassmorphism)
+const GlassModal = ({ visible, onClose, title, children, type = 'default' }: any) => (
+  <Modal visible={visible} transparent animationType="fade">
+    <View style={styles.modalOverlay}>
+      <BlurView intensity={Platform.OS === 'ios' ? 20 : 100} tint="dark" style={StyleSheet.absoluteFill} />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalKeyboard}>
+        <View style={[styles.modalCard, type === 'danger' && styles.modalCardDanger]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, type === 'danger' && { color: COLORS.danger }]}>{title}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={20} color={COLORS.textSec} />
+            </TouchableOpacity>
+          </View>
+          {children}
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  </Modal>
+);
+
+// Member List Item
+const MemberItem = ({ member, isCreator, isMe }: any) => (
+  <View style={styles.memberCard}>
+    <Image 
+      source={{ uri: member.profileImage || 'https://via.placeholder.com/100' }} 
+      style={styles.memberAvatar} 
+    />
+    <View style={styles.memberInfo}>
+      <Text style={styles.memberName}>
+        {member.name} {isMe && <Text style={{ color: COLORS.primary, fontSize: 12 }}> (You)</Text>}
+      </Text>
+      <Text style={styles.memberUsername}>@{member.username}</Text>
+    </View>
+    {isCreator && (
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>Admin</Text>
+      </View>
+    )}
+  </View>
+);
+
+// --- 3. MAIN COMPONENT ---
 export default function GroupInfoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -78,12 +123,8 @@ export default function GroupInfoScreen() {
     const groupData = StaticDB.getGroupById(id);
     if (groupData) {
       setGroup(groupData);
-      
-      // Get Creator Info
       const creatorData = StaticDB.getUserById(groupData.creatorId);
       if (creatorData) setCreator(creatorData);
-
-      // Get Members Info
       const memberList = groupData.memberIds
         .map(mId => StaticDB.getUserById(mId))
         .filter(m => m !== undefined);
@@ -99,7 +140,6 @@ export default function GroupInfoScreen() {
   );
 
   // --- ACTIONS ---
-
   const handlePickGroupImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return;
@@ -121,7 +161,6 @@ export default function GroupInfoScreen() {
       description: editGroupDescription.trim(),
       groupImage: editGroupImage || undefined
     });
-    
     if (result.success) {
       setShowEditModal(false);
       loadData();
@@ -131,11 +170,10 @@ export default function GroupInfoScreen() {
 
   const handleInviteMember = () => {
     if (!group || !newMemberUsername.trim()) {
-    setFormError('Please enter a username');
+      setFormError('Please enter a username');
       return;
     }
     const foundUser = StaticDB.getUserByUsername(newMemberUsername.trim());
-    
     if (!foundUser) {
       setFormError('Username not found');
       return;
@@ -144,7 +182,6 @@ export default function GroupInfoScreen() {
       setFormError('User already in group');
       return;
     }
-
     const result = StaticDB.addMemberToGroup(group.id, foundUser.id);
     if (result.success) {
       setShowAddMemberModal(false);
@@ -163,11 +200,9 @@ export default function GroupInfoScreen() {
       setFormError('Group name does not match');
       return;
     }
-    
     const result = StaticDB.deleteGroup(group.id);
     if (result.success) {
       setShowDeleteModal(false);
-      // Navigate back to Home (pop 2 screens: Info -> Detail -> Home)
       router.dismissAll(); 
       router.replace('/(tabs)/group'); 
     } else {
@@ -179,7 +214,7 @@ export default function GroupInfoScreen() {
   if (isLoading || !group) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={THEME.colors.primary} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -188,14 +223,13 @@ export default function GroupInfoScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.bg} />
+      <StatusBar barStyle="dark-content" />
       
-      {/* HEADER: Back Button & Edit Dots (if Admin) */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      {/* 1. HEADER (Transparent & Float) */}
+      <View style={[styles.header, { marginTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
-          <Ionicons name="chevron-back" size={28} color={THEME.colors.primary} />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textMain} />
         </TouchableOpacity>
-        
         {isCreator && (
           <TouchableOpacity 
             style={styles.iconButton}
@@ -206,198 +240,158 @@ export default function GroupInfoScreen() {
               setShowEditModal(true);
             }}
           >
-            <Ionicons name="ellipsis-vertical" size={24} color={THEME.colors.textMain} />
+            <Ionicons name="settings-outline" size={24} color={COLORS.textMain} />
           </TouchableOpacity>
         )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* 1. HERO SECTION (Centered) */}
+        {/* 2. HERO SECTION (Premium Look) */}
         <View style={styles.heroSection}>
-          <View style={styles.bigAvatar}>
+          <View style={styles.avatarContainer}>
             {group.groupImage ? (
-              <Image source={{ uri: group.groupImage }} style={styles.bigAvatarImage} />
+              <Image source={{ uri: group.groupImage }} style={styles.avatarImage} />
             ) : (
-              <Text style={{ fontSize: 40 }}></Text>
+              <View style={[styles.avatarImage, { backgroundColor: COLORS.primarySoft, justifyContent: 'center', alignItems: 'center' }]}>
+                 <Text style={{ fontSize: 40, color: COLORS.primary }}>{group.name.charAt(0)}</Text>
+              </View>
             )}
+            <View style={styles.avatarShadow} />
           </View>
           
-          <Text style={styles.groupName}>{group.name}</Text>
+          <Text style={styles.groupTitle}>{group.name}</Text>
+          <Text style={styles.groupMeta}>
+            Created by <Text style={styles.highlight}>@{creator?.username}</Text>
+          </Text>
           
-          <Text style={styles.metaText}>
-            Created by <Text style={{ fontFamily: Font.bold }}>@{creator?.username || 'unknown'}</Text>
-            {/* Mock Date format since DB might not have it, or use existing if available */}
-            {group.createdAt ? `, ${new Date(group.createdAt).toLocaleDateString()}` : ''}
-          </Text>
-
-          <Text style={styles.description}>
-            {group.description || 'No description available for this group.'}
-          </Text>
+          <View style={styles.descContainer}>
+            <Text style={styles.description}>
+              {group.description || 'No description provided.'}
+            </Text>
+          </View>
         </View>
 
-        {/* 2. MEMBER LIST SECTION */}
-        <View style={styles.membersSection}>
-          {members.map((member) => (
-            <View key={member.id} style={styles.memberRow}>
-              <Image 
-                source={{ uri: member.profileImage || 'https://via.placeholder.com/50' }} 
-                style={styles.memberAvatar} 
-              />
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>
-                  {member.name} {member.id === user?.id && <Text style={{color: THEME.colors.textSec}}>(You)</Text>}
-                </Text>
-                <Text style={styles.memberUsername}>@{member.username}</Text>
-              </View>
-              {group.creatorId === member.id && (
-                 <View style={styles.adminBadge}>
-                    <Text style={styles.adminText}>Admin</Text>
-                 </View>
-              )}
+        {/* 3. MEMBERS SECTION (Card Style) */}
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Members</Text>
+            <View style={styles.pillCount}>
+                <Text style={styles.pillText}>{members.length}</Text>
             </View>
+        </View>
+
+        <View style={styles.memberList}>
+          {members.map((member) => (
+            <MemberItem 
+                key={member.id} 
+                member={member} 
+                isCreator={group.creatorId === member.id}
+                isMe={member.id === user?.id}
+            />
           ))}
         </View>
 
-        {/* 3. FOOTER ACTIONS */}
-        <View style={styles.footerActions}>
-          {isCreator && (
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              onPress={() => {
-                setNewMemberUsername('');
-                setFormError('');
-                setShowAddMemberModal(true);
-              }}
-            >
-              <Ionicons name="person-add-outline" size={22} color={THEME.colors.primary} />
-              <Text style={styles.actionButtonText}>Invite to Group</Text>
-            </TouchableOpacity>
-          )}
+        {/* 4. FOOTER ACTIONS */}
+        <View style={styles.footer}>
+            {isCreator && (
+                <TouchableOpacity 
+                    style={styles.primaryButton} 
+                    onPress={() => {
+                        setNewMemberUsername('');
+                        setFormError('');
+                        setShowAddMemberModal(true);
+                    }}
+                >
+                    <Ionicons name="add-circle" size={24} color="#FFF" />
+                    <Text style={styles.primaryButtonText}>Invite Member</Text>
+                </TouchableOpacity>
+            )}
 
-          {isCreator ? (
             <TouchableOpacity 
-              style={[styles.actionButton, { marginTop: 12 }]} 
-              onPress={() => {
-                setDeleteConfirmText('');
-                setFormError('');
-                setShowDeleteModal(true);
-              }}
+                style={styles.textButton} 
+                onPress={() => {
+                    if (isCreator) {
+                        setDeleteConfirmText('');
+                        setFormError('');
+                        setShowDeleteModal(true);
+                    } else {
+                        // Logic leave group here
+                    }
+                }}
             >
-              <Ionicons name="trash-outline" size={22} color={THEME.colors.danger} />
-              <Text style={[styles.actionButtonText, { color: THEME.colors.danger }]}>Delete group</Text>
+                <Text style={[styles.textButtonLabel, { color: COLORS.danger }]}>
+                    {isCreator ? 'Delete Group' : 'Leave Group'}
+                </Text>
             </TouchableOpacity>
-          ) : (
-             <TouchableOpacity style={[styles.actionButton, { marginTop: 12 }]}>
-                <Ionicons name="exit-outline" size={22} color={THEME.colors.danger} />
-                <Text style={[styles.actionButtonText, { color: THEME.colors.danger }]}>Leave group</Text>
-             </TouchableOpacity>
-          )}
         </View>
 
       </ScrollView>
 
-      {/* --- MODALS --- */}
+      {/* --- MODALS REFACTORED --- */}
+      
+      {/* Edit Modal */}
+      <GlassModal visible={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Group">
+        <TouchableOpacity style={styles.modalAvatarPicker} onPress={handlePickGroupImage}>
+             {editGroupImage ? (
+                 <Image source={{ uri: editGroupImage }} style={styles.modalAvatarImage} />
+             ) : (
+                 <Ionicons name="camera" size={32} color={COLORS.textSec} />
+             )}
+        </TouchableOpacity>
+        <TextInput 
+            style={styles.modernInput} 
+            value={editGroupName} 
+            onChangeText={setEditGroupName} 
+            placeholder="Group Name" 
+            placeholderTextColor={COLORS.textSec}
+        />
+        <TextInput 
+            style={[styles.modernInput, { height: 100, textAlignVertical: 'top' }]} 
+            value={editGroupDescription} 
+            onChangeText={setEditGroupDescription} 
+            placeholder="Description" 
+            placeholderTextColor={COLORS.textSec}
+            multiline 
+        />
+        <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleSaveEdit}>
+            <Text style={styles.modalPrimaryBtnText}>Save Changes</Text>
+        </TouchableOpacity>
+      </GlassModal>
 
-      {/* EDIT MODAL */}
-      <Modal visible={showEditModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit Group Info</Text>
-            
-            <TouchableOpacity style={styles.imagePicker} onPress={handlePickGroupImage}>
-               {editGroupImage ? (
-                 <Image source={{ uri: editGroupImage }} style={styles.pickerImage} />
-               ) : (
-                 <Ionicons name="camera" size={32} color={THEME.colors.textSec} />
-               )}
-            </TouchableOpacity>
+      {/* Invite Modal */}
+      <GlassModal visible={showAddMemberModal} onClose={() => setShowAddMemberModal(false)} title="Invite Member">
+         <Text style={styles.modalHelperText}>Enter the username to invite them.</Text>
+         <TextInput 
+            style={styles.modernInput} 
+            value={newMemberUsername} 
+            onChangeText={(t) => { setNewMemberUsername(t); setFormError(''); }} 
+            placeholder="@username" 
+            autoCapitalize="none"
+            placeholderTextColor={COLORS.textSec}
+        />
+        {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
+        <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleInviteMember}>
+            <Text style={styles.modalPrimaryBtnText}>Send Invitation</Text>
+        </TouchableOpacity>
+      </GlassModal>
 
-            <TextInput 
-              style={styles.input} 
-              value={editGroupName} 
-              onChangeText={setEditGroupName} 
-              placeholder="Group Name" 
-            />
-            <TextInput 
-              style={[styles.input, { height: 80, textAlignVertical: 'top' }]} 
-              value={editGroupDescription} 
-              onChangeText={setEditGroupDescription} 
-              placeholder="Description" 
-              multiline 
-            />
-            
-            <View style={styles.modalButtons}>
-               <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowEditModal(false)}>
-                 <Text style={styles.modalBtnTextCancel}>Cancel</Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={styles.modalBtnPrimary} onPress={handleSaveEdit}>
-                 <Text style={styles.modalBtnTextPrimary}>Save</Text>
-               </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* INVITE MODAL */}
-      <Modal visible={showAddMemberModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Invite Member</Text>
-            <Text style={styles.modalSub}>Enter the exact username to invite.</Text>
-            
-            <TextInput 
-              style={styles.input} 
-              value={newMemberUsername} 
-              onChangeText={(t) => { setNewMemberUsername(t); setFormError(''); }} 
-              placeholder="Username (e.g. johndoe)" 
-              autoCapitalize="none"
-            />
-            {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
-            
-            <View style={styles.modalButtons}>
-               <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowAddMemberModal(false)}>
-                 <Text style={styles.modalBtnTextCancel}>Cancel</Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={styles.modalBtnPrimary} onPress={handleInviteMember}>
-                 <Text style={styles.modalBtnTextPrimary}>Invite</Text>
-               </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* DELETE MODAL */}
-      <Modal visible={showDeleteModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { borderColor: THEME.colors.danger, borderWidth: 1 }]}>
-            <Text style={[styles.modalTitle, { color: THEME.colors.danger }]}>Delete Group</Text>
-            <Text style={styles.modalSub}>
-              This action cannot be undone. Type <Text style={{fontFamily: Font.bold}}>{group.name}</Text> to confirm.
-            </Text>
-            
-            <TextInput 
-              style={styles.input} 
-              value={deleteConfirmText} 
-              onChangeText={(t) => { setDeleteConfirmText(t); setFormError(''); }} 
-              placeholder="Type group name here" 
-            />
-            {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
-            
-            <View style={styles.modalButtons}>
-               <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowDeleteModal(false)}>
-                 <Text style={styles.modalBtnTextCancel}>Cancel</Text>
-               </TouchableOpacity>
-               <TouchableOpacity 
-                style={[styles.modalBtnPrimary, { backgroundColor: THEME.colors.danger }]} 
-                onPress={handleDeleteGroup}
-               >
-                 <Text style={styles.modalBtnTextPrimary}>Delete</Text>
-               </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Delete Modal */}
+      <GlassModal visible={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Group" type="danger">
+         <Text style={styles.modalHelperText}>
+             Are you sure? This action is permanent. Type <Text style={{fontWeight:'bold', color: COLORS.textMain}}>{group.name}</Text> to confirm.
+         </Text>
+         <TextInput 
+            style={[styles.modernInput, { borderColor: COLORS.dangerSoft, backgroundColor: '#FFF5F5' }]} 
+            value={deleteConfirmText} 
+            onChangeText={(t) => { setDeleteConfirmText(t); setFormError(''); }} 
+            placeholder="Type group name" 
+            placeholderTextColor={COLORS.textSec}
+        />
+        {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
+        <TouchableOpacity style={[styles.modalPrimaryBtn, { backgroundColor: COLORS.danger }]} onPress={handleDeleteGroup}>
+            <Text style={styles.modalPrimaryBtnText}>Delete Permanently</Text>
+        </TouchableOpacity>
+      </GlassModal>
 
       <CustomToast 
         visible={toast.visible} 
@@ -409,100 +403,151 @@ export default function GroupInfoScreen() {
   );
 }
 
-// =====================================================================
-// STYLES
-// =====================================================================
+// --- 4. STYLESHEET (CLEAN & MODERN) ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.bg,
+    backgroundColor: COLORS.bg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
   
-  // HEADER
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 10,
-    backgroundColor: THEME.colors.bg, // Matches BG so it looks seamless
+    zIndex: 10,
   },
   iconButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: THEME.colors.surface, // Subtle bg for buttons
-  },
-
-  scrollContent: {
-    paddingBottom: 50,
-  },
-
-  // HERO SECTION
-  heroSection: {
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    marginTop: 10,
-    marginBottom: 40,
-  },
-  bigAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50, // Circle
-    backgroundColor: THEME.colors.iconBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-  },
-  bigAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  groupName: {
-    fontSize: 24,
-    fontFamily: Font.bold,
-    color: THEME.colors.textMain,
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  metaText: {
-    fontSize: 14,
-    fontFamily: Font.regular,
-    color: THEME.colors.textSec,
-    marginBottom: 20,
-  },
-  description: {
-    fontSize: 15,
-    fontFamily: Font.regular,
-    color: THEME.colors.textMain,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-
-  // MEMBER LIST
-  membersSection: {
-    paddingHorizontal: 20,
-    marginBottom: 40,
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)', // Very subtle divider
-  },
-  memberAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: THEME.colors.border,
-    marginRight: 14,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  // Hero Section
+  heroSection: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 40,
+    paddingHorizontal: METRICS.padding,
+  },
+  avatarContainer: {
+    marginBottom: 24,
+    position: 'relative',
+  },
+  avatarImage: {
+    width: METRICS.avatarSize,
+    height: METRICS.avatarSize,
+    borderRadius: 55, // Circle
+    borderWidth: 4,
+    borderColor: COLORS.surface,
+    zIndex: 2,
+  },
+  avatarShadow: {
+    position: 'absolute',
+    top: 20,
+    left: 10,
+    right: 10,
+    bottom: -10,
+    backgroundColor: COLORS.shadow,
+    opacity: 0.3,
+    borderRadius: 55,
+    zIndex: 1,
+    transform: [{ scale: 0.9 }],
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+  },
+  groupTitle: {
+    fontSize: 28,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  groupMeta: {
+    fontSize: 14,
+    color: COLORS.textSec,
+    marginBottom: 16,
+    fontFamily: Font.regular,
+  },
+  highlight: {
+    color: COLORS.primary,
+    fontFamily: Font.bold,
+  },
+  descContainer: {
+    paddingHorizontal: 20,
+  },
+  description: {
+    textAlign: 'center',
+    color: COLORS.textSec,
+    lineHeight: 22,
+    fontSize: 15,
+  },
+
+  // Members
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: METRICS.padding,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+    marginRight: 10,
+  },
+  pillCount: {
+    backgroundColor: COLORS.primarySoft,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  pillText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontFamily: Font.bold,
+  },
+  memberList: {
+    paddingHorizontal: METRICS.padding,
+  },
+  memberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 20,
+    // Soft Shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  memberAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.inputBg,
+    marginRight: 16,
   },
   memberInfo: {
     flex: 1,
@@ -510,127 +555,156 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontFamily: Font.semiBold,
-    color: THEME.colors.textMain,
+    color: COLORS.textMain,
   },
   memberUsername: {
     fontSize: 13,
+    color: COLORS.textSec,
     fontFamily: Font.regular,
-    color: THEME.colors.textSec,
   },
-  adminBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  badge: {
     backgroundColor: '#EFF6FF',
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
-  adminText: {
-    fontSize: 11,
-    color: THEME.colors.primary,
+  badgeText: {
+    fontSize: 10,
+    color: COLORS.primary,
     fontFamily: Font.bold,
+    textTransform: 'uppercase',
   },
 
-  // FOOTER ACTIONS
-  footerActions: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
+  // Footer Actions
+  footer: {
+    padding: METRICS.padding,
+    marginTop: 20,
   },
-  actionButton: {
+  primaryButton: {
     flexDirection: 'row',
+    backgroundColor: COLORS.primary,
+    borderRadius: METRICS.radius,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Glow effect
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  primaryButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: Font.bold,
+  },
+  textButton: {
     alignItems: 'center',
     padding: 12,
   },
-  actionButtonText: {
-    fontSize: 16,
+  textButtonLabel: {
+    fontSize: 15,
     fontFamily: Font.semiBold,
-    color: THEME.colors.primary,
-    marginLeft: 8,
   },
 
-  // MODALS
+  // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: THEME.colors.overlay,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.modal,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: Font.bold,
-    color: THEME.colors.textMain,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  modalSub: {
-    fontSize: 14,
-    color: THEME.colors.textSec,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  imagePicker: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: THEME.colors.iconBg,
-    alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    overflow: 'hidden',
+    padding: 20,
   },
-  pickerImage: {
+  modalKeyboard: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: COLORS.surface,
+    borderRadius: 30,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.2,
+    shadowRadius: 40,
+    elevation: 20,
+  },
+  modalCardDanger: {
+    borderWidth: 2,
+    borderColor: COLORS.dangerSoft,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+  },
+  closeButton: {
+    padding: 8,
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 12,
+  },
+  modalAvatarPicker: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.inputBg,
+    alignSelf: 'center',
+    marginBottom: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+  },
+  modalAvatarImage: {
     width: '100%',
     height: '100%',
   },
-  input: {
-    backgroundColor: THEME.colors.bg,
-    borderRadius: THEME.radius.input,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    marginBottom: 12,
+  modernInput: {
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
     fontFamily: Font.regular,
-    fontSize: 15,
+    color: COLORS.textMain,
+    marginBottom: 16,
+  },
+  modalHelperText: {
+    fontSize: 14,
+    color: COLORS.textSec,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  modalPrimaryBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalPrimaryBtnText: {
+    color: '#FFF',
+    fontFamily: Font.bold,
+    fontSize: 16,
   },
   errorText: {
-    color: THEME.colors.danger,
+    color: COLORS.danger,
     fontSize: 13,
-    marginBottom: 10,
+    marginBottom: 12,
     marginLeft: 4,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    marginTop: 10,
-    gap: 10,
-  },
-  modalBtnCancel: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: THEME.radius.button,
-    backgroundColor: THEME.colors.bg,
-    alignItems: 'center',
-  },
-  modalBtnPrimary: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: THEME.radius.button,
-    backgroundColor: THEME.colors.primary,
-    alignItems: 'center',
-  },
-  modalBtnTextCancel: {
-    color: THEME.colors.textMain,
-    fontFamily: Font.semiBold,
-  },
-  modalBtnTextPrimary: {
-    color: '#FFF',
     fontFamily: Font.semiBold,
   },
 });

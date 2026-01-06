@@ -4,75 +4,101 @@ import { useAuth } from '@/contexts/AuthContext';
 import { BlurView } from 'expo-blur';
 import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Font } from '@/constants/theme';
+import { Platform, StyleSheet, View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// --- 1. DESIGN TOKENS (REVISED) ---
 const COLORS = {
-  primary: '#4F46E5',
-  inactive: '#94A3B8',
+  primary: '#6366F1', // Indigo 500
+  inactive: '#94A3B8', // Slate 400
+  glassBorder: 'rgba(255, 255, 255, 0.2)',
+  glassSurface: 'rgba(255, 255, 255, 0.9)', // Lebih solid agar tidak terlihat kotor di Android
   shadow: '#4F46E5',
 };
 
+const METRICS = {
+  height: 65, // REVISI: Dikurangi dari 80 ke 65 agar lebih ramping
+  radius: 20, // REVISI: Radius sedikit dikurangi agar tidak terlalu bulat lonjong
+  margin: 16, // REVISI: Margin dikurangi agar bar lebih lebar (safe area)
+  iconSize: 22, // REVISI: Ukuran icon disesuaikan dengan adanya teks
+};
+
+// --- 2. SUB-COMPONENTS ---
+const GlassTabBarBackground = () => (
+  <View style={styles.blurContainer}>
+    <BlurView
+      intensity={Platform.OS === 'ios' ? 100 : 60}
+      tint="light"
+      style={StyleSheet.absoluteFill}
+    />
+
+    {Platform.OS === 'android' && (
+      <View style={styles.androidFallback} />
+    )}
+
+    <View style={styles.glassBorder} />
+  </View>
+);
+
+
+// --- 3. MAIN COMPONENT ---
 export default function TabLayout() {
   const { user, isLoading } = useAuth();
-  const insets = useSafeAreaInsets(); // Deteksi area aman HP
+  const insets = useSafeAreaInsets();
 
   if (isLoading) return null;
   if (!user) return <Redirect href="/auth/login" />;
 
+  // Logic Bottom: Di Android, jangan terlalu tinggi melayangnya
+  const floatingBottom = Platform.select({
+    ios: insets.bottom > 0 ? insets.bottom : 20,
+    android: 16, 
+    default: 20
+  });
+
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.inactive,
-        headerShown: false,
         tabBarButton: HapticTab,
-        tabBarShowLabel: false,
         
-        // --- 1. Background Glass Effect ---
-        tabBarBackground: () => (
-          <View style={styles.blurWrapper}>
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 80 : 100}
-              tint="light" // 'light' lebih bersih daripada 'extraLight'
-              style={StyleSheet.absoluteFill}
-            />
-            {/* Border halus untuk definisi lebih tajam */}
-            <View style={styles.glassBorder} />
-          </View>
-        ),
+        // --- PERUBAHAN UTAMA: LABEL DIAKTIFKAN ---
+        tabBarShowLabel: true, 
         
-        // --- 2. Floating Style Adjusted ---
-        tabBarStyle: {
-          position: 'absolute',
-          // Logic: Jika ada safe area bawah (iPhone X+), naikkan 0px dari safe area.
-          // Jika tidak (Android/iPhone lama), naikkan 20px dari bawah layar.
-          bottom: insets.bottom > 0 ? 0 : 20, 
-          left: 20,
-          right: 20,
-          height: 70, // Tinggi fixed agar icon centered sempurna
-          backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.9)' : 'transparent',
-          borderRadius: 35, // Pill Shape
-          borderTopWidth: 0,
-          elevation: 0, // Matikan shadow bawaan Android
-          
-          // Padding agar icon ada di tengah vertikal tab bar
-          paddingTop: 0, 
-          paddingBottom: 0, // Reset padding insets default
-          
-          // Custom Shadow
-          shadowColor: COLORS.shadow,
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.15,
-          shadowRadius: 20,
+        // Styling Teks Label
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontFamily: Font.bold,
+          letterSpacing: 0.1,
+          marginBottom: 6, // Memberi jarak dari bawah container
+          marginTop: -4,   // Menarik teks sedikit mendekati icon
         },
+
+        // Background
+        tabBarBackground: GlassTabBarBackground,
+
+        // Styling Container Tab
+        tabBarStyle: [
+          styles.tabBarBase,
+          { 
+            bottom: floatingBottom,
+            marginHorizontal: METRICS.margin,
+          }
+        ],
       }}>
+      
+      {/* URUTAN: Home -> Groups -> Settings */}
       
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <TabIcon name="home" color={color} size={24} />,
+          title: 'Home', // Label otomatis muncul dari sini
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="home" color={color} size={METRICS.iconSize} />
+          ),
         }}
       />
       
@@ -80,7 +106,9 @@ export default function TabLayout() {
         name="group"
         options={{
           title: 'Groups',
-          tabBarIcon: ({ color }) => <TabIcon name="people" color={color} size={24} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="people" color={color} size={METRICS.iconSize} />
+          ),
         }}
       />
       
@@ -88,23 +116,50 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <TabIcon name="settings" color={color} size={24} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="settings" color={color} size={METRICS.iconSize} />
+          ),
         }}
       />
     </Tabs>
   );
 }
 
+// --- 4. STYLESHEET ---
 const styles = StyleSheet.create({
-  blurWrapper: {
+  tabBarBase: {
+    position: 'absolute',
+    height: METRICS.height,
+    borderRadius: METRICS.radius,
+    borderTopWidth: 0,
+    elevation: 0,
+    backgroundColor: 'transparent',
+    
+    // Shadow disesuaikan agar tidak terlalu tebal
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    
+    // Layout Item (Penting untuk Label + Icon)
+    paddingTop: 8, // Memberi ruang atas untuk icon
+    paddingBottom: 8, // Memberi ruang bawah (akan dikontrol labelStyle juga)
+  },
+
+  blurContainer: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 35,
+    borderRadius: METRICS.radius,
     overflow: 'hidden',
   },
+
   glassBorder: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 35,
+    borderRadius: METRICS.radius,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: COLORS.glassBorder,
   },
+
+androidFallback: {
+  backgroundColor: 'rgba(255,255,255,0.75)',
+}
 });

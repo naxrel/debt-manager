@@ -187,7 +187,7 @@ export default function AddGroupTransaction() {
                     <Ionicons name="arrow-up-circle" size={24} color={COLORS.danger} />
                 </View>
                 <View style={{flex: 1}}>
-                    <Text style={styles.fieldLabel}>Who paid?</Text>
+                    <Text style={styles.fieldLabel}>Who debt?</Text>
                     <TouchableOpacity 
                         style={styles.selectorButton} 
                         onPress={() => setShowFromModal(true)}
@@ -208,7 +208,7 @@ export default function AddGroupTransaction() {
                     <Ionicons name="arrow-down-circle" size={24} color={COLORS.success} />
                 </View>
                 <View style={{flex: 1}}>
-                    <Text style={styles.fieldLabel}>For whom?</Text>
+                    <Text style={styles.fieldLabel}>Who gave?</Text>
                     <TouchableOpacity 
                         style={styles.selectorButton} 
                         onPress={() => setShowToModal(true)}
