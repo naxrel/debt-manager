@@ -2,7 +2,9 @@ import { Font } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebt } from '@/contexts/DebtContext';
 import { StaticDB } from '@/data/staticDatabase';
+import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -11,17 +13,16 @@ import {
   Modal,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  StatusBar
+  View
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import * as Haptics from 'expo-haptics';
 
-// --- DESIGN SYSTEM & COLORS (Modern Form) ---
+// --- DESIGN SYSTEM & COLORS ---
 const COLORS = {
   background: '#F8FAFC', // Slate 50
   surface: '#FFFFFF',
@@ -35,7 +36,7 @@ const COLORS = {
   success: '#10B981',    // Emerald 500
 };
 
-// --- CUSTOM CALENDAR (KODE LAMA ANDA - DIKEMBALIKAN PERSIS) ---
+// --- CUSTOM CALENDAR COMPONENT ---
 interface CalendarProps {
   selectedDate: dayjs.Dayjs;
   onSelectDate: (date: dayjs.Dayjs) => void;
@@ -89,7 +90,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
       );
     }
     
-    // 3. FIX UTAMA: Tambahkan empty cells di akhir agar grid tetap rapi
+    // 3. Fill remaining slots
     const totalSlots = days.length;
     const remainder = totalSlots % 7;
     if (remainder !== 0) {
@@ -117,33 +118,26 @@ const CustomCalendar: React.FC<CalendarProps> = ({ selectedDate, onSelectDate })
 
   return (
     <View style={styles.calendarContainer}>
-      {/* Header Month Navigation */}
       <View style={styles.calendarHeader}>
-        <TouchableOpacity onPress={previousMonth} style={styles.calendarNavButton} hitSlop={{top:10, bottom:10, left:10, right:10}}>
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#007AFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="m15 19-7-7 7-7" />
-          </Svg>
+        <TouchableOpacity onPress={previousMonth} style={styles.calendarNavButton} hitSlop={10}>
+          <Ionicons name="chevron-back" size={20} color={COLORS.primary} />
         </TouchableOpacity>
         
         <Text style={styles.calendarTitle}>
           {currentMonth.format('MMMM YYYY')}
         </Text>
         
-        <TouchableOpacity onPress={nextMonth} style={styles.calendarNavButton} hitSlop={{top:10, bottom:10, left:10, right:10}}>
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <Path stroke="#007AFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" />
-          </Svg>
+        <TouchableOpacity onPress={nextMonth} style={styles.calendarNavButton} hitSlop={10}>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Weekday Labels (S M T W T F S) */}
       <View style={styles.calendarWeekdays}>
         {weekdays.map(day => (
           <Text key={day} style={styles.calendarWeekdayText}>{day}</Text>
         ))}
       </View>
 
-      {/* Calendar Grid */}
       <View style={styles.calendarGrid}>
         {renderWeeks()}
       </View>
@@ -166,7 +160,7 @@ export default function AddDebtScreen() {
 
   // --- Logic Handlers ---
   const handleSubmit = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     if (!user) {
       Alert.alert('Error', 'User not found');
@@ -253,54 +247,73 @@ export default function AddDebtScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Modern Segmented Control */}
-        <View style={styles.segmentContainer}>
+        
+        {/* --- UNIQUE TAB SWITCHER (Floating Island) --- */}
+        <View style={styles.tabTrack}>
+            
+            {/* Tab: Hutang (I Owe) */}
             <TouchableOpacity
                 style={[
-                    styles.segmentButton, 
-                    type === 'hutang' && styles.segmentButtonActive,
-                    type === 'hutang' && { backgroundColor: COLORS.danger + '15', borderColor: COLORS.danger }
+                    styles.tabButton, 
+                    type === 'hutang' ? styles.tabActive : styles.tabInactive
                 ]}
                 onPress={() => {
                     Haptics.selectionAsync();
                     setType('hutang');
                 }}
-                activeOpacity={0.8}
+                activeOpacity={0.9}
             >
-                <View style={[styles.dotIndicator, { backgroundColor: type === 'hutang' ? COLORS.danger : COLORS.textSec }]} />
+                <Ionicons 
+                    name={type === 'hutang' ? "arrow-down-circle" : "arrow-down-circle-outline"} 
+                    size={20} 
+                    color={type === 'hutang' ? COLORS.danger : COLORS.textTertiary} 
+                    style={{marginRight: 8}}
+                />
                 <Text style={[
-                    styles.segmentText, 
-                    type === 'hutang' && { color: COLORS.danger, fontFamily: Font.bold }
+                    styles.tabText, 
+                    type === 'hutang' ? { color: COLORS.danger, fontFamily: Font.bold } : { color: COLORS.textSec }
                 ]}>
-                    I Owe (Debt)
+                    I Owe
                 </Text>
+                
+                {/* Dot Indicator */}
+                {type === 'hutang' && <View style={[styles.activeDot, { backgroundColor: COLORS.danger }]} />}
             </TouchableOpacity>
 
-            <View style={{width: 12}} />
-
+            {/* Tab: Piutang (Owes Me) */}
             <TouchableOpacity
                 style={[
-                    styles.segmentButton, 
-                    type === 'piutang' && styles.segmentButtonActive,
-                    type === 'piutang' && { backgroundColor: COLORS.success + '15', borderColor: COLORS.success }
+                    styles.tabButton, 
+                    type === 'piutang' ? styles.tabActive : styles.tabInactive
                 ]}
                 onPress={() => {
                     Haptics.selectionAsync();
                     setType('piutang');
                 }}
-                activeOpacity={0.8}
+                activeOpacity={0.9}
             >
-                <View style={[styles.dotIndicator, { backgroundColor: type === 'piutang' ? COLORS.success : COLORS.textSec }]} />
+                <Ionicons 
+                    name={type === 'piutang' ? "arrow-up-circle" : "arrow-up-circle-outline"} 
+                    size={20} 
+                    color={type === 'piutang' ? COLORS.success : COLORS.textTertiary} 
+                    style={{marginRight: 8}}
+                />
                 <Text style={[
-                    styles.segmentText, 
-                    type === 'piutang' && { color: COLORS.success, fontFamily: Font.bold }
+                    styles.tabText, 
+                    type === 'piutang' ? { color: COLORS.success, fontFamily: Font.bold } : { color: COLORS.textSec }
                 ]}>
-                    Owes Me (Receive)
+                    Owes Me
                 </Text>
+
+                {/* Dot Indicator */}
+                {type === 'piutang' && <View style={[styles.activeDot, { backgroundColor: COLORS.success }]} />}
             </TouchableOpacity>
+
         </View>
 
+        {/* --- FORM SECTION --- */}
         <View style={styles.formCard}>
+            
             {/* Input: Username */}
             <View style={styles.inputGroup}>
                 <Text style={styles.label}>Who is this for?</Text>
@@ -341,13 +354,9 @@ export default function AddDebtScreen() {
                     onPress={() => setShowDatePicker(true)}
                     activeOpacity={0.7}
                 >
-                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={{marginRight: 10}}>
-                        <Path stroke={COLORS.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </Svg>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={{marginRight: 10}} />
                     <Text style={styles.dateInputText}>{date.format('DD MMMM YYYY')}</Text>
-                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" style={{marginLeft: 'auto'}}>
-                        <Path stroke={COLORS.textTertiary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-                    </Svg>
+                    <Ionicons name="chevron-down" size={16} color={COLORS.textTertiary} style={{marginLeft: 'auto'}} />
                 </TouchableOpacity>
             </View>
 
@@ -380,7 +389,7 @@ export default function AddDebtScreen() {
 
       </ScrollView>
 
-      {/* --- DATE PICKER MODAL (KODE LAMA - DIKEMBALIKAN PERSIS) --- */}
+      {/* --- DATE PICKER MODAL --- */}
       <Modal
         visible={showDatePicker}
         transparent={true}
@@ -458,44 +467,47 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   
-  // --- SEGMENT CONTROL (MODERN) ---
-  segmentContainer: {
+  // --- NEW UNIQUE TAB STYLES ---
+  tabTrack: {
     flexDirection: 'row',
+    backgroundColor: '#F1F5F9', // Abu-abu muda soft
+    borderRadius: 20,
+    padding: 4,
     marginBottom: 24,
+    height: 60,
   },
-  segmentButton: {
+  tabButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
-  segmentButtonActive: {
-    borderWidth: 1,
-    shadowOpacity: 0.1,
+  tabActive: {
+    backgroundColor: '#FFFFFF',
+    // Shadow melayang
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  dotIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
+  tabInactive: {
+    backgroundColor: 'transparent',
   },
-  segmentText: {
-    fontSize: 14,
+  tabText: {
+    fontSize: 15,
     fontFamily: Font.semiBold,
-    color: COLORS.textSec,
+  },
+  activeDot: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      position: 'absolute',
+      bottom: 8,
   },
 
-  // --- FORM INPUTS (MODERN) ---
+  // --- FORM INPUTS ---
   formCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 24,
@@ -602,7 +614,7 @@ const styles = StyleSheet.create({
     fontFamily: Font.semiBold,
   },
 
-  // --- MODAL STYLES (KODE LAMA - DIKEMBALIKAN PERSIS) ---
+  // --- MODAL STYLES ---
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -642,7 +654,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   datePickerCloseButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -654,7 +666,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 
-  // --- CALENDAR STYLES (KODE LAMA - DIKEMBALIKAN PERSIS) ---
+  // --- CALENDAR STYLES ---
   calendarContainer: {
     marginBottom: 0,
   },
@@ -688,9 +700,7 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     textTransform: 'uppercase',
   },
-  calendarGrid: {
-    // Gap handled by flex layout now
-  },
+  calendarGrid: {},
   calendarWeek: {
     flexDirection: 'row',
     marginBottom: 5,
@@ -709,7 +719,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   dayContainerSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.primary,
   },
   dayContainerToday: {
     backgroundColor: '#F2F2F7',
@@ -724,7 +734,7 @@ const styles = StyleSheet.create({
     fontFamily: Font.semiBold,
   },
   calendarDayTextToday: {
-    color: '#007AFF',
+    color: COLORS.primary,
     fontFamily: Font.semiBold,
   },
 });

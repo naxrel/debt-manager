@@ -13,8 +13,20 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  StatusBar
 } from 'react-native';
+
+// Reuse COLORS for consistency
+const COLORS = {
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  primary: '#2563EB', // Blue 600
+  textMain: '#0F172A',
+  textSec: '#64748B',
+  border: '#E2E8F0',
+  error: '#EF4444',
+};
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -26,8 +38,8 @@ export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
 
+  // --- LOGIC PRESERVED 100% ---
   const handleLogin = async () => {
-    // Input validation
     const newErrors = { username: '', password: '' };
     let hasError = false;
 
@@ -57,7 +69,6 @@ export default function LoginScreen() {
     if (success) {
       router.replace('/(tabs)/home');
     } else {
-      // Web-compatible error handling
       if (Platform.OS === 'web') {
         window.alert('Login gagal!\n\nUsername atau password salah. Silakan coba lagi.');
       } else {
@@ -89,46 +100,49 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.content}>
-          {/* Back to Onboarding Button */}
+        <View style={styles.paddingWrapper}>
+          
+          {/* Top Bar */}
           <TouchableOpacity 
             onPress={goToOnboarding}
-            style={styles.backButton}
-            activeOpacity={0.7}
+            style={styles.topBackBtn}
+            activeOpacity={0.6}
           >
-            <Ionicons name="arrow-back" size={20} color="#64748b" />
-            <Text style={styles.backButtonText}>Back to Onboarding</Text>
+            <Ionicons name="arrow-back" size={20} color={COLORS.textSec} />
+            <Text style={styles.topBackText}>Onboarding</Text>
           </TouchableOpacity>
 
           {/* Header Section */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Ionicons name="wallet-outline" size={48} color="#2563eb" />
+              <Ionicons name="wallet" size={40} color={COLORS.primary} />
             </View>
-            <Text style={styles.title}>deBT</Text>
-            <Text style={styles.subtitle}>Easily manage debt with your friends!</Text>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to manage your debts.</Text>
           </View>
 
-          {/* Form Section */}
-          <View style={styles.formContainer}>
+          {/* Form Card */}
+          <View style={styles.card}>
+            
             {/* Username Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Username</Text>
+              <Text style={styles.inputLabel}>USERNAME</Text>
               <View style={[
                 styles.inputWrapper,
                 focusedInput === 'username' && styles.inputWrapperFocused,
-                errors.username && styles.inputWrapperError
+                errors.username ? styles.inputWrapperError : null
               ]}>
                 <Ionicons 
                   name="person-outline" 
                   size={20} 
-                  color={focusedInput === 'username' ? '#2563eb' : '#9ca3af'} 
-                  style={styles.inputIcon}
+                  color={focusedInput === 'username' ? COLORS.primary : '#94A3B8'} 
                 />
                 <TextInput
                   style={styles.input}
@@ -141,29 +155,28 @@ export default function LoginScreen() {
                   onBlur={() => setFocusedInput(null)}
                   autoCapitalize="none"
                   editable={!isLoading}
+                  placeholder="Enter your username"
+                  placeholderTextColor="#CBD5E1"
                 />
               </View>
-              {errors.username ? (
-                <Text style={styles.errorText}>{errors.username}</Text>
-              ) : null}
+              {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
             </View>
 
             {/* Password Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.inputLabel}>PASSWORD</Text>
               <View style={[
                 styles.inputWrapper,
                 focusedInput === 'password' && styles.inputWrapperFocused,
-                errors.password && styles.inputWrapperError
+                errors.password ? styles.inputWrapperError : null
               ]}>
                 <Ionicons 
                   name="lock-closed-outline" 
                   size={20} 
-                  color={focusedInput === 'password' ? '#2563eb' : '#9ca3af'} 
-                  style={styles.inputIcon}
+                  color={focusedInput === 'password' ? COLORS.primary : '#94A3B8'} 
                 />
                 <TextInput
-                  style={[styles.input, styles.inputPassword]}
+                  style={styles.input}
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
@@ -173,22 +186,18 @@ export default function LoginScreen() {
                   onBlur={() => setFocusedInput(null)}
                   secureTextEntry={!showPassword}
                   editable={!isLoading}
+                  placeholder="••••••••"
+                  placeholderTextColor="#CBD5E1"
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeIcon}
-                  disabled={isLoading}
-                >
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                   <Ionicons
                     name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                     size={20}
-                    color="#9ca3af"
+                    color="#94A3B8"
                   />
                 </TouchableOpacity>
               </View>
-              {errors.password ? (
-                <Text style={styles.errorText}>{errors.password}</Text>
-              ) : null}
+              {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
             </View>
 
             {/* Login Button */}
@@ -201,77 +210,53 @@ export default function LoginScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <>
-                  <Text style={styles.buttonText}>Log In</Text>
-                </>
+                <Text style={styles.buttonText}>Log In</Text>
               )}
             </TouchableOpacity>
 
-            {/* Demo Accounts */}
-            <View style={styles.demoContainer}>
-              <View style={styles.demoHeader}>
-                <Ionicons name="information-circle-outline" size={16} color="#1e40af" />
-                <Text style={styles.demoTitle}>Akun Demo</Text>
-              </View>
-              <Text style={styles.demoSubtitle}>Tap untuk mengisi otomatis</Text>
-              
-              <TouchableOpacity 
-                style={styles.demoItem}
-                onPress={() => fillDemoAccount('admin', 'admin123')}
-                disabled={isLoading}
-              >
-                <View style={styles.demoItemLeft}>
-                  <Ionicons name="person-circle-outline" size={18} color="#3b82f6" />
-                  <View style={styles.demoItemText}>
-                    <Text style={styles.demoUsername}>admin</Text>
-                    <Text style={styles.demoPassword}>admin123</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#3b82f6" />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.demoItem}
-                onPress={() => fillDemoAccount('john', 'john123')}
-                disabled={isLoading}
-              >
-                <View style={styles.demoItemLeft}>
-                  <Ionicons name="person-circle-outline" size={18} color="#3b82f6" />
-                  <View style={styles.demoItemText}>
-                    <Text style={styles.demoUsername}>john</Text>
-                    <Text style={styles.demoPassword}>john123</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#3b82f6" />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.demoItem}
-                onPress={() => fillDemoAccount('jane', 'jane123')}
-                disabled={isLoading}
-              >
-                <View style={styles.demoItemLeft}>
-                  <Ionicons name="person-circle-outline" size={18} color="#3b82f6" />
-                  <View style={styles.demoItemText}>
-                    <Text style={styles.demoUsername}>jane</Text>
-                    <Text style={styles.demoPassword}>jane123</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#3b82f6" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Register Link */}
-            <TouchableOpacity 
-              onPress={goToRegister} 
-              disabled={isLoading}
-              style={styles.registerLink}
-            >
-              <Text style={styles.linkText}>
-                Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
-              </Text>
-            </TouchableOpacity>
           </View>
+
+          {/* Demo Accounts - Styled as Quick Access Chips */}
+          <View style={styles.demoSection}>
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>QUICK DEMO ACCESS</Text>
+              <View style={styles.divider} />
+            </View>
+            
+            <View style={styles.demoChipsContainer}>
+              {['admin', 'john', 'jane'].map((user, idx) => (
+                <TouchableOpacity 
+                  key={user}
+                  style={styles.demoChip}
+                  onPress={() => fillDemoAccount(user, user + '123')}
+                  disabled={isLoading}
+                >
+                  <View style={[styles.demoAvatar, { backgroundColor: idx === 0 ? '#DBEAFE' : '#F1F5F9' }]}>
+                     <Text style={[styles.demoAvatarText, { color: idx === 0 ? COLORS.primary : COLORS.textSec }]}>
+                        {user.charAt(0).toUpperCase()}
+                     </Text>
+                  </View>
+                  <View>
+                    <Text style={styles.demoName}>{user}</Text>
+                    <Text style={styles.demoPass}>{user}123</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Footer Link */}
+          <TouchableOpacity 
+            onPress={goToRegister} 
+            disabled={isLoading}
+            style={styles.registerLink}
+          >
+            <Text style={styles.linkText}>
+              Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
+            </Text>
+          </TouchableOpacity>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -281,136 +266,131 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
+  paddingWrapper: {
     padding: 24,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
   },
-  backButton: {
+  
+  // Top Navigation
+  topBackBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    marginBottom: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    padding: 8,
+    marginLeft: -8,
+    borderRadius: 8,
   },
-  backButtonText: {
+  topBackText: {
     fontSize: 14,
     fontFamily: Font.regular,
-    color: '#64748b',
-    marginLeft: 6,
+    color: COLORS.textSec,
+    marginLeft: 4,
   },
+
+  // Header
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginVertical: 32,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
+    width: 64,
+    height: 64,
     borderRadius: 20,
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
   title: {
-    fontSize: 48,
+    fontSize: 28,
     fontFamily: Font.bold,
-    color: '#2563eb',
-    textAlign: 'center',
+    color: COLORS.textMain,
     marginBottom: 8,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 15,
-    color: '#64748b',
-    textAlign: 'center',
+    fontSize: 16,
+    color: COLORS.textSec,
     fontFamily: Font.regular,
   },
-  formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+
+  // Card & Form
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    // Modern Box Shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 5,
+    marginBottom: 30,
   },
   inputGroup: {
     marginBottom: 20,
   },
-  label: {
-    fontSize: 14,
-    fontFamily: Font.semiBold,
-    color: '#1e293b',
+  inputLabel: {
+    fontSize: 11,
+    fontFamily: Font.bold,
+    color: COLORS.textSec,
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    height: 52,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 16,
+    height: 54,
   },
   inputWrapperFocused: {
-    borderColor: '#2563eb',
-    backgroundColor: '#f8fafc',
+    borderColor: COLORS.primary,
+    backgroundColor: '#fff',
   },
   inputWrapperError: {
-    borderColor: '#ef4444',
-  },
-  inputIcon: {
-    marginRight: 8,
+    borderColor: COLORS.error,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1e293b',
-    paddingVertical: 0,
-  },
-  inputPassword: {
-    paddingRight: 8,
-  },
-  eyeIcon: {
-    padding: 4,
-    marginLeft: 4,
+    color: COLORS.textMain,
+    marginLeft: 12,
+    fontFamily: Font.regular,
   },
   errorText: {
     fontSize: 12,
-    color: '#ef4444',
+    color: COLORS.error,
     marginTop: 6,
-    marginLeft: 4,
+    fontFamily: Font.regular,
   },
+  
+  // Buttons
   button: {
-    backgroundColor: '#2563eb',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    flexDirection: 'row',
-    shadowColor: '#2563eb',
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
     elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: '#94A3B8',
     shadowOpacity: 0,
   },
   buttonText: {
@@ -418,75 +398,78 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: Font.bold,
   },
-  buttonIcon: {
-    marginLeft: 8,
+
+  // Demo Section
+  demoSection: {
+    marginBottom: 24,
   },
-  demoContainer: {
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: '#f0f9ff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#bfdbfe',
-  },
-  demoHeader: {
+  dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  demoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e40af',
-    marginLeft: 6,
-  },
-  demoSubtitle: {
-    fontSize: 12,
-    color: '#3b82f6',
-    marginBottom: 12,
-    marginLeft: 22,
-  },
-  demoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#dbeafe',
-  },
-  demoItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  divider: {
     flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
   },
-  demoItemText: {
-    marginLeft: 10,
+  dividerText: {
+    marginHorizontal: 10,
+    fontSize: 10,
+    color: '#94A3B8',
+    fontFamily: Font.bold,
+    letterSpacing: 1,
   },
-  demoUsername: {
+  demoChipsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  demoChip: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  demoAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  demoAvatarText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1e40af',
+    fontFamily: Font.bold,
   },
-  demoPassword: {
+  demoName: {
     fontSize: 12,
-    color: '#64748b',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 2,
+    fontFamily: Font.bold,
+    color: COLORS.textMain,
+    marginBottom: 2,
   },
+  demoPass: {
+    fontSize: 10,
+    color: COLORS.textSec,
+  },
+
+  // Footer Link
   registerLink: {
-    marginTop: 20,
+    alignSelf: 'center',
+    padding: 10,
   },
   linkText: {
-    textAlign: 'center',
     fontSize: 14,
     fontFamily: Font.regular,
-    color: '#64748b',
+    color: COLORS.textSec,
   },
   linkBold: {
-    color: '#2563eb',
+    color: COLORS.primary,
     fontFamily: Font.bold,
   },
 });

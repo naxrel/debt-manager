@@ -18,12 +18,19 @@ import {
 
 const { width, height } = Dimensions.get('window');
 
-// --- MODERN COLORS ---
-// Menggunakan palet warna yang lebih vibrant dan modern
+// --- MODERN PALETTE & CONFIG ---
+const COLORS = {
+  white: '#FFFFFF',
+  glassBorder: 'rgba(255, 255, 255, 0.2)',
+  glassBg: 'rgba(255, 255, 255, 0.1)',
+  textSecondary: 'rgba(255, 255, 255, 0.8)',
+};
+
+// Gradient yang lebih 'Rich' dan Deep untuk kontras teks yang lebih baik
 const PAGE_COLORS = [
-  ['#4F46E5', '#818CF8'], // Indigo (Modern Blue)
-  ['#059669', '#34D399'], // Emerald (Modern Green)
-  ['#D946EF', '#F472B6'], // Fuchsia (Modern Pink)
+  ['#4338CA', '#6366F1'], // Deep Indigo -> Soft Indigo
+  ['#047857', '#10B981'], // Deep Emerald -> Bright Emerald
+  ['#BE185D', '#EC4899'], // Deep Rose -> Hot Pink
 ];
 
 interface OnboardingPage {
@@ -34,19 +41,19 @@ interface OnboardingPage {
 
 const PAGES: OnboardingPage[] = [
   {
-    title: 'Welcome to deBT',
-    description: 'Bawa semua urusan uangmu jadi satu. Dari cash, crypto, sampai transfer antar negara, semua beres di sini.',
-    icon: 'wallet-outline', // Icon yang lebih relevan
+    title: 'Financial Hub',
+    description: 'Satukan cash, crypto, dan aset globalmu dalam satu genggaman. Kontrol penuh tanpa batas.',
+    icon: 'wallet-outline',
   },
   {
-    title: 'Grup & Kolaborasi',
-    description: 'Nggak usah pusing nagih utang temen. Bikin grup, catet bareng, dan liat siapa yang belum bayar dengan transparan.',
+    title: 'Circle & Split',
+    description: 'Transparansi total dalam grup. Pantau siapa yang belum bayar tanpa perlu rasa tidak enak.',
     icon: 'people-outline',
   },
   {
-    title: 'Bayar Lebih Pinter',
-    description: 'Biar sistem yang mikir cara bayar paling efisien. Hemat waktu, hemat tenaga, utang lunas lebih cepet.',
-    icon: 'trending-up-outline',
+    title: 'Smart Payment',
+    description: 'Algoritma cerdas yang memilih metode bayar paling efisien untuk menghemat waktu Anda.',
+    icon: 'rocket-outline', // Mengganti icon agar lebih 'impactful'
   },
 ];
 
@@ -56,10 +63,11 @@ export default function OnboardingScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentPage, setCurrentPage] = useState(0);
 
+  // --- LOGIC PRESERVED 100% ---
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
     {
-      useNativeDriver: false, // width interploation doesn't support native driver
+      useNativeDriver: false,
       listener: (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
         const page = Math.round(offsetX / width);
@@ -88,8 +96,7 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* BACKGROUND GRADIENT ANIMATION */}
-      {/* Kita tumpuk gradien absolute di belakang agar transisi warna smooth saat scroll */}
+      {/* BACKGROUND LAYER */}
       {PAGES.map((_, index) => {
         const inputRange = [
           (index - 1) * width,
@@ -109,8 +116,13 @@ export default function OnboardingScreen() {
             <LinearGradient
               colors={PAGE_COLORS[index]}
               style={{ flex: 1 }}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+            {/* Noise Texture Overlay (Optional Simulated by subtle gradient) */}
+            <LinearGradient
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.4)']}
+              style={StyleSheet.absoluteFill}
             />
           </Animated.View>
         );
@@ -133,19 +145,19 @@ export default function OnboardingScreen() {
             (index + 1) * width,
           ];
 
+          // Parallax Text Effect
+          const translateX = scrollX.interpolate({
+            inputRange,
+            outputRange: [width * 0.2, 0, -width * 0.2],
+          });
+
           const scale = scrollX.interpolate({
             inputRange,
-            outputRange: [0.3, 1, 0.3],
+            outputRange: [0.5, 1, 0.5],
             extrapolate: 'clamp',
           });
 
-          const translateY = scrollX.interpolate({
-            inputRange,
-            outputRange: [100, 0, 100],
-            extrapolate: 'clamp',
-          });
-
-          const textOpacity = scrollX.interpolate({
+          const opacity = scrollX.interpolate({
             inputRange,
             outputRange: [0, 1, 0],
             extrapolate: 'clamp',
@@ -153,42 +165,31 @@ export default function OnboardingScreen() {
 
           return (
             <View key={index} style={[styles.page, { width }]}>
-              {/* CONTENT CONTAINER */}
-              <View style={styles.contentContainer}>
+              <View style={styles.contentWrapper}>
                 
-                {/* ANIMATED ICON */}
-                <Animated.View
-                  style={[
-                    styles.iconCircle,
-                    {
-                      transform: [{ scale }, { translateY }],
-                    },
-                  ]}
-                >
-                  <Ionicons name={page.icon} size={80} color="#fff" />
-                  
-                  {/* Decorative Rings */}
-                  <View style={[styles.ring, { width: 160, height: 160, opacity: 0.3 }]} />
-                  <View style={[styles.ring, { width: 200, height: 200, opacity: 0.15 }]} />
+                {/* MODERN GLASS ICON CONTAINER */}
+                <Animated.View style={[styles.iconContainer, { transform: [{ scale }], opacity }]}>
+                  <View style={styles.iconGlassBackground} />
+                  <Ionicons name={page.icon} size={64} color={COLORS.white} style={styles.iconShadow} />
                 </Animated.View>
 
-                {/* TEXT CONTENT */}
-                <Animated.View style={{ opacity: textOpacity, alignItems: 'center', paddingHorizontal: 32 }}>
+                {/* TYPOGRAPHY */}
+                <Animated.View style={{ transform: [{ translateX }], opacity }}>
                   <Text style={styles.title}>{page.title}</Text>
                   <Text style={styles.description}>{page.description}</Text>
                 </Animated.View>
-
+                
               </View>
             </View>
           );
         })}
       </ScrollView>
 
-      {/* FOOTER CONTROLS */}
-      <View style={styles.footer}>
+      {/* BOTTOM ACTION AREA */}
+      <View style={styles.footerContainer}>
         
-        {/* PAGE INDICATORS */}
-        <View style={styles.indicatorContainer}>
+        {/* PAGINATION DOTS */}
+        <View style={styles.paginationContainer}>
           {PAGES.map((_, index) => {
             const inputRange = [
               (index - 1) * width,
@@ -197,35 +198,39 @@ export default function OnboardingScreen() {
             ];
             const dotWidth = scrollX.interpolate({
               inputRange,
-              outputRange: [8, 24, 8],
+              outputRange: [8, 32, 8],
               extrapolate: 'clamp',
             });
-            const opacity = scrollX.interpolate({
+            const dotOpacity = scrollX.interpolate({
               inputRange,
-              outputRange: [0.4, 1, 0.4],
+              outputRange: [0.3, 1, 0.3],
               extrapolate: 'clamp',
             });
+            
             return (
               <Animated.View
                 key={index}
-                style={[styles.indicator, { width: dotWidth, opacity }]}
+                style={[
+                  styles.dot,
+                  { width: dotWidth, opacity: dotOpacity },
+                ]}
               />
             );
           })}
         </View>
 
-        {/* BUTTONS */}
-        <View style={styles.buttonContainer}>
+        {/* MODERN BUTTONS */}
+        <View style={styles.buttonWrapper}>
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={handleNext}
             activeOpacity={0.8}
           >
             <Text style={styles.primaryButtonText}>
-              {currentPage === PAGES.length - 1 ? 'Get Started' : 'Next'}
+              {currentPage === PAGES.length - 1 ? 'Get Started' : 'Continue'}
             </Text>
             {currentPage !== PAGES.length - 1 && (
-               <Ionicons name="arrow-forward" size={20} color={PAGE_COLORS[currentPage][0]} style={{marginLeft: 8}} />
+               <Ionicons name="arrow-forward" size={18} color="#1F2937" style={{ marginLeft: 8 }} />
             )}
           </TouchableOpacity>
 
@@ -234,7 +239,7 @@ export default function OnboardingScreen() {
             activeOpacity={0.7}
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryButtonText}>I already have an account</Text>
+            <Text style={styles.secondaryButtonText}>Log In</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -245,108 +250,124 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000', // Fallback color
+    backgroundColor: '#111827', // Slate 900 fallback
   },
   page: {
     height,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
   },
-  contentContainer: {
+  contentWrapper: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 100, // Memberi ruang untuk footer
+    paddingBottom: 160, // Push content slightly up
   },
   
-  // ICON STYLES
-  iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  // GLASS ICON STYLES
+  iconContainer: {
+    width: 140,
+    height: 140,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 60,
-    // Glassmorphism effect simulation
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    marginBottom: 48,
+    position: 'relative',
   },
-  ring: {
-    position: 'absolute',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#fff',
+  iconGlassBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.glassBg,
+    borderRadius: 40, // Squircle shape
+    borderWidth: 1.5,
+    borderColor: COLORS.glassBorder,
+    transform: [{ rotate: '45deg' }], // Diamond aesthetic
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+  },
+  iconShadow: {
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
   },
 
-  // TEXT STYLES
+  // TYPOGRAPHY STYLES
   title: {
-    fontSize: 32,
+    fontSize: 36, // Larger display text
     fontFamily: Font.bold,
-    color: '#fff',
+    color: COLORS.white,
     textAlign: 'center',
     marginBottom: 16,
-    letterSpacing: -0.5, // Modern tight tracking
+    letterSpacing: -1, // Tight tracking for modern feel
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   description: {
     fontSize: 16,
     fontFamily: Font.regular,
-    color: 'rgba(255,255,255,0.85)',
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 24, // Legible line height
-    maxWidth: '90%',
+    lineHeight: 26, // Generous line height for readability
+    paddingHorizontal: 10,
   },
 
   // FOOTER STYLES
-  footer: {
+  footerContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 32,
-    paddingBottom: Platform.OS === 'ios' ? 48 : 32,
-    // Gradient overlay for readability (optional)
-  },
-  indicatorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? 50 : 32,
     alignItems: 'center',
-    marginBottom: 32,
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    height: 10,
+    marginBottom: 40,
+    alignItems: 'center',
     gap: 8,
   },
-  indicator: {
-    height: 8,
-    borderRadius: 4,
+  dot: {
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#fff',
   },
-  buttonContainer: {
+  buttonWrapper: {
+    width: '100%',
     gap: 16,
   },
   primaryButton: {
-    backgroundColor: '#fff',
-    borderRadius: 20, // Rounded corners
-    height: 56,
+    backgroundColor: COLORS.white,
+    height: 60,
+    borderRadius: 100, // Pill shape
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
   primaryButtonText: {
     fontSize: 16,
     fontFamily: Font.bold,
-    color: '#1a1a2e', // Dark text on white button
+    color: '#111827', // Dark Slate for contrast
+    letterSpacing: 0.5,
   },
   secondaryButton: {
+    height: 44,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 8,
   },
   secondaryButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: Font.semiBold,
-    color: 'rgba(255,255,255,0.7)',
+    color: COLORS.white,
+    opacity: 0.9,
   },
 });

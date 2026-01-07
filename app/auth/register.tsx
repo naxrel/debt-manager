@@ -17,18 +17,17 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-// --- DESIGN TOKENS (Consistent with App Theme) ---
+// --- MODERN DESIGN TOKENS ---
 const COLORS = {
-  background: '#FFFFFF',
+  background: '#F8FAFC', // Slate 50 (Softer than pure white)
   surface: '#FFFFFF',
   primary: '#4F46E5',    // Indigo 600
-  primarySoft: '#EEF2FF',
-  textMain: '#0F172A',   // Slate 900
+  textMain: '#1E293B',   // Slate 800
   textSec: '#64748B',    // Slate 500
-  textTertiary: '#94A3B8',
-  border: '#E2E8F0',
-  inputBg: '#F8FAFC',    // Slate 50
+  border: '#E2E8F0',     // Slate 200
+  inputBg: '#FFFFFF',
   danger: '#EF4444',
+  focus: '#4F46E5',
 };
 
 const SPACING = 24;
@@ -40,6 +39,10 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // State visual untuk UX yang lebih baik (Focus Ring)
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+
   const router = useRouter();
   const { register } = useAuth();
 
@@ -106,6 +109,40 @@ export default function RegisterScreen() {
     router.back();
   };
 
+  // Helper untuk render input agar code lebih clean
+  const renderInput = (
+    label: string, 
+    value: string, 
+    setter: (val: string) => void, 
+    placeholder: string,
+    key: string,
+    secure = false,
+    keyboardType: any = 'default',
+    autoCap = 'sentences'
+  ) => (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={[
+        styles.inputContainer,
+        focusedInput === key && styles.inputFocused
+      ]}>
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          value={value}
+          onChangeText={setter}
+          editable={!isLoading}
+          placeholderTextColor="#94A3B8"
+          secureTextEntry={secure}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCap as any}
+          onFocus={() => setFocusedInput(key)}
+          onBlur={() => setFocusedInput(null)}
+        />
+      </View>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -129,84 +166,21 @@ export default function RegisterScreen() {
               <Path stroke={COLORS.textMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </Svg>
           </TouchableOpacity>
-          <View style={{marginTop: 20}}>
+          
+          <View style={styles.headerTextContainer}>
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Start your financial journey with us.</Text>
+            <Text style={styles.subtitle}>Begin your financial journey.</Text>
           </View>
         </View>
 
-        {/* Form Section */}
+        {/* Form Section - Menggunakan Modern Card Style tapi flat menyatu dengan background */}
         <View style={styles.formContainer}>
           
-          {/* Full Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>FULL NAME</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex: John Doe"
-              value={name}
-              onChangeText={setName}
-              editable={!isLoading}
-              placeholderTextColor={COLORS.textTertiary}
-            />
-          </View>
-
-          {/* Email */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>EMAIL ADDRESS</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="name@example.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!isLoading}
-              placeholderTextColor={COLORS.textTertiary}
-            />
-          </View>
-
-          {/* Username */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>USERNAME</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Choose a unique username"
-              value={username}
-              onChangeText={(text) => setUsername(text.replace(/\s/g, ''))}
-              autoCapitalize="none"
-              editable={!isLoading}
-              placeholderTextColor={COLORS.textTertiary}
-            />
-          </View>
-
-          {/* Password */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>PASSWORD</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Min. 6 characters"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!isLoading}
-              placeholderTextColor={COLORS.textTertiary}
-            />
-          </View>
-
-          {/* Confirm Password */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>CONFIRM PASSWORD</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Re-type your password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              editable={!isLoading}
-              placeholderTextColor={COLORS.textTertiary}
-            />
-          </View>
+          {renderInput('Full Name', name, setName, 'Ex: John Doe', 'name')}
+          {renderInput('Email Address', email, setEmail, 'hello@example.com', 'email', false, 'email-address', 'none')}
+          {renderInput('Username', username, (t) => setUsername(t.replace(/\s/g, '')), 'Unique username', 'username', false, 'default', 'none')}
+          {renderInput('Password', password, setPassword, 'Min. 6 characters', 'password', true)}
+          {renderInput('Confirm Password', confirmPassword, setConfirmPassword, 'Re-type password', 'confirm', true)}
 
           {/* Main Action Button */}
           <TouchableOpacity
@@ -225,7 +199,7 @@ export default function RegisterScreen() {
           {/* Footer Link */}
           <View style={styles.footer}>
             <Text style={styles.linkText}>Already have an account?</Text>
-            <TouchableOpacity onPress={goToLogin} disabled={isLoading} style={{padding: 4}}>
+            <TouchableOpacity onPress={goToLogin} disabled={isLoading}>
               <Text style={styles.linkBold}>Log In</Text>
             </TouchableOpacity>
           </View>
@@ -246,36 +220,46 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   
-  // Header
+  // Header Styles
   header: {
     paddingHorizontal: SPACING,
     paddingTop: Platform.OS === 'android' ? 50 : 60,
-    marginBottom: 30,
+    marginBottom: 32,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.inputBg,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
+    marginBottom: 24,
+    // Soft shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  headerTextContainer: {
+    gap: 8,
   },
   title: {
-    fontSize: 32,
+    fontSize: 34,
     fontFamily: Font.bold,
     color: COLORS.textMain,
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    letterSpacing: -1,
   },
   subtitle: {
     fontSize: 16,
     fontFamily: Font.regular,
     color: COLORS.textSec,
+    lineHeight: 24,
   },
 
-  // Form
+  // Form Styles
   formContainer: {
     paddingHorizontal: SPACING,
   },
@@ -283,42 +267,49 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: Font.bold,
-    color: COLORS.textSec,
+    color: COLORS.textMain,
     marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  inputContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    height: 56,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    // Smooth transition simulation
+  },
+  inputFocused: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#EEF2FF', // Very subtle tint
   },
   input: {
-    height: 52,
-    backgroundColor: COLORS.inputBg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 16, // Modern Squircle
-    paddingHorizontal: 16,
     fontSize: 16,
     fontFamily: Font.regular,
     color: COLORS.textMain,
+    height: '100%',
   },
   
-  // Button
+  // Button Styles
   button: {
     backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    height: 56,
+    borderRadius: 18,
+    height: 58,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
-    // Modern Glow Shadow
+    marginTop: 12,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 10,
   },
   buttonDisabled: {
-    backgroundColor: COLORS.textTertiary,
+    backgroundColor: '#CBD5E1',
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -326,6 +317,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontFamily: Font.bold,
+    letterSpacing: 0.5,
   },
 
   // Footer
@@ -334,7 +326,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 32,
-    gap: 4,
+    gap: 6,
   },
   linkText: {
     fontSize: 15,

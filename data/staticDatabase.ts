@@ -311,7 +311,7 @@ export const STATIC_DEBTS: Debt[] = [
   id: 'd12',
   userId: '3',
   type: 'piutang', // atau 'piutang'
-  name: 'Mbut',
+  name: 'Mbul',
   amount: 150000,
   description: 'Deskripsi transaksi',
   date: '2025-12-20',
@@ -335,7 +335,7 @@ export const STATIC_DEBTS: Debt[] = [
   id: 'd14',
   userId: '3',
   type: 'piutang', // atau 'piutang'
-  name: 'Jancuk',
+  name: 'Jokwoi',
   amount: 150000,
   description: 'Deskripsi transaksi',
   date: '2025-12-20',
